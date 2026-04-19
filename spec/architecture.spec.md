@@ -1,6 +1,6 @@
 # 架构约束规格（可自动检测版）
 
-> 依据：[毕设系统架构推导](.cursor/plans/毕设系统架构推导_8fd2e706.plan.md)。  
+> 依据：[毕设系统架构推导](../.cursor/plans/毕设系统架构推导_8fd2e706.plan.md)。  
 > 目标：为 **import-linter**、**静态 grep**、**调用链分析（可选）**、**集成测试** 提供 **可机器执行** 的条文；每条规则含 **描述 / 违规示例 / 检测方式**。
 
 ### 与 `contract.yaml`、`execution_plan.md` 的联动（非替代）
@@ -432,7 +432,7 @@ forbidden_modules =
 |------|------|
 | **规则描述** | 同 `conversation_id` 多 job **串行消费** 或 **过期丢弃** **二选一**，须在 **`docs/arch/chat_job_order.md`**、**`app/config.py` 常量 `CHAT_JOB_ORDER=`**，或 **`execution_plan.md` 固定小节「### Chat 同会话多 job 顺序（真源）」** 三选一写明；默认 **串行**（与 **`execution_plan.md`** 该小节及设计长文 §14.3 一致）。 |
 | **违规示例** | 无上述任一落点、Worker 并行消费同会话导致乱序写库。 |
-| **检测方式** | ① **CI（可机判）**：**三选一**——`test -f docs/arch/chat_job_order.md` **为真**，**或** `rg "^CHAT_JOB_ORDER\\s*=" app/config.py` **命中**，**或** `rg "^### Chat 同会话多 job 顺序（真源）" execution_plan.md` **命中**（仓库根路径）；② **集成（P1）**：同会话连发两条消息，断言 **完成顺序** 或第二条 **skipped/expired** 标记。 |
+| **检测方式** | ① **CI（可机判）**：**三选一**——`test -f docs/arch/chat_job_order.md` **为真**，**或** `rg "^CHAT_JOB_ORDER\\s*=" app/config.py` **命中**，**或** `rg "^### Chat 同会话多 job 顺序（真源）" spec/execution_plan.md` **命中**（自仓库根）；② **集成（P1）**：同会话连发两条消息，断言 **完成顺序** 或第二条 **skipped/expired** 标记。 |
 
 ---
 

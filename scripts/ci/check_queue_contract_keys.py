@@ -1,4 +1,4 @@
-"""CI: assert contract.yaml x-task-contracts.queues contains required keys (architecture.spec R-QUEUE-ISO)."""
+"""CI: assert spec/contract.yaml x-task-contracts.queues contains required keys (architecture.spec R-QUEUE-ISO)."""
 from __future__ import annotations
 
 import sys
@@ -11,9 +11,9 @@ REQUIRED = ("chat_jobs", "document_jobs", "pdf_parse", "keyword_jobs", "reconcil
 
 def main() -> int:
     root = Path(__file__).resolve().parents[2]
-    contract = root / "contract.yaml"
+    contract = root / "spec" / "contract.yaml"
     if not contract.is_file():
-        print("FAIL: contract.yaml not found at repo root", file=sys.stderr)
+        print("FAIL: spec/contract.yaml not found", file=sys.stderr)
         return 2
     data = yaml.safe_load(contract.read_text(encoding="utf-8"))
     try:

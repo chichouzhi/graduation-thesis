@@ -1,6 +1,6 @@
 """多引擎规则：执行 import-linter 之外的静态/脚本检查（与 .importlinter 去重）。
 
-architecture.spec.md 中已由 import-linter 覆盖的 import 边（R-API-ADAPTER / UC / TASK，
+spec/architecture.spec.md 中已由 import-linter 覆盖的 import 边（R-API-ADAPTER / UC / TASK，
 R-TASK-API，R-UC-SKIP/W6）不在此重复 rg。
 
 用法:
@@ -183,7 +183,7 @@ def check_m_chain_jobs_reference_uc() -> None:
 
 
 def check_r_chat_job_order() -> None:
-    ep = REPO / "execution_plan.md"
+    ep = REPO / "spec" / "execution_plan.md"
     doc = REPO / "docs" / "arch" / "chat_job_order.md"
     cfg = APP / "config.py"
     ok = False
@@ -201,7 +201,7 @@ def check_r_chat_job_order() -> None:
         raise RuleError(
             "R-CHAT-JOB-ORDER",
             "三选一真源均未命中：docs/arch/chat_job_order.md 或 app/config.py CHAT_JOB_ORDER= 或 "
-            "execution_plan.md 小节「### Chat 同会话多 job 顺序（真源）」",
+            "spec/execution_plan.md 小节「### Chat 同会话多 job 顺序（真源）」",
         )
 
 
@@ -239,7 +239,7 @@ def check_r_no_queue_manifest() -> None:
 
 def check_enqueue_literals_weak() -> None:
     """R-QUEUE-ISO 弱校验：service 与 task/queue 中 enqueue(\"...\") 字面量 ⊆ contract 队列键。"""
-    contract = REPO / "contract.yaml"
+    contract = REPO / "spec" / "contract.yaml"
     if not contract.is_file():
         return
     try:

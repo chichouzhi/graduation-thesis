@@ -1,0 +1,171 @@
+// 模块依赖 DAG（允许边）— 对应 docs/architecture/system-architecture.md
+// 文档索引：docs/README.md
+// 真源：spec/architecture.spec.md（W1–W6、R-*）、spec/contract.yaml、spec/execution_plan.md
+// 渲染：dot -Tsvg docs/architecture/system-architecture-modules.dot -o docs/architecture/system-architecture-modules.svg
+//
+// 说明：
+// - 边 A -> B 表示「A 依赖 B」（import 或稳定运行时调用），且为 spec 允许方向。
+// - 禁止边（勿加为实线）：api→adapter|use_cases|task|models；task→adapter|api；
+//   use_cases→api|flask.request；recommendations→adapter.llm / nlp 替代 Topic 写路径；
+//   chat|document|topic.service → adapter.llm（生产默认）。
+
+digraph system_architecture_modules {
+  graph [
+    label="Graduation Design — Module dependency (allowed edges only)\n上层 -> 下层 表示 depends on",
+    labelloc=t,
+    fontsize=11,
+    rankdir=TB,
+    splines=ortho,
+    nodesep=0.35,
+    ranksep=0.55
+  ];
+  node [shape=box, style=rounded, fontname="Helvetica"];
+  edge [fontname="Helvetica", fontsize=9];
+
+  // --- 基础设施（各层可引用，图中仅标与依赖主链相关） ---
+  app_config [label="app.config\napp.extensions"];
+  app_common [label="app.common\n(PolicyGateway 等)"];
+
+  // --- API：仅 -> 同域 service（图中合并为一条语义边） ---
+  subgraph cluster_api {
+    label="API（contract paths → 各域 *.api）";
+    labelloc=b;
+    style=dashed;
+    color=gray;
+    api_identity   [label="app.identity.api"];
+    api_terms      [label="app.terms.api"];
+    api_taskboard  [label="app.taskboard.api"];
+    api_chat       [label="app.chat.api"];
+    api_document   [label="app.document.api"];
+    api_topic      [label="app.topic.api"];
+    api_selection  [label="app.selection.api"];
+    api_recommend  [label="app.recommendations.api"];
+  }
+
+  // --- Service ---
+  subgraph cluster_svc {
+    label="Service（*.service）";
+    labelloc=b;
+    style=dashed;
+    color=gray;
+    svc_identity   [label="IdentityService"];
+    svc_terms      [label="TermService"];
+    svc_milestone  [label="MilestoneService"];
+    svc_chat       [label="ChatService"];
+    svc_document   [label="DocumentService"];
+    svc_topic      [label="TopicService"];
+    svc_selection  [label="SelectionService"];
+    svc_recommend  [label="RecommendService"];
+  }
+
+  // --- use_cases（编排唯一层；selection 无强求文件，图中不强制连边） ---
+  uc [label="app.use_cases\n(chat_orchestration,\ndocument_pipeline,\ntopic_keywords, …)"];
+
+  // --- task ---
+  task_queue [label="app.task.queue\n(enqueue_*)"];
+  subgraph cluster_jobs {
+    label="Worker：task/*_jobs（薄壳）";
+    labelloc=b;
+    style=dashed;
+    color=gray;
+    job_chat      [label="chat_jobs"];
+    job_pdf       [label="pdf_parse_jobs"];
+    job_document  [label="document_jobs"];
+    job_keyword   [label="keyword_jobs"];
+    job_reconcile [label="reconcile_jobs"];
+  }
+
+  adapter [label="app.adapter\n(llm, pdf, nlp, storage)"];
+
+  subgraph cluster_model {
+    label="Persistence";
+    labelloc=b;
+    style=dashed;
+    color=gray;
+    models [label="各域 *.models\n/ 共享 ORM"];
+  }
+
+  broker [label="broker\n(Redis 等)", shape=cylinder];
+
+  // --- W1：API -> Service ---
+  api_identity   -> svc_identity;
+  api_terms      -> svc_terms;
+  api_taskboard  -> svc_milestone;
+  api_chat       -> svc_chat;
+  api_document   -> svc_document;
+  api_topic      -> svc_topic;
+  api_selection  -> svc_selection;
+  api_recommend  -> svc_recommend;
+
+  // --- config 被各层读取（简化：连到 service 与 uc） ---
+  app_config -> svc_identity;
+  app_config -> svc_terms;
+  app_config -> svc_milestone;
+  app_config -> svc_chat;
+  app_config -> svc_document;
+  app_config -> svc_topic;
+  app_config -> svc_selection;
+  app_config -> svc_recommend;
+  app_config -> uc;
+  app_config -> task_queue;
+
+  // --- Service -> policy / models ---
+  svc_identity   -> app_common;
+  svc_terms      -> app_common;
+  svc_milestone  -> app_common;
+  svc_chat       -> app_common;
+  svc_document   -> app_common;
+  svc_topic      -> app_common;
+  svc_selection  -> app_common;
+  svc_recommend  -> app_common;
+
+  svc_identity   -> models;
+  svc_terms      -> models;
+  svc_milestone  -> models;
+  svc_chat       -> models;
+  svc_document   -> models;
+  svc_topic      -> models;
+  svc_selection  -> models;
+  svc_recommend  -> models [label="只读"];
+
+  // --- W2：chat / document / topic service -> use_cases（受理侧组装） ---
+  svc_chat     -> uc [label="W2"];
+  svc_document -> uc [label="W2"];
+  svc_topic    -> uc [label="W2"];
+
+  // --- W3：service -> task.queue ---
+  svc_chat     -> task_queue [label="W3\nchat_jobs"];
+  svc_document -> task_queue [label="W3\npdf_parse /\ndocument_jobs"];
+  svc_topic    -> task_queue [label="W3\nkeyword_jobs"];
+  svc_selection -> task_queue [label="W3\nreconcile_jobs"];
+
+  // --- queue -> broker（enqueue 运行时使用 broker；非 Python import 亦可标出） ---
+  task_queue -> broker;
+
+  // --- Jobs：消费侧依赖 UC 与 models；禁止 import adapter / api（W6、R-TASK-API） ---
+  job_chat      -> uc [label="W4"];
+  job_pdf       -> uc [label="W4"];
+  job_document  -> uc [label="W4"];
+  job_keyword   -> uc [label="W4"];
+  job_reconcile -> uc [label="W4\n(ADR)"];
+
+  job_chat      -> models;
+  job_pdf       -> models;
+  job_document  -> models;
+  job_keyword   -> models;
+  job_reconcile -> models;
+
+  // 运行时：各 *_jobs 经队列客户端从 broker 取任务（不在此画反向边，避免误读为模块 depends-on）
+  job_chat      -> broker [style=dashed, label="runtime\nconsume"];
+  job_pdf       -> broker [style=dashed];
+  job_document  -> broker [style=dashed];
+  job_keyword   -> broker [style=dashed];
+  job_reconcile -> broker [style=dashed];
+
+  // --- W5：use_cases -> adapter ---
+  uc -> adapter [label="W5\n(Worker 栈内)"];
+
+  // --- adapter -> 外部（抽象） ---
+  ext [label="外部\n(LLM / PDF / 存储)", shape=folder];
+  adapter -> ext;
+}

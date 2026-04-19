@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = ROOT / "architecture.spec.md"
+SPEC = ROOT / "spec" / "architecture.spec.md"
 
 # scripts/ 下的 registry（无 pip 包）
 if str(ROOT / "scripts") not in sys.path:
@@ -53,7 +53,7 @@ def test_manual_rules_have_notes(rule: ArchRule) -> None:
 
 def test_r_chat_job_order_artifact() -> None:
     """R-CHAT-JOB-ORDER：三选一真源（与 check_rules 一致，pytest 侧作快速回归）。"""
-    ep = ROOT / "execution_plan.md"
+    ep = ROOT / "spec" / "execution_plan.md"
     doc = ROOT / "docs" / "arch" / "chat_job_order.md"
     cfg = ROOT / "app" / "config.py"
     ok = doc.is_file()

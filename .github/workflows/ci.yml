@@ -25,9 +25,9 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
-          python -m pip install pytest PyYAML import-linter
+          python -m pip install pytest PyYAML import-linter openapi-spec-validator
 
-      # 规则真源：architecture.spec.md；可执行映射：scripts/arch_rules_registry.py
+      # 规则真源：spec/architecture.spec.md；可执行映射：scripts/arch_rules_registry.py
       # 本步 = import-linter（.importlinter）+ scripts/check_rules.py + tests/test_architecture.py
       - name: Architecture rules (import-linter, check_rules, test_architecture)
         run: |
