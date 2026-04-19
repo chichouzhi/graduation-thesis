@@ -9,6 +9,7 @@
 |------|------------------|
 | **`contract.yaml`** | 约定 **HTTP 状态码与 JSON 形状**（如 Chat/Document 受理 **202**、`AsyncTaskStatus`、`term_id`、Policy 失败 **429/503** 与 `error.code`）；**不能**替代本文的 **import 分层** 与 **`PROC_API` 不调 LLM** 检测。 |
 | **`execution_plan.md`** | 交付顺序与四域矩阵；**P0 禁止/必须** 以本文 **§2～§8** 为最高优先级。 |
+| **`docs/arch/ADR-*.md`** | 对 **`execution_plan` / 契约** 的歧义作 **裁决真源**；当前见 **`ADR-document-pdf-parse-to-document-jobs.md`**（文献双队列时序）、**`ADR-reconcile-jobs-and-w4.md`**（`reconcile_jobs` 与 **W4**）。 |
 
 **建议 CI 增补**：`openapi-spec-validator`（或等价）校验 `contract.yaml`；集成测试将 **契约 202/429/503** 与 **R-SYNC-LLM**、**M-POLICY-ENQUEUE**、**R-QUEUE-CONSIST** 同流水线执行。`import-linter` 的 `source_modules` 须覆盖 **全部** `app.*.api` 包（含 **identity、terms、taskboard** 等，见仓库实际路径）。另见 **§5**：`rg-guard-app-examples`、`check-api-packages-in-linter`、`check-policy-deny-tests`。
 
@@ -44,7 +45,7 @@
 
 | # | 允许边 | 含义 | 收紧条件（建议写进 lint） |
 |---|--------|------|---------------------------|
-| W1 | **`API` → `SVC`** ✅ | HTTP 仅转调同域 `service` | `API` **不得** import `TASK`、`ADAPTER`、`UC`（见禁止规则） |
+| W1 | **`API` → `SVC`** ✅ | HTTP 仅转调同域 `service` | `API` **不得** import `TASK`、`ADAPTER`、`UC`（见 **R-API-TASK**、禁止规则） |
 | W2 | **`SVC` → `UC`** ✅ | 业务入口调用编排（组装、计划、执行前准备） | 仅 **函数调用**；`SVC` **不得** 复制 `UC` 内 Prompt/分块代码；**检测**：**R-UC-ONLY** ② + **W2-DUP** |
 | W3 | **`SVC` → `TASK`（仅 `queue` 门面）** ✅ | 入队由事务提交后的 **enqueue** 完成 | **推荐**：仅允许 `from app.task import queue` 或 `from app.task.queue import enqueue_*`；**禁止** `SVC` import `app.task.chat_jobs` 等 `*_jobs` 模块 |
 | W3b | **`UC` → `TASK`（可选）** ✅ | 若团队将「入队」下沉为纯函数门面 | **仅**允许 `app/task/queue.py`（或与 `queue` 同级的 `enqueue` 模块）；**禁止** `UC` import 任意 `*_jobs.py` |
@@ -105,6 +106,16 @@
 | **规则描述** | `API` **不得** `import app.use_cases`；编排入口必须在 **`SVC`**。 |
 | **违规示例** | `routes.py`：`from app.use_cases.chat_orchestration import build_messages`。 |
 | **检测方式** | **import-linter** 禁止 `app.**.*.api` → `app.use_cases`；**rg** `from app\\.use_cases|import app\\.use_cases` 于 `**/api/**/*.py`。 |
+
+---
+
+### R-API-TASK（P0）— `API` 不得 import `app.task`（含 `queue` / `*_jobs`）
+
+| 字段 | 内容 |
+|------|------|
+| **规则描述** | `API` **不得** `import app.task` 及其子模块；**入队** 仅允许经 **`SVC` → `task.queue`**（与 **W1**、**W3** 一致），禁止路由层 **绕过 `service` 直接 `enqueue`**。 |
+| **违规示例** | `routes.py`：`from app.task.queue import enqueue_chat_job`。 |
+| **检测方式** | ① **import-linter**：**§4 `forbidden_api_task`**；② **`rg-guard-api-task`**：`rg "from app\\.task\\b|import app\\.task\\b" app/ -g "**/api/**/*.py"` —— **零命中**。 |
 
 ---
 
@@ -256,7 +267,7 @@
 
 | 字段 | 内容 |
 |------|------|
-| **规则描述** | `PROC_WORKER` 执行 `chat_jobs` / `document_jobs` / `keyword_jobs` 时，**须**先调用 **`app.use_cases`** 中函数，**且** **`adapter` 仅允许在 `UC` 模块内 import**（与 **R-UC-SKIP** 一致）。 |
+| **规则描述** | `PROC_WORKER` 执行 `chat_jobs` / `document_jobs` / `keyword_jobs` 时，**须**先调用 **`app.use_cases`** 中函数，**且** **`adapter` 仅允许在 `UC` 模块内 import**（与 **R-UC-SKIP** 一致）。**`reconcile_jobs`** 仍须满足 **§1.1 W4**（消费路径调用 **`app.use_cases`**），**不得** `import app.adapter`；编排裁决见 **`docs/arch/ADR-reconcile-jobs-and-w4.md`**。 |
 | **正向示例** | `chat_jobs.handle` → `use_cases.chat_orchestration.run_turn(...)` →（**UC 内部**）`adapter.llm.complete`。 |
 | **检测方式** | ① **R-UC-SKIP**（`app.task` **零** `app.adapter` import）；② **每个** `*_jobs.py` **`rg` `use_cases|app\.use_cases`** —— **至少一命中**；③ **集成（P0）**：消费单条 Chat/Document job 时 **`unittest.mock`** 断言 **至少一次** 调用 **`app.use_cases`** 中 **预定入口**（入口名写死在测试常量表，与 **R-UC-ONLY** 文档表对齐）。 |
 
@@ -279,7 +290,7 @@
 以下名字为逻辑层 id，路径按 **§0** 调整。
 
 ```ini
-# 逻辑说明：禁止 API 触碰 adapter / use_cases；禁止 task import api；禁止 use_cases import api。
+# 逻辑说明：禁止 API 触碰 adapter / use_cases / task；禁止 task import api；禁止 use_cases import api。
 [importlinter]
 root_package = app
 
@@ -313,6 +324,21 @@ source_modules =
 forbidden_modules =
     app.use_cases
 
+[importlinter:contract:forbidden_api_task]
+name = API must not import task package
+type = forbidden
+source_modules =
+    app.identity.api
+    app.terms.api
+    app.taskboard.api
+    app.chat.api
+    app.document.api
+    app.topic.api
+    app.selection.api
+    app.recommendations.api
+forbidden_modules =
+    app.task
+
 [importlinter:contract:forbidden_task_api]
 name = TASK must not import API layers
 type = forbidden
@@ -345,8 +371,9 @@ forbidden_modules =
 
 | Job | 命令 / 动作 | 覆盖规则 |
 |-----|-------------|----------|
-| `lint-imports` | `lint-imports` 或 `import-linter`（须含 **§4** 全部合约：`forbidden_api_*`、`forbidden_task_api`、`forbidden_task_adapter`） | R-API-ADAPTER、R-API-UC、R-TASK-API、R-REC-LLM、**R-UC-SKIP**、**forbidden_task_adapter** |
+| `lint-imports` | `lint-imports` 或 `import-linter`（须含 **§4** 全部合约：`forbidden_api_*`（含 **`forbidden_api_task`**）、`forbidden_task_api`、`forbidden_task_adapter`） | R-API-ADAPTER、R-API-UC、**R-API-TASK**、R-TASK-API、R-REC-LLM、**R-UC-SKIP**、**forbidden_task_adapter** |
 | `rg-guard-api` | `rg "from app\\.(adapter|use_cases)\\b" app/ -g "**/api/**/*.py"` | R-API-ADAPTER、R-API-UC |
+| `rg-guard-api-task` | `rg "from app\\.task\\b|import app\\.task\\b" app/ -g "**/api/**/*.py"` —— **零命中** | **R-API-TASK** |
 | `rg-guard-svc-llm` | `rg "adapter\\.llm|from app\\.adapter.*llm" app/ -g "**/service/**/*.py"` | R-SVC-LLM |
 | `rg-guard-uc-flask` | `rg "flask\\.request|from flask import request|from app\\.\\w+\\.api" app/use_cases` | R-UC-API |
 | `it-async-chat` | pytest：无 worker 时 Chat POST **202**、无厂商 HTTP | R-SYNC-LLM、M-QUEUE-WORKER |
@@ -395,17 +422,17 @@ forbidden_modules =
 
 | 字段 | 内容 |
 |------|------|
-| **规则描述** | **`contract.yaml` → `x-task-contracts.queues`** 为队列名 **真源**；实现代码 **不得** 使用未在该节声明的队列名调用 `enqueue`（**`reconcile_jobs` 除外**）。 |
-| **违规示例** | 代码中硬编码 `enqueue("chat-job")` 与契约 `chat_jobs` 不一致。 |
-| **检测方式** | **`check-queue-keys`**（§5）：脚本解析 `contract.yaml` 并断言 **至少含** `chat_jobs`、`document_jobs`、`pdf_parse`、`keyword_jobs`；另 **`rg`** `enqueue\\(|enqueue_` 于 `app/**/service/**/*.py` + `app/task/queue.py` 出现的 **字符串字面量队列名** 须 **⊆** 脚本输出的键集合（**脚本 `scripts/ci/check_queue_contract_keys.py` 由实现填充**，本 spec 要求 **CI 必跑**）。 |
+| **规则描述** | **`contract.yaml` → `x-task-contracts.queues`** 为队列名 **真源**；凡 **`enqueue(...)` 使用的队列名字面量** 须 **为该节已声明的键**（**含 `reconcile_jobs`**）。**`reconcile_jobs` 的特殊点**仅为 **无对外 REST**，**不是**「可不声明队列名」的豁免。 |
+| **违规示例** | 代码中硬编码 `enqueue("chat-job")` 与契约 `chat_jobs` 不一致；或未在契约中声明即使用 `reconcile_jobs` 字面量以外的别名。 |
+| **检测方式** | **`check-queue-keys`**（§5）：脚本解析 `contract.yaml` 并断言 **至少含** `chat_jobs`、`document_jobs`、`pdf_parse`、`keyword_jobs`、`reconcile_jobs`；另 **`rg`** `enqueue\\(|enqueue_` 于 `app/**/service/**/*.py` + `app/task/queue.py` 出现的 **字符串字面量队列名** 须 **⊆** 脚本输出的键集合（**脚本 `scripts/ci/check_queue_contract_keys.py` 由实现填充**，本 spec 要求 **CI 必跑**）。 |
 
 ### R-CHAT-JOB-ORDER（P0）— 同会话多 job 顺序策略须写死
 
 | 字段 | 内容 |
 |------|------|
-| **规则描述** | 同 `conversation_id` 多 job **串行消费** 或 **过期丢弃** **二选一**，须在 **`docs/arch/chat_job_order.md`（或 `app/config.py` 常量）** 写明；默认 **串行**（与 execution_plan §14.3 一致）。 |
-| **违规示例** | 无文档、Worker 并行消费同会话导致乱序写库。 |
-| **检测方式** | ① **CI（可机判）**：**二选一**——`test -f docs/arch/chat_job_order.md` **为真**，**或** `rg "^CHAT_JOB_ORDER\\s*=" app/config.py` **命中**（避免泛泛匹配 `serial`）；② **集成（P1）**：同会话连发两条消息，断言 **完成顺序** 或第二条 **skipped/expired** 标记。 |
+| **规则描述** | 同 `conversation_id` 多 job **串行消费** 或 **过期丢弃** **二选一**，须在 **`docs/arch/chat_job_order.md`**、**`app/config.py` 常量 `CHAT_JOB_ORDER=`**，或 **`execution_plan.md` 固定小节「### Chat 同会话多 job 顺序（真源）」** 三选一写明；默认 **串行**（与 **`execution_plan.md`** 该小节及设计长文 §14.3 一致）。 |
+| **违规示例** | 无上述任一落点、Worker 并行消费同会话导致乱序写库。 |
+| **检测方式** | ① **CI（可机判）**：**三选一**——`test -f docs/arch/chat_job_order.md` **为真**，**或** `rg "^CHAT_JOB_ORDER\\s*=" app/config.py` **命中**，**或** `rg "^### Chat 同会话多 job 顺序（真源）" execution_plan.md` **命中**（仓库根路径）；② **集成（P1）**：同会话连发两条消息，断言 **完成顺序** 或第二条 **skipped/expired** 标记。 |
 
 ---
 
@@ -415,9 +442,9 @@ forbidden_modules =
 
 | 字段 | 内容 |
 |------|------|
-| **规则描述** | **`ChatService` / `DocumentService` / `TopicService`** 在 **执行 `enqueue` 的生产路径**上，**须**调用 **PolicyGateway**（或 **`common.policy`** 等价门面）**后再** `commit/enqueue`（与 **M-POLICY-ENQUEUE** 一致）。 |
-| **违规示例** | `DocumentService.create_task` 内直接 `enqueue` 无 `policy` 调用。 |
-| **检测方式** | ① **P0 集成（必跑，三域）**：**`it-policy-deny-chat`**、**`it-policy-deny-document`**、**`it-policy-deny-topic`**（§5）— mock **PolicyGateway**（或等价门面）**拒绝** → HTTP **429 或 503**，且 **`enqueue` spy 零调用**；② **M-POLICY-ENQUEUE**：`commit` 先于 `enqueue`、Policy 拒绝时无 enqueue（可与 ① 复用 spy）；③ **静态启发式（P1）**：`rg "enqueue"` 于 `app/chat/service/**/*.py`、`app/document/service/**/*.py`、`app/topic/service/**/*.py` —— 同文件须 `rg "policy|PolicyGateway|assert_can_enqueue"` **至少一命中**（**非**合并唯一依据）。 |
+| **规则描述** | **`ChatService` / `DocumentService` / `TopicService` / `SelectionService`** 在 **执行任何生产路径 `enqueue(...)`**（**含** **`enqueue(reconcile_jobs)`**）上，**须**在 **`enqueue` 生效前** 通过 **PolicyGateway**（或 **`common.policy`** 等价门面），**或** 通过 **`task.queue` 内对 `contract.yaml` → `x-task-contracts.queues` 所含队列名（**含 `reconcile_jobs`**）执行的同等 broker/深度/Rules 检查**——**二者实现择一并写死**，且须与 **M-POLICY-ENQUEUE** 的 **`commit` → `enqueue`** 顺序兼容。 |
+| **违规示例** | `DocumentService.create_task` 内直接 `enqueue` 无 `policy` 调用；`SelectionService.accept` 在 **`commit` 成功后** 裸调 **`enqueue(reconcile_jobs)`** 而无上述任一检查。 |
+| **检测方式** | ① **P0 集成（必跑，三域）**：**`it-policy-deny-chat`**、**`it-policy-deny-document`**、**`it-policy-deny-topic`**（§5）— mock **PolicyGateway**（或等价门面）**拒绝** → HTTP **429 或 503**，且 **`enqueue` spy 零调用**；**`reconcile_jobs`**：在 **`it-enqueue-order`** 或专用集成用例中 **spy** `SelectionService`（或 `queue.enqueue`）路径，mock **Policy/统一入队门面拒绝** → **`enqueue(reconcile_jobs)` 零调用** 且 DB 侧 **`accept` 事务不提交入队副作用**（具体断言由测试写死）；② **M-POLICY-ENQUEUE**：`commit` 先于 `enqueue`、Policy 拒绝时无 enqueue（可与 ① 复用 spy）；③ **静态启发式（P1）**：`rg "enqueue"` 于 `app/chat/service/**/*.py`、`app/document/service/**/*.py`、`app/topic/service/**/*.py`、**`app/selection/service/**/*.py`** —— 同文件须 `rg "policy|PolicyGateway|assert_can_enqueue"` **至少一命中**（**非**合并唯一依据）。 |
 
 ### M-ADAPTER-METER（P1）— TOCTOU 与限重试可观测
 
@@ -436,6 +463,7 @@ forbidden_modules =
 | R-API-ADAPTER | API 不 import adapter |
 | R-API-LLM | API 栈不调 LLM（含间接、动态 import） |
 | R-API-UC | API 不 import use_cases |
+| R-API-TASK | API 不 import app.task |
 | R-API-MODEL | API 不直连 ORM models |
 | R-APP-EXAMPLES | app 不 import examples |
 | R-SYNC-LLM | API 进程不阻塞等 LLM |

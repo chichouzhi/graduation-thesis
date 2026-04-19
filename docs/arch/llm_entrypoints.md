@@ -9,3 +9,11 @@
 | 课题关键词 LLM | `topic_keywords`（实现后填写） | `task/keyword_jobs` | Topic 写路径 |
 
 **占位说明**：实现阶段将上述「实现后填写」替换为 **真实 import 路径**；**CI** 运行 `scripts/ci/check_llm_entrypoints_doc.py` 校验本文件存在且含表格分隔符。
+
+## Worker 编排入口（非 LLM；满足 W4 `*_jobs` → `use_cases`）
+
+> 与 **`docs/arch/ADR-reconcile-jobs-and-w4.md`** 一致；**不调** `adapter.llm`。
+
+| 用例域 | `app.use_cases` 入口（模块.可调用符号） | 调用方（`task/*_jobs`） | 备注 |
+|--------|------------------------------------------|-------------------------|------|
+| 志愿对账 | `selection_reconcile`（实现后填写具体函数名） | `task/reconcile_jobs` | 仅 DB 对账与观测写回 |

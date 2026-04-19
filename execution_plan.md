@@ -4,7 +4,8 @@
 > 范围：后端分层交付顺序；**不写代码实现**。  
 > 硬约束：**凡触达 `adapter.llm` 的路径，生产默认必须经 queue + worker**（见下文「LLM 异步全覆盖」）；**API 层不得调用 LLM**；**编排逻辑仅存在于 `use_cases`**（`task/*_jobs` 为薄封装，禁止复制 Prompt/分块规则）。  
 > **HTTP/队列载荷以 `contract.yaml`（OpenAPI，`info.version`）为单一契约**；与 **`architecture.spec.md`** 分层门禁联合验收（契约不替代 import-linter）。  
-> **三文档闭环**：凡 `.cursor/plans/毕设系统架构推导_*.plan.md` 与本文/契约/规格出现命名冲突（例如历史 **`pdf_jobs` 队列名**），以 **`contract.yaml`、`architecture.spec.md`、本文** 为更正真源。
+> **三文档闭环**：凡 `.cursor/plans/毕设系统架构推导_*.plan.md` 与本文/契约/规格出现命名冲突（例如历史 **`pdf_jobs` 队列名**），以 **`contract.yaml`、`architecture.spec.md`、本文** 为更正真源。  
+> **ADR 真源（与本文无冲突时的细化裁决）**：文献 **`pdf_parse` → `document_jobs` 入队时序** 见 **`docs/arch/ADR-document-pdf-parse-to-document-jobs.md`**；**`reconcile_jobs` 与 W4 / `use_cases`** 见 **`docs/arch/ADR-reconcile-jobs-and-w4.md`**。
 
 ---
 
@@ -19,6 +20,11 @@
 | **3 `service`** | `ChatService`：组装调用 `use_cases` → Policy → 事务占位 → 入队 | `DocumentService`：落盘、建任务行 → Policy → 入队 | `TopicService`：CRUD/审核链路、Jieba 同步写画像；**LLM 抽词仅入队 `keyword_jobs`** | `SelectionService`：志愿填报、教师决策、**与 `assignments` / 计数同事务**（§9.5-C） |
 | **4 `task`** | `chat_jobs`：消费 → `use_cases` → `adapter.llm` → **状态回写** | **`pdf_parse` 队列**（**毕设 P0 生产默认必启**；实现模块 **`task/pdf_parse_jobs.py` 必交付**）+ `document_jobs`：解析/分块 LLM → **状态回写** | `keyword_jobs`：`use_cases` → LLM → **回写课题画像** | **`reconcile_jobs`（P0 必触发，见阶段 3 selection）**；Worker 消费 `ReconcileJobPayload` |
 | **5 `api`** | conversations / messages / 可选 `GET /chat/jobs/{id}` | `document-tasks` | `/topics` 等 | `/applications`、`/assignments`（志愿 API **唯一归属 selection 蓝图**，§10.3） |
+
+### Chat 同会话多 job 顺序（真源）
+
+- **默认（毕设交付）**：同一 **`conversation_id`** 下多个 **`chat_jobs` 串行消费**（与 **`PostUserMessageRequest.seq` / `client_request_id`** 及 Worker 侧抢锁/单消费者策略一致；设计长文 §14.3 为细化参考）。**禁止** Worker 在 **`running` 超时** 后 **`running→pending` 再重入队**；超时 **仅** 落 **`failed`**，与 **`contract.yaml` → `x-task-contracts.x-watchdog-on-timeout`** 一致。
+- **可选另一枝**「过期丢弃 / 乱序拒绝」若未在配置显式开启，则 **不在本仓库默认行为内**。
 
 ---
 
@@ -74,7 +80,7 @@
 ### 子任务
 
 - **chat**：`conversations`（**须持久化 `term_id` 非空**，与 **`ChatJobPayload.term_id`**、LLM 配额命名空间一致；创建会话请求体见 **`contract.yaml` → `CreateConversationRequest`**）/ `messages`（assistant 占位；**对外 JSON 字段名见 `contract.yaml` 之 `Message.status`（`AsyncTaskStatus`）；库内列名若用 `delivery_status`，仅允许在 ORM/序列化层映射，禁止再引入 `msg_id` 等别名**）；可选 `chat_jobs`（`job_id`、重试审计、**`error_code`/`error_message`**）。**`ChatService` 组 `ChatJobPayload` 时 `term_id` 必须取自本会话行，禁止临时魔法常量。**
-- **document**：`document_tasks`（`status`、`locked_at`、`last_completed_chunk`、`result_json` / `result_storage_uri`、**`error_code`/`error_message`**）。
+- **document**：`document_tasks`（**`term_id` 非空**、与 **`contract.yaml` → `DocumentTask.term_id`** 及队列 payload 一致；`status`、`locked_at`、`last_completed_chunk`、`result_json` / `result_storage_uri`、**`error_code`/`error_message`**）。
 - **topic**：`topics`、`terms`、`topic_portraits`（或内嵌画像列）；与 **`term_id`** 绑定的 LLM 配置存储方案（单一真源，§10.1.1）。
 - **selection**：`applications`（唯一约束：`student+term+topic`、`student+term+priority`；**HTTP 创建志愿须带 `term_id`，与 `contract.yaml` 之 `CreateApplicationRequest` 一致**）、`assignments`（**真源**）、`topics.selected_count`（派生与对账说明）。
 - **索引**：§11.4 中与列表、轮询、worker 抢任务相关的索引（含 `chat_jobs` / `document_tasks` 按 `status, created_at, locked_at`）。
@@ -123,9 +129,9 @@
   - **PolicyGateway**（Redis、队列深度、in-flight、预算粗检）。  
   - **单事务**：用户消息 + assistant 占位（`pending`）→ **提交** → **`enqueue(chat_jobs)`**。  
   - **入队失败补偿**：占位行 / `chat_jobs` → `failed`，写入 **`QUEUE_UNAVAILABLE`**（或等价），**禁止**长期悬挂 `pending`（§9.2.1）。
-- **document — `DocumentService`**：类型大小校验 → **Storage** 落盘 → **`document_tasks(pending)`** → Policy → **`enqueue(pdf_parse)`（P0 生产默认 **必须**，与 `contract.yaml` 队列名一致）** + **`enqueue(document_jobs)`**；**禁止**跳过 `pdf_parse` 仅在 `document_jobs` 内同步解析 PDF（§9.5-F）；**`term_id` 来源与 `contract.yaml` `POST /document-tasks` multipart 字段一致**；**`task_type` / `language` 未上传时的默认值与 `contract.yaml` 该路径描述一致**（当前写死：`summary`、`zh`）；并写入 **PdfJobPayload / DocumentJobPayload**；**入队失败** 同补偿条款。
+- **document — `DocumentService`**：类型大小校验 → **Storage** 落盘 → **`document_tasks(pending)`**（**须持久化 `term_id`**，与 **`contract.yaml` → `DocumentTask.term_id`**、**`PdfJobPayload`/`DocumentJobPayload`** 同源）→ Policy → **`commit` 成功后仅 `enqueue(pdf_parse)`**（P0，队列名以 **`contract.yaml` → `x-task-contracts.queues`** 为准）；**`document_jobs`** 须在 **`pdf_parse` worker 成功路径** 经 **`use_cases.document_pipeline`** 再 **`enqueue`**（**禁止**在 API 线程内默认同步全文解析；**细裁决**见 **`docs/arch/ADR-document-pdf-parse-to-document-jobs.md`**）；**`task_type` / `language` 未上传时的默认值与 `contract.yaml` 一致**（`summary`、`zh`）；**入队失败** 同补偿条款。
 - **topic — `TopicService`**：课题 CRUD、审核状态机；画像 **唯一写入口**；Jieba **同步**；**生产默认 LLM 抽词仅 `enqueue(keyword_jobs)`**；**禁止**同步 `LLMAdapter`（§4.2）；**触发入队的写路径**（如创建/更新草稿）在 Policy 失败或入队失败时返回 **`contract.yaml` 已列之 429/503 + `error.code`**。
-- **selection — `SelectionService`**：志愿填报/撤销/改优先级；从 **`terms` 只读** 读窗口；教师 **accept/reject**；**单事务** 维护 **`assignments` 真源** 与 **`topics.selected_count`**（或触发器/对账任务，与设计择一写死）；**并发下容量与 TOCTOU** 在事务/锁策略中落子（§11.2.4、§14.2 思路借鉴到同步域）。**`reconcile_jobs`（P0）**：在 **`accept` 成功且事务 `commit` 成功后**，**必须** **`enqueue(reconcile_jobs)`**（`ReconcileJobPayload`：`scope=by_term` 且 **`term_id` 与志愿同学期**）；**禁止**仅依赖「将来可能写的 Cron」作为唯一触发，以致验收无法演示；**staging/验收配置禁止关闭** 该入队（开发机可通过 `settings` 显式开关，默认开启）。
+- **selection — `SelectionService`**：志愿填报/撤销/改优先级；从 **`terms` 只读** 读窗口；教师 **accept/reject**；**单事务** 维护 **`assignments` 真源** 与 **`topics.selected_count`**（或触发器/对账任务，与设计择一写死）；**并发下容量与 TOCTOU** 在事务/锁策略中落子（§11.2.4、§14.2 思路借鉴到同步域）。**`reconcile_jobs`（P0）**：在 **`accept` 成功且事务 `commit` 成功后**，**须** 与三域 LLM 入队一致：**先** 经 **`PolicyGateway`（或与 `task.queue.enqueue` 内对 `reconcile_jobs` 队列名执行的同等 broker/深度/Rules 检查，二者实现择一并写死）**，**再** **`enqueue(reconcile_jobs)`**（`ReconcileJobPayload`：`scope=by_term` 且 **`term_id` 与志愿同学期**）；**禁止**无任何背压检查的裸 **`enqueue(reconcile_jobs)`**；**禁止**仅依赖「将来可能写的 Cron」作为唯一触发；**staging/验收配置禁止关闭** 该入队（开发机可通过 `settings` 显式开关，默认开启）。
 - **其它域**：`IdentityService`、`TermService`、`RecommendService`（**只读、无 LLM**）、`MilestoneService` 等按设计补齐。
 
 ### 验收标准

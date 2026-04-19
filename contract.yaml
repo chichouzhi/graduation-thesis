@@ -11,7 +11,7 @@
 openapi: 3.0.3
 info:
   title: Graduation Design Assistant API Contract
-  version: "0.2.5"
+  version: "0.2.6"
   description: |
     Identity / Terms / Taskboard + Chat / Document / Topic / Selection REST + 推荐只读 + 队列任务 body 契约（与 execution_plan 阶段 5 对齐）。
     LLM 相关：仅经 queue + worker；HTTP 受理返回 202（Chat 发消息、Document 上传）。
@@ -204,9 +204,12 @@ components:
     # --- Document ---
     DocumentTask:
       type: object
-      required: [id, status, filename, task_type, language, created_at, updated_at, retry_count]
+      required: [id, term_id, status, filename, task_type, language, created_at, updated_at, retry_count]
       properties:
         id: { type: string, description: 对外的 document_task_id；等同路径参数 task_id }
+        term_id:
+          type: string
+          description: 与 POST /document-tasks multipart `term_id`、PdfJobPayload/DocumentJobPayload 同源；须落库并在 GET 单任务/列表回显
         status: { $ref: "#/components/schemas/AsyncTaskStatus" }
         filename: { type: string }
         task_type:
@@ -248,9 +251,10 @@ components:
 
     DocumentTaskListItem:
       type: object
-      required: [id, status, filename, created_at]
+      required: [id, term_id, status, filename, created_at]
       properties:
         id: { type: string }
+        term_id: { type: string, description: 与 DocumentTask.term_id 一致 }
         status: { $ref: "#/components/schemas/AsyncTaskStatus" }
         filename: { type: string }
         task_type:
@@ -1112,6 +1116,7 @@ paths:
               description: |
                 未上传 task_type 时服务端默认 summary；未上传 language 时默认 zh。
                 与 execution_plan 阶段 3 document 子任务及落库 DocumentTask.task_type/language 一致。
+                `term_id` 须写入 `document_tasks` 并在 **202** 响应 `DocumentTask.term_id` 与后续 GET 列表/详情中回显。
               properties:
                 file:
                   type: string
