@@ -1,0 +1,11 @@
+# Minimal deploy manifest (architecture.spec R-NO-QUEUE / M-QUEUE-WORKER 可机判子集).
+# Replace with real web + worker + redis services before production.
+services:
+  web:
+    image: python:3.11-slim
+    command: ["python", "-c", "print('placeholder web')"]
+  worker:
+    image: python:3.11-slim
+    command: ["python", "-c", "print('placeholder worker consuming chat_jobs')"]
+  redis:
+    image: redis:7-alpine

@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install pytest PyYAML import-linter
+
+      - name: Multi-engine architecture rules (import-linter + check_rules + arch pytest)
+        run: |
+          set -euo pipefail
+          if [ -f app/__init__.py ]; then
+            lint-imports --config .importlinter
+          else
+            echo "::notice::Skipping import-linter until app/__init__.py exists"
+          fi
+          python scripts/check_rules.py
+          python -m pytest tests/test_architecture.py -vv --tb=short
+
+      - name: Pytest (full suite; test_architecture 已在上一步执行)
+        run: |
+          set -euo pipefail
+          python -m pytest -vv --strict-markers --tb=short --ignore=tests/test_architecture.py
+
+      - name: Score gate (fail if score < 80)
+        run: |
+          set -euo pipefail
+          python scripts/score.py
