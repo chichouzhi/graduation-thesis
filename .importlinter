@@ -2,6 +2,17 @@
 root_package = app
 include_external_packages = True
 
+# Canonical spec → engine mapping: scripts/arch_rules_registry.py (run: python scripts/check_rules.py --list)
+# Contract IDs → architecture.spec.md §4 / §2:
+#   forbidden_api_adapter   → R-API-ADAPTER (+ R-REC-LLM api subset)
+#   forbidden_api_use_cases → R-API-UC
+#   forbidden_api_task      → R-API-TASK
+#   forbidden_task_api      → R-TASK-API
+#   forbidden_task_adapter    → R-UC-SKIP / W6 (TASK 不得 import app.adapter)
+#   forbidden_use_cases_flask / forbidden_use_cases_api → R-UC-API
+#   domain_api_service_layers → W1 (api→service only within domain)
+#   use_cases_over_adapter    → W5 (UC 可依赖 adapter；adapter 不得反向依赖 UC)
+
 # Layers: see architecture.spec.md section 4.
 # - Per domain: api (high) then service (low): service must not import api.
 # - Global: use_cases then adapter: adapter must not import use_cases.
@@ -123,4 +134,3 @@ source_modules =
     app.task
 forbidden_modules =
     app.adapter
-allow_indirect_imports = True

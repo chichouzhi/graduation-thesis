@@ -20,7 +20,7 @@ from arch_rules_registry import RULES, all_rule_ids, ArchRule  # noqa: E402
 
 SECTION9_ROW = re.compile(r"^\|\s*(R-[A-Z0-9-]+|M-[A-Z0-9-]+|W2-DUP)\s*\|", re.MULTILINE)
 # §1.1 表内 W 编号（未全部出现在 §9）
-EXTRA_REGISTRY_IDS = frozenset({"W1", "W3", "W3b", "W4", "W5", "W6"})
+EXTRA_REGISTRY_IDS = frozenset({"W1", "W3", "W3b", "W4", "W5", "W6", "S6-STATUS-SCHEMAS"})
 
 
 def test_spec_section9_ids_are_registered() -> None:
@@ -78,3 +78,46 @@ def test_multi_engine_scripts_executable() -> None:
         check=False,
     )
     assert proc.returncode == 0, proc.stderr
+
+
+REQUIRED_IMPORTLINTER_CONTRACTS = (
+    "forbidden_api_adapter",
+    "forbidden_api_use_cases",
+    "forbidden_api_task",
+    "forbidden_use_cases_flask",
+    "forbidden_use_cases_api",
+    "forbidden_task_api",
+    "forbidden_task_adapter",
+    "domain_api_service_layers",
+    "use_cases_over_adapter",
+)
+
+
+def test_importlinter_config_has_spec_contracts() -> None:
+    cfg = ROOT / ".importlinter"
+    assert cfg.is_file(), "missing .importlinter"
+    text = cfg.read_text(encoding="utf-8")
+    missing = [c for c in REQUIRED_IMPORTLINTER_CONTRACTS if f"[importlinter:contract:{c}]" not in text]
+    assert not missing, f".importlinter missing contracts: {missing}"
+
+
+def test_check_rules_markdown_list_runs() -> None:
+    proc = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "check_rules.py"), "--markdown"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "| spec_rule_id |" in proc.stdout
+
+
+def test_arch_rules_count_matches_spec_section9() -> None:
+    """§9 表行数应与注册表中「架构门禁规则」数量一致（不含仅 W 白名单边）。"""
+    text = SPEC.read_text(encoding="utf-8")
+    section9_ids = set(SECTION9_ROW.findall(text))
+    assert section9_ids
+    # §9 所列均在 registry
+    reg = all_rule_ids()
+    assert section9_ids <= reg, sorted(section9_ids - reg)

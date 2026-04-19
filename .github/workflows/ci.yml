@@ -27,7 +27,9 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install pytest PyYAML import-linter
 
-      - name: Multi-engine architecture rules (import-linter + check_rules + arch pytest)
+      # 规则真源：architecture.spec.md；可执行映射：scripts/arch_rules_registry.py
+      # 本步 = import-linter（.importlinter）+ scripts/check_rules.py + tests/test_architecture.py
+      - name: Architecture rules (import-linter, check_rules, test_architecture)
         run: |
           set -euo pipefail
           if [ -f app/__init__.py ]; then

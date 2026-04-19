@@ -33,7 +33,7 @@ RULES: tuple[ArchRule, ...] = (
         "R-API-ADAPTER",
         ("import_linter", "static"),
         True,
-        "§4 forbidden_api_adapter + check_api_packages_in_linter（磁盘 api 包为 spec 子集）；动态 import 见 manual",
+        ".importlinter forbidden_api_adapter + scripts/ci/check_api_packages_in_linter.py；动态 import 见 manual",
     ),
     ArchRule("R-API-LLM", ("pytest_other", "manual"), False, "PROC_API 语义；§5.1 集成测 + 动态 import 无法静态保证"),
     ArchRule("R-API-UC", ("import_linter",), True, "§4 forbidden_api_use_cases"),
@@ -91,6 +91,13 @@ RULES: tuple[ArchRule, ...] = (
     ArchRule("M-ADAPTER-METER", ("pytest_other", "manual"), False, "§5 it-adapter-meter"),
     # §1.1 白名单边（可机判部分已由禁止边与层推导覆盖）
     ArchRule("W1", ("import_linter",), True, "由 R-API-* + domain layers 覆盖"),
+    # §6 无 §9 ID：契约序列化与枚举分 schema（与 AsyncTaskStatus 对齐）
+    ArchRule(
+        "S6-STATUS-SCHEMAS",
+        ("manual",),
+        False,
+        "architecture.spec §6：须 openapi-spec-validator（contract.yaml）+ 集成测区分 AsyncTaskStatus 与业务枚举；无单文件静态真值",
+    ),
 )
 
 

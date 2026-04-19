@@ -1,4 +1,4 @@
-"""CI: app/<pkg>/api on disk must appear in architecture.spec §4 import-linter source_modules."""
+"""CI: R-API-ADAPTER / §4 完整性 — 磁盘上 app/<pkg>/api 须出现在 .importlinter forbidden_api_adapter 列表中。"""
 from __future__ import annotations
 
 import re
@@ -6,9 +6,9 @@ import sys
 from pathlib import Path
 
 
-def parse_linter_api_modules(spec_text: str) -> set[str]:
-    """Extract `app.*.api` lines from the forbidden_api_adapter contract block."""
-    lines = spec_text.splitlines()
+def parse_linter_api_modules_from_importlinter(text: str) -> set[str]:
+    """Extract `app.*.api` lines from the forbidden_api_adapter contract in .importlinter."""
+    lines = text.splitlines()
     in_block = False
     modules: set[str] = set()
     for line in lines:
@@ -27,14 +27,13 @@ def parse_linter_api_modules(spec_text: str) -> set[str]:
 def main() -> int:
     root = Path(__file__).resolve().parents[2]
     app = root / "app"
-    spec_path = root / "architecture.spec.md"
-    if not spec_path.is_file():
-        print("FAIL: architecture.spec.md missing", file=sys.stderr)
+    cfg = root / ".importlinter"
+    if not cfg.is_file():
+        print("FAIL: .importlinter missing", file=sys.stderr)
         return 2
-    spec = spec_path.read_text(encoding="utf-8")
-    listed = parse_linter_api_modules(spec)
+    listed = parse_linter_api_modules_from_importlinter(cfg.read_text(encoding="utf-8"))
     if not listed:
-        print("FAIL: could not parse forbidden_api_adapter modules", file=sys.stderr)
+        print("FAIL: could not parse forbidden_api_adapter source_modules from .importlinter", file=sys.stderr)
         return 2
     if not app.is_dir():
         print("SKIP: no app/")
@@ -43,18 +42,20 @@ def main() -> int:
     for p in app.iterdir():
         if not p.is_dir():
             continue
-        if (p / "api").is_dir() or list(p.glob("api")):
-            # app/<domain>/api as package
-            if (p / "api").is_dir():
-                on_disk.add(f"app.{p.name}.api")
+        if (p / "api").is_dir():
+            on_disk.add(f"app.{p.name}.api")
     missing = sorted(on_disk - listed)
     if missing:
-        print("FAIL: API packages on disk missing from architecture.spec §4:", file=sys.stderr)
+        print("FAIL: API packages on disk missing from .importlinter forbidden_api_adapter:", file=sys.stderr)
         for m in missing:
             print(" ", m, file=sys.stderr)
-        print("  Fix: add to forbidden_api_adapter + forbidden_api_use_cases source_modules.", file=sys.stderr)
+        print(
+            "  Fix: add each to forbidden_api_adapter, forbidden_api_use_cases, "
+            "forbidden_api_task source_modules.",
+            file=sys.stderr,
+        )
         return 1
-    print("OK: app/*/api covered by import-linter list")
+    print("OK: app/*/api covered by .importlinter")
     return 0
 
 

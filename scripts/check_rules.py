@@ -4,8 +4,9 @@ architecture.spec.md 中已由 import-linter 覆盖的 import 边（R-API-ADAPTE
 R-TASK-API，R-UC-SKIP/W6）不在此重复 rg。
 
 用法:
-  python scripts/check_rules.py           # 运行全部静态规则
-  python scripts/check_rules.py --list    # 打印规则 → 引擎映射
+  python scripts/check_rules.py              # 运行全部静态规则
+  python scripts/check_rules.py --list       # 打印规则 → 引擎映射（可读列表）
+  python scripts/check_rules.py --markdown   # 打印 spec → 检测方式 Markdown 表
 """
 from __future__ import annotations
 
@@ -315,7 +316,7 @@ def run_subprocess_suite() -> list[RuleError]:
 
 
 def print_rule_map() -> None:
-    print("# architecture.spec → 引擎映射（见 scripts/arch_rules_registry.py）\n")
+    print("# architecture.spec → 引擎映射（真源：scripts/arch_rules_registry.py）\n")
     for r in RULES:
         eng = ", ".join(r.engines)
         ad = "可机判" if r.autodetect else "部分/不可机判"
@@ -323,10 +324,28 @@ def print_rule_map() -> None:
         print(f"- **{r.id}** [{ad}]: {eng}{note}")
 
 
+def print_rule_map_markdown() -> None:
+    """供 CI/文档嵌入：spec 规则 ID -> engines + note（表头 ASCII，避免 Windows 控制台编码乱码）。"""
+    lines = [
+        "| spec_rule_id | autodetect_all | engines | note |",
+        "|---|---:|---|---|",
+    ]
+    for r in RULES:
+        engines = " + ".join(r.engines)
+        auto = "yes" if r.autodetect else "no"
+        note = (r.note or "").replace("|", "\\|")
+        lines.append(f"| `{r.id}` | {auto} | {engines} | {note} |")
+    print("\n".join(lines))
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="多引擎架构静态规则（与 import-linter 去重）")
     p.add_argument("--list", action="store_true", help="打印规则映射后退出")
+    p.add_argument("--markdown", action="store_true", help="打印 Markdown 规则映射表后退出")
     args = p.parse_args(argv)
+    if args.markdown:
+        print_rule_map_markdown()
+        return 0
     if args.list:
         print_rule_map()
         return 0
