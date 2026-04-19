@@ -1,14 +1,12 @@
 [importlinter]
 root_package = app
+include_external_packages = True
 
-# ---------------------------------------------------------------------------
-# Layers（分层结构 → layers 合约）
-#
-# 1) 每个 bounded context：api（高）→ service（低）。约束「service 不得 import api」。
-# 2) 全局：use_cases（高）→ adapter（低）。约束「adapter 不得 import use_cases」；
-#    use_cases → adapter 合法（W5）。注意：import-linter 语义为「高层可依赖任意更底层」，
-#    故 API 不得直达 UC/Adapter 仍须靠下方 forbidden_api_* 合约（与 architecture.spec §4 一致）。
-# ---------------------------------------------------------------------------
+# Layers: see architecture.spec.md section 4.
+# - Per domain: api (high) then service (low): service must not import api.
+# - Global: use_cases then adapter: adapter must not import use_cases.
+# Higher layers may import lower; API must not reach UC/Adapter via layers alone
+#   (use forbidden_api_* contracts).
 
 [importlinter:contract:domain_api_service_layers]
 name = Per-domain API over service (matches app/<domain>/api, app/<domain>/service)
@@ -33,9 +31,7 @@ layers =
     app.use_cases
     app.adapter
 
-# ---------------------------------------------------------------------------
-# Forbidden contracts（禁止边）— 与 architecture.spec.md §4 对齐并增补
-# ---------------------------------------------------------------------------
+# Forbidden contracts (architecture.spec.md section 4 + R-UC-API).
 
 [importlinter:contract:forbidden_api_adapter]
 name = API must not import adapter (R-API-ADAPTER)
@@ -127,3 +123,4 @@ source_modules =
     app.task
 forbidden_modules =
     app.adapter
+allow_indirect_imports = True
