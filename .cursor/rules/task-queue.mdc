@@ -1,0 +1,14 @@
+---
+description: Task OS 单条队列任务（queue.json + architecture-task-graph.json）执行约定
+globs: docs/tasks/**/*
+alwaysApply: false
+---
+
+当用户提到「跑队列 / Task OS / auto-run / 按 queue 做任务」或当前工作明显应消费 `docs/tasks/queue.json` 时：
+
+1. **先读** `docs/tasks/queue.json`。若文件缺失、JSON 无效、无 `task` 或缺 `id`/`title`：说明原因并停止，不要空跑完成。
+2. **条件完备验证（先于改仓库）**：确认 `spec/contract.yaml`、`spec/architecture.spec.md` 存在可读；与 task 相关时再读 `spec/execution_plan.md`、`docs/architecture/system-architecture.md`（可对照 `task.layer` 与 **system-architecture §8**）。若真源缺失或 task 与真源不可调和冲突：**只写【Preconditions】阻塞 + 【Changes】无**，不改仓库。
+3. 以 **`task` 对象** 为唯一范围；**禁止**顺带做其它 AG-*；**禁止**在聊天里使用「ALL TASKS COMPLETED」（那是终端脚本文案）。
+4. **交付物**（未阻塞时）：须产生可提交的仓库变更；禁止只写分析。stub 不得违反 `spec/` 与既有门禁。
+5. **真源**：同上；`docs/tasks/todolist.md` 不得扩大本条 scope。
+6. **收尾**：使用 README / `CURSOR_PROMPT_ZH` 输出节：**【Task】/【Preconditions】/【Changes】/【How to Test】/【Limitations】**；提醒用户在运行 `auto-run.py` 的终端按 Enter 才会标 `done`。

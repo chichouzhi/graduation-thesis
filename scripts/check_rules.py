@@ -50,11 +50,15 @@ def _py_under(path: Path, *, glob: str = "*.py") -> Iterator[Path]:
 
 
 def _run_script(rel: str, *, rule_id: str) -> None:
+    _run_script_args(rel, [], rule_id=rule_id)
+
+
+def _run_script_args(rel: str, args: list[str], *, rule_id: str) -> None:
     script = REPO / rel
     if not script.is_file():
         raise RuleError(rule_id, f"missing script {rel}")
     proc = subprocess.run(
-        [sys.executable, str(script)],
+        [sys.executable, str(script), *args],
         cwd=REPO,
         capture_output=True,
         text=True,
@@ -299,17 +303,23 @@ def run_static_checks() -> list[RuleError]:
 
 def run_subprocess_suite() -> list[RuleError]:
     errors: list[RuleError] = []
-    steps: list[tuple[str, str]] = [
+    steps: list[tuple[str, str] | tuple[str, str, list[str]]] = [
         ("W5", "scripts/check_architecture.py"),
         ("R-QUEUE-ISO", "scripts/ci/check_queue_contract_keys.py"),
         ("R-UC-ONLY", "scripts/ci/check_llm_entrypoints_doc.py"),
         ("R-POLICY-SVC", "scripts/ci/check_policy_deny_tests.py"),
         ("R-APP-EXAMPLES", "scripts/ci/rg_guard_app_examples.py"),
         ("R-API-ADAPTER", "scripts/ci/check_api_packages_in_linter.py"),
+        ("DOCS-TASK-GRAPH", "docs/tasks/auto-run.py", ["--validate-only"]),
     ]
-    for rule_id, rel in steps:
+    for item in steps:
+        if len(item) == 2:
+            rule_id, rel = item
+            extra: list[str] = []
+        else:
+            rule_id, rel, extra = item
         try:
-            _run_script(rel, rule_id=rule_id)
+            _run_script_args(rel, extra, rule_id=rule_id)
         except RuleError as e:
             errors.append(RuleError(rule_id, e.msg))
     return errors

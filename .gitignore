@@ -33,5 +33,11 @@ Thumbs.db
 *.log
 *.sqlite3
 
+# Task OS 本地派发（由 auto-run.py 写入，勿提交）
+docs/tasks/queue.json
+docs/tasks/queue.tmp
+docs/tasks/.task.lock
+docs/tasks/architecture-task-graph.json.tmp
+
 # Word 二进制（体积大、diff 不友好）；若要纳入版本库可改为 `git add -f file.doc`
 *.doc

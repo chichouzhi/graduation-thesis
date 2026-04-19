@@ -6,6 +6,21 @@
 
 ---
 
+## 0. 应用引导（bootstrap）与任务图对齐
+
+本节补全 **`architecture-task-graph.json` 中 `layer: "bootstrap"`**（如 **AG-001**）在架构视图中的落点；实现细则仍以 **`spec/architecture.spec.md`**（路径 glob、§1.3 基础设施）与 **任务图各条 `title`** 为准。
+
+| 主题 | 约定 |
+|------|------|
+| **应用工厂** | 使用 Flask **Application Factory**：在 **`app` 包**内提供 **`create_app`**（常见为 `app/__init__.py`），返回已配置、可挂到 WSGI 的 `Flask` 实例；**禁止**把业务域路由堆在单一巨型 `routes.py` 而无域包边界（域划分见下节「模块划分」表）。 |
+| **AG-001 边界** | **骨架**：可加载配置、建立扩展占位钩子、健康检查或根路径等**非业务域**路由均可；**不在此条**注册 **`/api/v1` 下八大域 Blueprint 空壳**——该交付属于任务图 **AG-004**，避免与「无业务域路由」的验收口径冲突。 |
+| **横切文件** | `app/config.py`、`app/extensions.py`（及 **`app/common/**`**）为各层可引基础设施，与 **`spec/architecture.spec.md` §1.3** 一致；**DB 迁移 / JWT 等挂载细节**以任务图 **AG-002** 及后续条为准，本文不展开。 |
+| **进程与入口** | **PROC_API** 为运行该 Flask 应用的 API worker（见下「进程视图」）；仓库级 **`wsgi.py`**、`Dockerfile` **CMD**、或 **`python -m flask`** 等入口须**调用工厂**而非散落全局 `app` 单例（具体文件名以仓库为准，**须可被 CI/本地一条命令启动**）。 |
+
+**文档完备性说明**：若仅依赖本节 + 分层图 + spec，应能判断 AG-001 是否「只做工厂与骨架、域路由留给 AG-004」；若任务图 `title` 与本文表格冲突，**以任务图 + spec 为裁决**。
+
+---
+
 ## 1. 分层架构图（文字版）
 
 ```
@@ -153,3 +168,26 @@ dot -Tsvg docs/architecture/system-architecture-modules.dot -o docs/architecture
 | [`ADR-document-pdf-parse-to-document-jobs.md`](../arch/ADR-document-pdf-parse-to-document-jobs.md) | pdf_parse → document_jobs 时序 |
 | [`ADR-reconcile-jobs-and-w4.md`](../arch/ADR-reconcile-jobs-and-w4.md) | reconcile 与 W4 / UC |
 | [`spec-extraction-full.md`](../requirements/spec-extraction-full.md) | 功能/非功能/边界/NOT IN SCOPE 汇总 |
+
+---
+
+## 8. 任务图 `layer` 与文档路由（其余条目是否「有处可查」）
+
+`architecture-task-graph.json` 中每条仅有 **`title` + `layer` + `depends_on`** 级摘要；**不要求** `system-architecture.md` 逐条复述 AG 编号。下表说明各 **layer** 应优先读哪些真源，用于判断「剩余条目」是否在文档体系内**有明确落点**（而非缺文档）。
+
+| `layer` | 主要真源（按推荐阅读顺序） | 完备性说明 |
+|---------|-----------------------------|------------|
+| **`bootstrap`** | 本文 **§0**、`spec/architecture.spec.md` §0～§1.3、`architecture-task-graph` 对应 `title` | **已显式对齐** AG-001/004 边界。 |
+| **`common`** | `spec/architecture.spec.md` §2（R-API-*、Policy、ErrorEnvelope 相关）、`spec/contract.yaml`（错误码/枚举）、本文 **§1 图** | 规则与契约 **足**；具体类名以任务 `title` + 契约为准。 |
+| **`model`** | **`spec/execution_plan.md` 阶段 1**、`spec/contract.yaml`（Schema/必填字段）、本文 **§1 底「model」** | **最细**：表名、状态机、与契约字段对齐在 execution_plan 与 contract。 |
+| **`adapter`** | 本文 **§3**（`app.adapter` 子包）、**§6 DOT**、`spec/architecture.spec.md`（W5、R-SVC-LLM、R-REC-LLM 等） | **概念与边界足**；厂商/SDK 细节不在架构视图展开，由实现与 ADR 补充。 |
+| **`use_cases`** | **`spec/execution_plan.md` 阶段 2**、本文 **§1「唯一编排层」**、**R-UC-ONLY**（`docs/arch/llm_entrypoints.md` 等脚本契约） | **足**；单条 UC 文件名以任务图 + execution_plan 为准。 |
+| **`task_queue`** | `spec/contract.yaml` → `x-task-contracts.queues`、`spec/architecture.spec.md`（W3、R-QUEUE-ISO）、本文 **§1 task.queue** | 队列键与入队边 **足**。 |
+| **`jobs` / `worker_runtime`** | **`spec/execution_plan.md` 阶段 4**、本文 **§1 PROC_WORKER**、`spec/architecture.spec.md`（M-CHAIN-WORKER、R-UC-SKIP、R-TASK-API）、**§6 DOT** | **足**；各 `*_jobs.py` 职责以 execution_plan + 任务 `title` 为准。 |
+| **`service`** | 本文 **§2 Service 表**、**§4 数据流**、**`spec/execution_plan.md` 阶段 3**、**contract** 对应路径语义 | **足**；与 REST 一一对照以 contract 路径为准。 |
+| **`document_enqueue_chain`** | [`ADR-document-pdf-parse-to-document-jobs.md`](../arch/ADR-document-pdf-parse-to-document-jobs.md)、本文 **§4 文献路径** | **足**（ADR 为时序真源）。 |
+| **`api`** | 本文 **§5**、`spec/contract.yaml`（paths/响应码）、**`spec/execution_plan.md` 阶段 5** | **足**；具体路由方法以 OpenAPI 为准。 |
+| **`api_optional`** | 本文 **§5** SSE 行、contract 若含 stream 路径 | **刻意从简**（可选能力）。 |
+| **`ci_docs`** | **`spec/architecture.spec.md` §5（CI 矩阵与脚本名）**、仓库 **`scripts/`**、**`.github/workflows/`**、任务 `title`（如集成测名、`openapi-spec-validator`） | **分散但可验收**：不在本文展开每条 AG；以 **spec §5 + 实际脚本** 为执行真源。 |
+
+**总结**：除 **`bootstrap`** 曾需在本文 **§0** 单列外，其余 layer 在 **`execution_plan` + `architecture.spec` + `contract.yaml` + 本文 §1～§6 + ADR** 中均有对应；**`ci_docs`** 不追求在 `system-architecture.md` 内逐条复述，属预期。**单条 AG 的验收细目**仍以 **任务图 `title` + 上述真源交叉检索** 为准，不要求 `architecture-task-graph.md` 正文长于 JSON。

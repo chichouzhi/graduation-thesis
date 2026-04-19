@@ -2,7 +2,7 @@
 
 | 文件 | 说明 |
 |------|------|
-| [system-architecture.md](./system-architecture.md) | 分层、Service、模块、数据流、API 边界 |
+| [system-architecture.md](./system-architecture.md) | 分层、**§0 bootstrap**、Service、模块、数据流、API 边界、**§8 任务图 layer→文档路由** |
 | [system-architecture-modules.dot](./system-architecture-modules.dot) | 模块依赖 DAG（Graphviz） |
 
 细化裁决见 [`../arch/`](../arch/) ADR。任务分解见 [`../tasks/`](../tasks/)。

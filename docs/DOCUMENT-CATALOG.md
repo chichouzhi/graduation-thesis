@@ -12,7 +12,7 @@
 | **`spec/`** | **规范真源** | 契约、架构门禁规格、阶段交付计划（见 [`spec/README.md`](../spec/README.md)） |
 | **`docs/requirements/`** | 需求提炼 | 从规范归纳的功能/REST/后台任务面 |
 | **`docs/architecture/`** | 系统架构视图 | 分层说明 + Graphviz 模块依赖图 |
-| **`docs/tasks/`** | 任务与清单 | 原子任务 DAG、`todolist.md`（实现清单） |
+| **`docs/tasks/`** | 任务与清单 | 原子任务 DAG、`auto-run.py` / [`README.md`](./tasks/README.md)、`todolist.md`（实现清单） |
 | **`docs/arch/`** | 架构决策 / 入口表 | ADR、`llm_entrypoints.md`（**路径保持**，与 CI、`check_llm_entrypoints_doc.py` 硬编码一致） |
 | **`docs/` 根** | 导航 | `README.md`、`DOCUMENT-CATALOG.md`（本文件） |
 
@@ -64,14 +64,16 @@
 
 | 文档 | 类别说明 | 摘要 |
 |------|----------|------|
+| [`docs/tasks/README.md`](./tasks/README.md) | **Task OS 使用说明** | `auto-run.py`、`queue.json`、可复制 Cursor 提示词与故障排除。 |
 | [`docs/tasks/architecture-task-graph.json`](./tasks/architecture-task-graph.json) | **原子任务 DAG（机器可读）** | `tasks[].depends_on` 为前置边；每项 ≤2 天粒度。 |
 | [`docs/tasks/architecture-task-graph.md`](./tasks/architecture-task-graph.md) | **原子任务（分层可读）** | 由脚本自 JSON 生成，勿手改正文。 |
 | [`docs/tasks/todolist.md`](./tasks/todolist.md) | **实现清单（数据/域）** | 表结构、迁移、域实现等历史主线；与架构任务图互补。 |
 
-**生成脚本**：
+**生成脚本与编排**：
 
 | 路径 | 说明 |
 |------|------|
+| [`docs/tasks/auto-run.py`](./tasks/auto-run.py) | 单条 dequeue → `queue.json`；`--validate-only` 校验 DAG；详见 [`docs/tasks/README.md`](./tasks/README.md)。 |
 | [`scripts/gen_architecture_task_graph_md.py`](../scripts/gen_architecture_task_graph_md.py) | `docs/tasks/architecture-task-graph.json` → `docs/tasks/architecture-task-graph.md`。 |
 
 ---
