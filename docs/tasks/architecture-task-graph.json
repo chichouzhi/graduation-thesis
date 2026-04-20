@@ -320,74 +320,79 @@
     {
       "id": "AG-026",
       "layer": "adapter",
-      "status": "running",
+      "status": "done",
       "title": "`app.adapter` 包布局与对外导入约定（子包 llm/pdf/nlp/storage）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-001"
       ],
-      "done_at": "2026-04-20T11:42:48.668120"
+      "done_at": "2026-04-20T12:01:20.500137"
     },
     {
       "id": "AG-027",
       "layer": "adapter",
-      "status": "ready",
+      "status": "done",
       "title": "`adapter.llm`：协议/客户端基类（无厂商 HTTP 亦可 mock）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-026"
-      ]
+      ],
+      "done_at": "2026-04-20T12:02:52.235143"
     },
     {
       "id": "AG-028",
       "layer": "adapter",
-      "status": "ready",
+      "status": "done",
       "title": "`adapter.llm`：具体厂商 HTTP 实现（单文件）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-027"
-      ]
+      ],
+      "done_at": "2026-04-20T12:06:08.265783"
     },
     {
       "id": "AG-029",
       "layer": "adapter",
-      "status": "ready",
+      "status": "done",
       "title": "`adapter.pdf`：解析入口封装（供 UC/worker 调用）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-026"
-      ]
+      ],
+      "done_at": "2026-04-20T12:13:17.141373"
     },
     {
       "id": "AG-030",
       "layer": "adapter",
-      "status": "ready",
+      "status": "done",
       "title": "`adapter.storage`：上传/读取路径封装（Document 落盘）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-026"
-      ]
+      ],
+      "done_at": "2026-04-20T12:14:15.902130"
     },
     {
       "id": "AG-031",
       "layer": "adapter",
-      "status": "ready",
+      "status": "done",
       "title": "`adapter.nlp`：Jieba 同步分词封装（Topic 画像，禁止全库写回）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-026"
-      ]
+      ],
+      "done_at": "2026-04-20T12:15:53.839771"
     },
     {
       "id": "AG-032",
       "layer": "use_cases",
-      "status": "ready",
+      "status": "running",
       "title": "`chat_orchestration`：从入参构建 messages 列表（无 IO、无 LLM）",
       "priority": "P0",
       "max_duration_days": 2,

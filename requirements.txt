@@ -7,3 +7,5 @@ openapi-spec-validator
 flask-sqlalchemy
 Flask-Migrate
 Flask-JWT-Extended
+pypdf
+jieba
