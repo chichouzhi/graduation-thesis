@@ -132,3 +132,30 @@ def test_task_reconcile_jobs_run_invokes_use_case() -> None:
         )
         db.session.refresh(topic)
         assert topic.selected_count == 1
+
+
+def test_task_reconcile_jobs_run_returns_summary() -> None:
+    flask_app = create_app()
+    with flask_app.app_context():
+        db.create_all()
+        term, _topic, _ = _seed_topic_with_assignment()
+
+        from app.task import reconcile_jobs as rj
+
+        out = rj.run(
+            {
+                "reconcile_job_id": "rj-5",
+                "scope": "by_term",
+                "term_id": term.id,
+                "request_id": "req-1",
+            }
+        )
+        assert out["scope"] == "by_term"
+        assert out["topics_scanned"] >= 1
+
+
+def test_task_reconcile_jobs_rejects_non_mapping_payload() -> None:
+    from app.task import reconcile_jobs as rj
+
+    with pytest.raises(ValueError, match="mapping"):
+        rj.run([])  # type: ignore[arg-type]

@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import Enum
-from typing import Final
+from typing import Any, Final
 
 from app.config import Config
 
@@ -153,3 +153,63 @@ def chunk_summarize_waves(
         waves.append(tuple(range(i, end)))
         i = end
     return tuple(waves)
+
+
+def run_document_job_stage(
+    *,
+    stage: DocumentJobStage | str,
+    chunk_index: int | None,
+    document_task_id: str,
+    storage_path: str,
+    term_id: str,
+    user_id: str,
+    max_chunks: int | None = None,
+    request_id: str | None = None,
+) -> dict[str, Any]:
+    """Execute one ``DocumentJobPayload`` stage and return writeback patch."""
+    st = stage if isinstance(stage, DocumentJobStage) else DocumentJobStage(str(stage))
+    assert_valid_stage_and_chunk(st, chunk_index)
+    if not (document_task_id or "").strip():
+        raise ValueError("document_task_id must be non-empty")
+    if not (storage_path or "").strip():
+        raise ValueError("storage_path must be non-empty")
+    if not (term_id or "").strip():
+        raise ValueError("term_id must be non-empty")
+    if not (user_id or "").strip():
+        raise ValueError("user_id must be non-empty")
+
+    if st in (DocumentJobStage.EXTRACT, DocumentJobStage.AGGREGATE, DocumentJobStage.FINALIZE):
+        patch: dict[str, Any] = {"status": "running"}
+        if st == DocumentJobStage.FINALIZE:
+            patch["status"] = "done"
+        return patch
+
+    # summarize_chunk: UC 统一触达 LLM，task 层不直接 import adapter
+    from app.adapter import llm as llm_mod
+
+    prompt = (
+        f"Summarize chunk {chunk_index} for document_task_id={document_task_id}. "
+        f"Use concise bullet points."
+    )
+    llm_resp = llm_mod.complete(
+        [{"role": "user", "content": prompt}],
+        term_id=term_id,
+        user_id=user_id,
+        request_id=request_id,
+    )
+    if isinstance(llm_resp, dict):
+        summary_text = str(llm_resp.get("content", ""))
+    else:
+        summary_text = str(llm_resp)
+
+    result_patch: dict[str, Any] = {
+        "chunk_index": chunk_index,
+        "summary": summary_text,
+    }
+    if max_chunks is not None:
+        result_patch["max_chunks"] = int(max_chunks)
+    return {
+        "status": "running",
+        "last_completed_chunk": chunk_index,
+        "result_patch": result_patch,
+    }

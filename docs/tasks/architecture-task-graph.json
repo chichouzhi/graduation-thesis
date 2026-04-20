@@ -467,64 +467,69 @@
     {
       "id": "AG-038",
       "layer": "task_queue",
-      "status": "running",
+      "status": "done",
       "title": "`app/task/queue.py`：`enqueue_chat_jobs` 使用契约字面量 `chat_jobs`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-003",
         "AG-006"
-      ]
+      ],
+      "done_at": "2026-04-20T13:24:47.575772"
     },
     {
       "id": "AG-039",
       "layer": "task_queue",
-      "status": "ready",
+      "status": "done",
       "title": "`queue.py`：`enqueue_pdf_parse`（`pdf_parse` 字面量）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-038"
-      ]
+      ],
+      "done_at": "2026-04-20T13:25:53.176520"
     },
     {
       "id": "AG-040",
       "layer": "task_queue",
-      "status": "ready",
+      "status": "done",
       "title": "`queue.py`：`enqueue_document_jobs`（`document_jobs` 字面量）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-038"
-      ]
+      ],
+      "done_at": "2026-04-20T13:27:30.675755"
     },
     {
       "id": "AG-041",
       "layer": "task_queue",
-      "status": "ready",
+      "status": "done",
       "title": "`queue.py`：`enqueue_keyword_jobs`（`keyword_jobs` 字面量）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-038"
-      ]
+      ],
+      "done_at": "2026-04-20T13:30:11.723405"
     },
     {
       "id": "AG-042",
       "layer": "task_queue",
-      "status": "ready",
+      "status": "done",
       "title": "`queue.py`：`enqueue_reconcile_jobs`（`reconcile_jobs` 字面量 + Policy/同等检查挂钩点）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-038",
         "AG-006"
-      ]
+      ],
+      "done_at": "2026-04-20T15:04:40.197458"
     },
     {
       "id": "AG-043",
       "layer": "jobs",
-      "status": "ready",
+      "status": "done",
       "title": "`task/chat_jobs.py`：handler → 预定 `use_cases` 入口 → 回写（无 Prompt 字符串）",
       "priority": "P0",
       "max_duration_days": 2,
@@ -532,12 +537,13 @@
         "AG-032",
         "AG-038",
         "AG-013"
-      ]
+      ],
+      "done_at": "2026-04-20T15:04:40.423961"
     },
     {
       "id": "AG-044",
       "layer": "jobs",
-      "status": "ready",
+      "status": "done",
       "title": "`task/pdf_parse_jobs.py`：`PdfJobPayload` 校验 → `document_pipeline`/`adapter.pdf` 路径挂钩",
       "priority": "P0",
       "max_duration_days": 2,
@@ -546,12 +552,13 @@
         "AG-029",
         "AG-039",
         "AG-014"
-      ]
+      ],
+      "done_at": "2026-04-20T15:09:39.401096"
     },
     {
       "id": "AG-045",
       "layer": "jobs",
-      "status": "ready",
+      "status": "done",
       "title": "`task/document_jobs.py`：按 `stage` 分派 → `document_pipeline` + LLM 回写挂钩",
       "priority": "P0",
       "max_duration_days": 2,
@@ -559,12 +566,13 @@
         "AG-034",
         "AG-040",
         "AG-014"
-      ]
+      ],
+      "done_at": "2026-04-20T15:11:36.387340"
     },
     {
       "id": "AG-046",
       "layer": "jobs",
-      "status": "ready",
+      "status": "done",
       "title": "`task/keyword_jobs.py`：→ `topic_keywords` → 画像 ORM 回写",
       "priority": "P0",
       "max_duration_days": 2,
@@ -572,12 +580,13 @@
         "AG-036",
         "AG-041",
         "AG-016"
-      ]
+      ],
+      "done_at": "2026-04-20T15:14:44.159640"
     },
     {
       "id": "AG-047",
       "layer": "jobs",
-      "status": "ready",
+      "status": "done",
       "title": "`task/reconcile_jobs.py`：→ `reconcile_assignments` UC → 计数/对账回写",
       "priority": "P0",
       "max_duration_days": 2,
@@ -585,12 +594,13 @@
         "AG-037",
         "AG-042",
         "AG-018"
-      ]
+      ],
+      "done_at": "2026-04-20T15:17:11.057859"
     },
     {
       "id": "AG-048",
       "layer": "worker_runtime",
-      "status": "ready",
+      "status": "running",
       "title": "Worker 进程入口：连接 broker、注册 `chat_jobs` 消费",
       "priority": "P0",
       "max_duration_days": 2,
@@ -1762,6 +1772,94 @@
       "max_duration_days": 2,
       "depends_on": [
         "AG-001"
+      ]
+    },
+    {
+      "id": "AG-121",
+      "layer": "jobs",
+      "status": "ready",
+      "title": "`task/chat_jobs.py`：补齐 `ChatJobPayload` 必填校验 + 按真实 payload 调 `chat_orchestration`（禁止空消息硬编码）",
+      "priority": "P0",
+      "max_duration_days": 2,
+      "depends_on": [
+        "AG-043",
+        "AG-012",
+        "AG-013"
+      ]
+    },
+    {
+      "id": "AG-122",
+      "layer": "jobs",
+      "status": "ready",
+      "title": "`task/document_jobs.py`：`run` 默认接入状态回写（pending/running/done/failed）与 `last_completed_chunk` 持久化",
+      "priority": "P0",
+      "max_duration_days": 2,
+      "depends_on": [
+        "AG-045",
+        "AG-014",
+        "AG-040"
+      ]
+    },
+    {
+      "id": "AG-123",
+      "layer": "jobs",
+      "status": "ready",
+      "title": "`task/keyword_jobs.py`：失败路径统一回写 `llm_keyword_job_status=failed` + 错误字段（含 topic 不存在/LLM 异常）",
+      "priority": "P0",
+      "max_duration_days": 2,
+      "depends_on": [
+        "AG-046",
+        "AG-016",
+        "AG-041"
+      ]
+    },
+    {
+      "id": "AG-124",
+      "layer": "ci_docs",
+      "status": "ready",
+      "title": "集成测：`it-job-writeback-failures`（chat/document/keyword 异常时状态回写与错误码落库）",
+      "priority": "P0",
+      "max_duration_days": 2,
+      "depends_on": [
+        "AG-121",
+        "AG-122",
+        "AG-123"
+      ]
+    },
+    {
+      "id": "AG-125",
+      "layer": "jobs",
+      "status": "ready",
+      "title": "`task/pdf_parse_jobs.py`：异常路径回写 `document_tasks.status=failed` + `error_code/error_message`（防悬挂 pending）",
+      "priority": "P0",
+      "max_duration_days": 2,
+      "depends_on": [
+        "AG-044",
+        "AG-014",
+        "AG-039"
+      ]
+    },
+    {
+      "id": "AG-126",
+      "layer": "ci_docs",
+      "status": "ready",
+      "title": "契约一致性：`ChatJobPayload` 的 `content` 必填约束与 worker 校验对齐（spec/实现二选一写死）",
+      "priority": "P0",
+      "max_duration_days": 2,
+      "depends_on": [
+        "AG-121"
+      ]
+    },
+    {
+      "id": "AG-127",
+      "layer": "jobs",
+      "status": "ready",
+      "title": "`task/keyword_jobs.py`：失败回写改为 merge 画像，避免覆盖既有 `portrait_json.keywords/extracted_at`",
+      "priority": "P0",
+      "max_duration_days": 2,
+      "depends_on": [
+        "AG-123",
+        "AG-016"
       ]
     }
   ],

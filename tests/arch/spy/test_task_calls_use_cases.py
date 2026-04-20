@@ -39,6 +39,7 @@ def test_chat_jobs_invokes_use_cases_run_turn():
         "assistant_message_id": "am-1",
         "term_id": "term-1",
         "user_id": "user-1",
+        "content": "hello",
     }
     with patch("app.use_cases.chat_orchestration.run_turn") as mock_uc:
         handler(payload)

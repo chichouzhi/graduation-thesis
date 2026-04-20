@@ -411,6 +411,7 @@ components:
         - assistant_message_id
         - term_id
         - user_id
+        - content
       properties:
         job_id: { type: string }
         conversation_id: { type: string }
@@ -418,6 +419,10 @@ components:
         assistant_message_id: { type: string, description: 占位 assistant 的 message_id }
         term_id: { type: string }
         user_id: { type: string }
+        content:
+          type: string
+          minLength: 1
+          description: 用户消息正文快照；worker 侧据此构建 `chat_orchestration` 输入
         client_request_id: { type: string, nullable: true }
         seq: { type: integer, nullable: true }
         request_id: { type: string, nullable: true, description: 观测用，贯穿 API→worker }

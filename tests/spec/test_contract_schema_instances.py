@@ -626,6 +626,7 @@ def test_message_schema_contract(
                 "assistant_message_id": "am-1",
                 "term_id": "term-1",
                 "user_id": "user-1",
+                "content": "hello",
             },
             True,
             (),
@@ -640,6 +641,7 @@ def test_message_schema_contract(
                 "assistant_message_id": "am-1",
                 "term_id": "term-1",
                 "user_id": "user-1",
+                "content": "hello",
                 "dispatch_attempt": 0,
             },
             True,
@@ -655,6 +657,7 @@ def test_message_schema_contract(
                 "assistant_message_id": "am-1",
                 "term_id": "term-1",
                 "user_id": "user-1",
+                "content": "hello",
                 "dispatch_attempt": -1,
             },
             False,
@@ -673,6 +676,35 @@ def test_message_schema_contract(
             False,
             ("missing required property 'job_id'",),
             id="chat_job_missing_job_id",
+        ),
+        pytest.param(
+            "ChatJobPayload",
+            {
+                "job_id": "job-1",
+                "conversation_id": "conv-1",
+                "user_message_id": "um-1",
+                "assistant_message_id": "am-1",
+                "term_id": "term-1",
+                "user_id": "user-1",
+            },
+            False,
+            ("missing required property 'content'",),
+            id="chat_job_missing_content",
+        ),
+        pytest.param(
+            "ChatJobPayload",
+            {
+                "job_id": "job-1",
+                "conversation_id": "conv-1",
+                "user_message_id": "um-1",
+                "assistant_message_id": "am-1",
+                "term_id": "term-1",
+                "user_id": "user-1",
+                "content": "",
+            },
+            False,
+            ("minLength",),
+            id="chat_job_empty_content",
         ),
     ],
 )
@@ -955,19 +987,18 @@ class TestImplementationOutputsMatchContract:
     ) -> None:
         captured: dict[str, Any] = {}
 
-        def capture_enqueue(
-            queue_name: str,
+        def capture_enqueue_chat_jobs(
             payload: dict[str, Any] | None = None,
             **kwargs: Any,
         ) -> dict[str, str]:
-            captured["queue_name"] = queue_name
+            captured["queue_name"] = "chat_jobs"
             captured["payload"] = payload
             captured["kwargs"] = kwargs
             return {"job_id": "00000000-0000-0000-0000-000000000099"}
 
         monkeypatch.setattr(
-            "app.chat.service.chat_service.queue_mod.enqueue",
-            capture_enqueue,
+            "app.chat.service.chat_service.queue_mod.enqueue_chat_jobs",
+            capture_enqueue_chat_jobs,
             raising=True,
         )
         from app.chat.service.chat_service import create_chat
@@ -995,19 +1026,18 @@ class TestImplementationOutputsMatchContract:
     ) -> None:
         captured: dict[str, Any] = {}
 
-        def capture_enqueue(
-            queue_name: str,
+        def capture_enqueue_document_jobs(
             payload: dict[str, Any] | None = None,
             **kwargs: Any,
         ) -> dict[str, str]:
-            captured["queue_name"] = queue_name
+            captured["queue_name"] = "document_jobs"
             captured["payload"] = payload
             captured["kwargs"] = kwargs
             return {"job_id": "00000000-0000-0000-0000-000000000088"}
 
         monkeypatch.setattr(
-            "app.document.service.document_service.queue_mod.enqueue",
-            capture_enqueue,
+            "app.document.service.document_service.queue_mod.enqueue_document_jobs",
+            capture_enqueue_document_jobs,
             raising=True,
         )
         from app.document.service.document_service import DocumentService
@@ -1046,7 +1076,7 @@ class TestImplementationOutputsMatchContract:
             return {"job_id": "00000000-0000-0000-0000-000000000077"}
 
         monkeypatch.setattr(
-            "app.selection.service.selection_service.queue_mod.enqueue",
+            "app.task.queue.enqueue",
             capture_enqueue,
             raising=True,
         )

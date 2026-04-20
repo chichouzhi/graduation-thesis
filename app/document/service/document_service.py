@@ -15,8 +15,7 @@ class DocumentService:
         document_task_id = str(uuid.uuid4())
         task_type = kwargs.pop("task_type", "summary")
         language = kwargs.pop("language", "zh")
-        queue_mod.enqueue(
-            "document_jobs",
+        queue_mod.enqueue_document_jobs(
             {
                 "document_task_id": document_task_id,
                 "user_id": user_id,

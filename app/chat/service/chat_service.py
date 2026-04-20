@@ -44,7 +44,7 @@ def create_chat(
     if seq is not None:
         queue_payload["seq"] = seq
 
-    enq = queue_mod.enqueue("chat_jobs", queue_payload)
+    enq = queue_mod.enqueue_chat_jobs(queue_payload)
     out_job_id = enq.get("job_id") if isinstance(enq, dict) else getattr(enq, "job_id", job_id)
     out_job_id = str(out_job_id) if out_job_id is not None else job_id
 
@@ -75,8 +75,7 @@ class ChatService:
         user_message_id = str(uuid.uuid4())
         assistant_message_id = str(uuid.uuid4())
         term_id = str(kwargs.pop("term_id", ""))
-        queue_mod.enqueue(
-            "chat_jobs",
+        queue_mod.enqueue_chat_jobs(
             {
                 "job_id": job_id,
                 "conversation_id": conversation_id,
