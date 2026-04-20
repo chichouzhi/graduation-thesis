@@ -51,7 +51,15 @@ jobs:
       - name: Pytest (full suite; test_architecture 已在上一步执行)
         run: |
           set -euo pipefail
-          python -m pytest -vv --strict-markers --tb=short --ignore=tests/test_architecture.py
+          python -m pytest -vv -ra --strict-markers --tb=short --ignore=tests/test_architecture.py 2>&1 | tee pytest-full.log
+
+      - name: Upload pytest log artifact (always)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-full-log
+          path: pytest-full.log
+          if-no-files-found: warn
 
       - name: Score gate (fail if score < 80)
         run: |
