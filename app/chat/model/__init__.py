@@ -75,6 +75,7 @@ class Conversation(db.Model):
         default=_naive_utc_now,
         onupdate=_naive_utc_now,
     )
+    archived_at = db.Column(db.DateTime, nullable=True)
 
     user = db.relationship("User", backref=db.backref("conversations", lazy=True))
     term = db.relationship("Term", backref=db.backref("conversations", lazy=True))

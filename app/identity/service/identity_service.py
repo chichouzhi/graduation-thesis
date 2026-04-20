@@ -38,6 +38,35 @@ class IdentityService:
             return None
         return user.to_user_me()
 
+    def update_current_user_me(self, user_id: str, patch: dict[str, Any]) -> dict[str, Any] | None:
+        """Apply ``PATCH /users/me`` fields and return updated ``UserMe``."""
+        user = self.load_user_by_id(user_id)
+        if user is None:
+            return None
+        if not isinstance(patch, dict):
+            raise ValueError("patch must be a mapping")
+
+        allowed_fields = {"display_name", "email", "student_profile", "teacher_profile"}
+        updates = {k: v for k, v in patch.items() if k in allowed_fields}
+        if not updates:
+            raise ValueError("patch must include at least one updatable field")
+
+        if "display_name" in updates:
+            user.display_name = self._require_non_empty("display_name", updates["display_name"])
+        if "email" in updates:
+            user.email = self._require_non_empty("email", updates["email"])
+        if "student_profile" in updates:
+            if updates["student_profile"] is not None and not isinstance(updates["student_profile"], dict):
+                raise ValueError("student_profile must be an object or null")
+            user.student_profile = updates["student_profile"]
+        if "teacher_profile" in updates:
+            if updates["teacher_profile"] is not None and not isinstance(updates["teacher_profile"], dict):
+                raise ValueError("teacher_profile must be an object or null")
+            user.teacher_profile = updates["teacher_profile"]
+
+        db.session.commit()
+        return user.to_user_me()
+
     def validate_credentials(self, username: str, password: str) -> User | None:
         normalized_password = self._require_non_empty("password", password)
         user = self.load_user_by_username(username)

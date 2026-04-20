@@ -702,60 +702,65 @@
     {
       "id": "AG-055b",
       "layer": "service",
-      "status": "running",
+      "status": "done",
       "title": "`IdentityService`：`PATCH /users/me` 更新资料（含画像字段）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-008",
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-20T17:24:33.994596"
     },
     {
       "id": "AG-056",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`TermService`：学期列表与单条详情（含角色可见裁剪）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-009",
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-20T17:27:23.745875"
     },
     {
       "id": "AG-057",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`TermService`：管理员创建/更新学期",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-056"
-      ]
+      ],
+      "done_at": "2026-04-20T17:31:22.022709"
     },
     {
       "id": "AG-058",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`TermService`：`LlmConfig` 读取（单一真源）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-010",
         "AG-056"
-      ]
+      ],
+      "done_at": "2026-04-20T17:40:51.766874"
     },
     {
       "id": "AG-059",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`TermService`：`LlmConfig` 更新（管理员）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-058"
-      ]
+      ],
+      "done_at": "2026-04-20T17:42:37.092793"
     },
     {
       "id": "AG-060",
@@ -783,79 +788,85 @@
     {
       "id": "AG-062a",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`ChatService`：会话列表（当前用户）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-011",
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-20T17:46:30.552572"
     },
     {
       "id": "AG-062b",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`ChatService`：创建会话（`term_id` 必填）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-011",
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-20T17:50:24.108803"
     },
     {
       "id": "AG-062c",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`ChatService`：读取会话元数据",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-011",
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-20T17:59:44.669936"
     },
     {
       "id": "AG-062d",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`ChatService`：软删除或归档会话",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-011",
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-20T18:09:51.731930"
     },
     {
       "id": "AG-063",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`ChatService`：消息分页与 `after_message_id`/`before_message_id` 互斥校验",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-012",
         "AG-062c"
-      ]
+      ],
+      "done_at": "2026-04-20T18:15:48.578198"
     },
     {
       "id": "AG-064",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`ChatService`：发消息路径调用 `chat_orchestration` 仅组装（不调 LLM）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-063",
         "AG-033"
-      ]
+      ],
+      "done_at": "2026-04-20T18:34:52.583833"
     },
     {
       "id": "AG-065",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`ChatService`：Policy → 占位事务 → `commit` → `enqueue_chat_jobs`",
       "priority": "P0",
       "max_duration_days": 2,
@@ -865,12 +876,13 @@
         "AG-038",
         "AG-012",
         "AG-013"
-      ]
+      ],
+      "done_at": "2026-04-20T18:50:44.170577"
     },
     {
       "id": "AG-066",
       "layer": "service",
-      "status": "ready",
+      "status": "running",
       "title": "`ChatService`：`enqueue` 失败补偿为 `failed` + `QUEUE_UNAVAILABLE`（占位/任务行）",
       "priority": "P0",
       "max_duration_days": 2,

@@ -208,4 +208,55 @@ class Assignment(db.Model):
         return body
 
 
-__all__ = ["Application", "ApplicationFlowStatus", "Assignment", "AssignmentStatus"]
+class ReconcileDispatchFailure(db.Model):
+    """``reconcile_dispatch_failures`` 表；记录 accept 后 reconcile 入队失败，供后续补偿扫描。"""
+
+    __tablename__ = "reconcile_dispatch_failures"
+    __table_args__ = (
+        db.Index("ix_reconcile_dispatch_failures_term_created", "term_id", "created_at"),
+        db.Index("ix_reconcile_dispatch_failures_unresolved", "resolved_at", "created_at"),
+    )
+
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    application_id = db.Column(
+        db.String(36),
+        db.ForeignKey("applications.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    term_id = db.Column(
+        db.String(36),
+        db.ForeignKey("terms.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    teacher_id = db.Column(
+        db.String(36),
+        db.ForeignKey("users.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    error_message = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=_naive_utc_now)
+    resolved_at = db.Column(db.DateTime, nullable=True)
+
+    application = db.relationship(
+        "Application",
+        backref=db.backref("reconcile_dispatch_failures", lazy=True),
+        foreign_keys=[application_id],
+    )
+    term = db.relationship("Term", backref=db.backref("reconcile_dispatch_failures", lazy=True))
+    teacher = db.relationship(
+        "User",
+        backref=db.backref("reconcile_dispatch_failures", lazy=True),
+        foreign_keys=[teacher_id],
+    )
+
+
+__all__ = [
+    "Application",
+    "ApplicationFlowStatus",
+    "Assignment",
+    "AssignmentStatus",
+    "ReconcileDispatchFailure",
+]

@@ -9,6 +9,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from app import create_app
+from app.extensions import db
+from app.identity.model import User, UserRole
+from app.selection.model import Application, ApplicationFlowStatus
+from app.terms.model import Term
+from app.topic.model import Topic, TopicStatus
 from tests.arch.spy._import_helpers import import_module_or_fail
 
 CHAT_METHOD_CANDIDATES = ("send_user_message", "post_message", "enqueue_user_turn")
@@ -53,13 +59,20 @@ def test_document_service_calls_queue_on_upload(mock_enqueue):
     cls = getattr(mod, "DocumentService", None)
     if cls is None:
         pytest.fail("app.document.service.document_service 须定义 DocumentService")
-    svc = _stub_service(cls)
-    create = _find_method(cls, DOC_METHOD_CANDIDATES)
-    create(
-        svc,
-        user_id="user-1",
-        term_id="term-1",
-        storage_path="/tmp/x.pdf",
-        filename="x.pdf",
-    )
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="spy-doc-u1", role=UserRole.student, display_name="u1")
+        term = Term(name="spy-doc-term")
+        db.session.add_all([user, term])
+        db.session.commit()
+        svc = cls()
+        create = _find_method(cls, DOC_METHOD_CANDIDATES)
+        create(
+            svc,
+            user_id=user.id,
+            term_id=term.id,
+            storage_path="/tmp/x.pdf",
+            filename="x.pdf",
+        )
     mock_enqueue.assert_called()

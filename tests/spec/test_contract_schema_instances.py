@@ -1019,44 +1019,55 @@ class TestImplementationOutputsMatchContract:
         )
         assert errors == [], f"enqueue payload must satisfy ChatJobPayload; errors: {errors}"
 
-    def test_document_create_task_enqueue_payload_matches_document_job_payload(
+    def test_document_create_task_enqueue_payload_matches_pdf_job_payload(
         self,
         contract: dict[str, Any],
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         captured: dict[str, Any] = {}
 
-        def capture_enqueue_document_jobs(
+        def capture_enqueue_pdf_parse(
             payload: dict[str, Any] | None = None,
             **kwargs: Any,
         ) -> dict[str, str]:
-            captured["queue_name"] = "document_jobs"
+            captured["queue_name"] = "pdf_parse"
             captured["payload"] = payload
             captured["kwargs"] = kwargs
             return {"job_id": "00000000-0000-0000-0000-000000000088"}
 
         monkeypatch.setattr(
-            "app.document.service.document_service.queue_mod.enqueue_document_jobs",
-            capture_enqueue_document_jobs,
+            "app.document.service.document_service.queue_mod.enqueue_pdf_parse",
+            capture_enqueue_pdf_parse,
             raising=True,
         )
+        from app import create_app
+        from app.extensions import db
+        from app.identity.model import User, UserRole
+        from app.terms.model import Term
         from app.document.service.document_service import DocumentService
 
-        DocumentService().create_document_task(
-            user_id="user-doc-1",
-            term_id="term-doc-1",
-            storage_path="/tmp/x.pdf",
-            filename="x.pdf",
-        )
-        assert captured.get("queue_name") == "document_jobs"
+        app = create_app()
+        with app.app_context():
+            db.create_all()
+            user = User(username="ct-doc-u1", role=UserRole.student, display_name="u1")
+            term = Term(name="ct-doc-term")
+            db.session.add_all([user, term])
+            db.session.commit()
+            DocumentService().create_document_task(
+                user_id=user.id,
+                term_id=term.id,
+                storage_path="/tmp/x.pdf",
+                filename="x.pdf",
+            )
+        assert captured.get("queue_name") == "pdf_parse"
         payload = captured["payload"]
         assert isinstance(payload, dict)
         errors = validate_instance(
             payload,
-            schema_by_name(contract, "DocumentJobPayload"),
+            schema_by_name(contract, "PdfJobPayload"),
             contract,
         )
-        assert errors == [], f"DocumentService enqueue payload must satisfy DocumentJobPayload; errors: {errors}"
+        assert errors == [], f"DocumentService enqueue payload must satisfy PdfJobPayload; errors: {errors}"
 
     def test_selection_accept_enqueue_payload_matches_reconcile_job_payload(
         self,
@@ -1080,13 +1091,49 @@ class TestImplementationOutputsMatchContract:
             capture_enqueue,
             raising=True,
         )
+        from app import create_app
+        from app.extensions import db
+        from app.identity.model import User, UserRole
+        from app.selection.model import Application, ApplicationFlowStatus
+        from app.terms.model import Term
+        from app.topic.model import Topic, TopicStatus
         from app.selection.service.selection_service import SelectionService
 
-        SelectionService().teacher_accept_application(
-            application_id="app-1",
-            action="accept",
-            teacher_id="teacher-1",
-        )
+        app = create_app()
+        with app.app_context():
+            db.create_all()
+            student = User(username="ct-sel-stu", role=UserRole.student, display_name="stu")
+            teacher = User(username="ct-sel-tea", role=UserRole.teacher, display_name="tea")
+            term = Term(name="ct-sel-term")
+            db.session.add_all([student, teacher, term])
+            db.session.commit()
+            topic = Topic(
+                title="ct-topic",
+                summary="s",
+                requirements="r",
+                capacity=2,
+                selected_count=0,
+                teacher_id=teacher.id,
+                term_id=term.id,
+                status=TopicStatus.published,
+            )
+            db.session.add(topic)
+            db.session.commit()
+            app_row = Application(
+                student_id=student.id,
+                topic_id=topic.id,
+                term_id=term.id,
+                priority=1,
+                status=ApplicationFlowStatus.pending,
+            )
+            db.session.add(app_row)
+            db.session.commit()
+
+            SelectionService().teacher_accept_application(
+                application_id=app_row.id,
+                action="accept",
+                teacher_id=teacher.id,
+            )
         assert captured.get("queue_name") == "reconcile_jobs"
         payload = captured["payload"]
         assert isinstance(payload, dict)

@@ -55,6 +55,53 @@ def test_get_current_user_me_returns_userme_or_none() -> None:
         assert missing is None
 
 
+def test_update_current_user_me_updates_allowed_fields() -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        created = _create_user(username="patch-me", password="patch-pass")
+        svc = IdentityService()
+
+        payload = svc.update_current_user_me(
+            created.id,
+            {
+                "display_name": "Patched Name",
+                "email": "patched@example.com",
+                "student_profile": {"grade": "2026"},
+                "teacher_profile": None,
+            },
+        )
+
+        assert payload is not None
+        assert payload["display_name"] == "Patched Name"
+        assert payload["email"] == "patched@example.com"
+        assert payload["student_profile"] == {"grade": "2026"}
+        assert payload["teacher_profile"] is None
+
+
+def test_update_current_user_me_returns_none_for_missing_user() -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        svc = IdentityService()
+        assert svc.update_current_user_me("missing-id", {"display_name": "X"}) is None
+
+
+def test_update_current_user_me_rejects_invalid_patch() -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        created = _create_user(username="patch-invalid", password="patch-pass")
+        svc = IdentityService()
+
+        with pytest.raises(ValueError, match="patch must include at least one updatable field"):
+            svc.update_current_user_me(created.id, {"unknown": 1})
+        with pytest.raises(ValueError, match="display_name must be non-empty"):
+            svc.update_current_user_me(created.id, {"display_name": "   "})
+        with pytest.raises(ValueError, match="student_profile must be an object or null"):
+            svc.update_current_user_me(created.id, {"student_profile": "invalid"})
+
+
 def test_validate_credentials_success_and_failures() -> None:
     app = create_app()
     with app.app_context():
