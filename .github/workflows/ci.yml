@@ -51,7 +51,25 @@ jobs:
       - name: Pytest (full suite; test_architecture 已在上一步执行)
         run: |
           set -euo pipefail
+          set +e
           python -m pytest -vv -ra --strict-markers --tb=short --ignore=tests/test_architecture.py 2>&1 | tee pytest-full.log
+          pytest_exit=${PIPESTATUS[0]}
+          set -e
+          if [ "$pytest_exit" -ne 0 ]; then
+            {
+              echo "### Pytest failed"
+              echo ""
+              echo "- Exit code: $pytest_exit"
+              echo ""
+              echo "#### Last 120 lines"
+              echo '```text'
+              tail -n 120 pytest-full.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            excerpt=$(tail -n 80 pytest-full.log | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            echo "::error title=Pytest failed::$excerpt"
+            exit "$pytest_exit"
+          fi
 
       - name: Upload pytest log artifact (always)
         if: ${{ always() }}
