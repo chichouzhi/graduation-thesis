@@ -55,6 +55,14 @@ def create_app(config: type[Config] | None = None) -> Flask:
     if cfg is ProductionConfig:
         app.config["BROKER_URL"] = broker_url_from_environ()
     init_extensions(app)
+    from app.identity import model as _identity_model  # noqa: F401 — register ``users`` ORM (AG-008)
+    from app.terms import model as _terms_model  # noqa: F401 — register ``terms`` ORM (AG-009)
+    from app.chat import model as _chat_model  # noqa: F401 — register chat ORM (AG-011/AG-012)
+    from app.document import model as _document_model  # noqa: F401 — register ``document_tasks`` ORM (AG-014)
+    from app.topic import model as _topic_model  # noqa: F401 — register ``topics`` + ``portrait_json`` ORM (AG-015/AG-016)
+    from app.selection import model as _selection_model  # noqa: F401 — applications (AG-017) / assignments (AG-018)
+    from app.taskboard import model as _taskboard_model  # noqa: F401 — milestones ORM (AG-019)
+
     _register_api_blueprints(app)
 
     @app.get("/")

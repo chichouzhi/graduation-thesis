@@ -51,7 +51,7 @@ RULES: tuple[ArchRule, ...] = (
         "R-UC-SKIP",
         ("import_linter", "pytest_other"),
         True,
-        "linter: forbidden_task_adapter；必经 UC 的调用链见 M-CHAIN / §5 集成测",
+        "linter: forbidden_task_adapter（直连 adapter 禁止；allow_indirect_imports）；rg 兜底 task 内 adapter import",
     ),
     ArchRule("R-NO-QUEUE", ("static", "pytest_other", "manual"), True, "部署清单可机判部分 static；broker 行为集成测"),
     ArchRule("R-UC-ONLY", ("static",), True, "llm_entrypoints 脚本 + rg-guard-svc-uc-signals"),
@@ -83,7 +83,7 @@ RULES: tuple[ArchRule, ...] = (
         True,
         "linter: use_cases_over_adapter；static: app/use_cases 目录存在；Worker 栈与动态 import 见集成/ manual",
     ),
-    ArchRule("W6", ("import_linter",), True, "与 R-UC-SKIP 同一 forbidden_task_adapter 合约"),
+    ArchRule("W6", ("import_linter",), True, "forbidden_task_adapter：禁止 task 直连 adapter，经 UC 可达不判违规"),
     # §3 必须
     ArchRule("M-QUEUE-WORKER", ("static", "pytest_other", "manual"), True, "与 R-NO-QUEUE 检测表重叠；static 覆盖可脚本部分"),
     ArchRule("M-CHAIN-WORKER", ("static", "pytest_other"), True, "static 部分同 R-UC-SKIP jobs；集成 mock UC"),

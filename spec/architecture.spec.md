@@ -165,7 +165,7 @@
 |------|------|
 | **规则描述** | Chat / Document / Keyword 的 **主生成路径** 必须经过 **`UC`** 再进入 **`app.adapter`**（含 **`llm`/`pdf`/`nlp`/`storage`**）；**`app/task` 下任意模块** **不得** `import` **`app.adapter`**（**`queue.py` 同约束**）。 |
 | **违规示例** | `chat_jobs.py`：`from app.adapter.llm import client`；`document_jobs.py`：`from app.adapter.pdf import ...`。 |
-| **检测方式** | ① **import-linter**：**§4 `forbidden_task_adapter`**（`app.task` → `app.adapter`，**无豁免**）；② **`rg-guard-task-adapter`**：`rg "from app\\.adapter|import app\\.adapter" app/task -g "**/*.py"` —— **零命中**；③ **编排必经 `UC`**：见 **M-CHAIN-WORKER** ②③。 |
+| **检测方式** | ① **import-linter**：**§4 `forbidden_task_adapter`**（`app.task` **不得直连** `app.adapter`；合约设 **`allow_indirect_imports = True`**，故 **TASK→use_cases→adapter** 传递依赖 **不** 判违规）；② **`rg-guard-task-adapter`**：`rg "from app\\.adapter|import app\\.adapter" app/task -g "**/*.py"` —— **零命中**（仍禁止 task 内直连 adapter）；③ **编排必经 `UC`**：见 **M-CHAIN-WORKER** ②③。 |
 
 ---
 
@@ -361,6 +361,7 @@ source_modules =
     app.task
 forbidden_modules =
     app.adapter
+allow_indirect_imports = True
 ```
 
 **说明**：① `import-linter` 对「字符串动态 import」**无效**，须 **§5.1** 与 **R-API-LLM** 集成测兜底；② **ORM 直连** 由 **R-API-MODEL** 的 **`rg-guard-api-model`** 覆盖（**非** import-linter 默认能力）。

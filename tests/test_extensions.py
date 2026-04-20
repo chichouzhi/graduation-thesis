@@ -12,8 +12,10 @@ def test_extensions_symbols_importable() -> None:
 
 def test_create_app_initializes_extensions() -> None:
     from app import create_app
+    from app.common.policy import PolicyGateway
     from app.extensions import db
 
     app = create_app()
     with app.app_context():
         assert db.engine is not None
+        assert app.extensions.get("policy_gateway") is PolicyGateway

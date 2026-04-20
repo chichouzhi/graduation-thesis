@@ -28,6 +28,13 @@ jobs:
           python -m pip install Flask pytest PyYAML import-linter openapi-spec-validator \
             flask-sqlalchemy Flask-Migrate Flask-JWT-Extended
 
+      - name: Alembic upgrade head (AG-020+)
+        run: |
+          set -euo pipefail
+          export FLASK_APP=wsgi:app
+          export DATABASE_URL=sqlite:////tmp/ci_migrations.db
+          python -m flask db upgrade
+
       # 规则真源：spec/architecture.spec.md；可执行映射：scripts/arch_rules_registry.py
       # 本步 = import-linter（.importlinter）+ scripts/check_rules.py + tests/test_architecture.py
       - name: Architecture rules (import-linter, check_rules, test_architecture)

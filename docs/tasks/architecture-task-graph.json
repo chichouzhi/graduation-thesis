@@ -75,151 +75,164 @@
     {
       "id": "AG-006",
       "layer": "common",
-      "status": "running",
+      "status": "done",
       "title": "`PolicyGateway` / `assert_can_enqueue` 门面签名与依赖注入点",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-005"
-      ]
+      ],
+      "done_at": "2026-04-20T10:45:28.517388"
     },
     {
       "id": "AG-007",
       "layer": "common",
-      "status": "ready",
+      "status": "done",
       "title": "Policy 拒绝 → HTTP 429/503 与 `POLICY_QUEUE_DEPTH`/`QUEUE_UNAVAILABLE` 映射单元测骨架",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-006"
-      ]
+      ],
+      "done_at": "2026-04-20T10:47:10.780017"
     },
     {
       "id": "AG-008",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "`users` 及角色枚举 ORM（对齐 `UserSummary`/`UserMe` 最小字段）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-002"
-      ]
+      ],
+      "done_at": "2026-04-20T11:04:57.131320"
     },
     {
       "id": "AG-009",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "`terms` 表 ORM（含选题窗口字段）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-002"
-      ]
+      ],
+      "done_at": "2026-04-20T11:08:14.927567"
     },
     {
       "id": "AG-010",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "按 `term_id` 的 `LlmConfig` 持久化 ORM（独立表或列二选一写死）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-009"
-      ]
+      ],
+      "done_at": "2026-04-20T11:10:56.473038"
     },
     {
       "id": "AG-011",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "`conversations` ORM（`term_id` 非空、索引）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-009"
-      ]
+      ],
+      "done_at": "2026-04-20T11:12:48.308622"
     },
     {
       "id": "AG-012",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "`messages` ORM（assistant 占位、`delivery_status` 或等价列）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-011"
-      ]
+      ],
+      "done_at": "2026-04-20T11:14:16.567480"
     },
     {
       "id": "AG-013",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "`chat_jobs` ORM（`job_id`、重试、`error_*`、列表索引）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-012"
-      ]
+      ],
+      "done_at": "2026-04-20T11:16:40.280247"
     },
     {
       "id": "AG-014",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "`document_tasks` ORM（`term_id`、锁、断点、`result_*`、`error_*`）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-009"
-      ]
+      ],
+      "done_at": "2026-04-20T11:17:44.729280"
     },
     {
       "id": "AG-015",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "`topics` ORM（审核状态枚举）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-009"
-      ]
+      ],
+      "done_at": "2026-04-20T11:20:03.737062"
     },
     {
       "id": "AG-016",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "`topic_portraits` 或等价 JSON 列 ORM",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-015"
-      ]
+      ],
+      "done_at": "2026-04-20T11:21:16.061907"
     },
     {
       "id": "AG-017",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "`applications` ORM（唯一约束与 `ApplicationFlowStatus`）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-015",
         "AG-008"
-      ]
+      ],
+      "done_at": "2026-04-20T11:25:31.202755"
     },
     {
       "id": "AG-018",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "`assignments` 真源 ORM 及与 `applications` 外键",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-017"
-      ]
+      ],
+      "done_at": "2026-04-20T11:26:38.740684"
     },
     {
       "id": "AG-019",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "`milestones` ORM（`sort_order`、`is_overdue` 策略写死）",
       "priority": "P1",
       "max_duration_days": 2,
@@ -230,7 +243,7 @@
     {
       "id": "AG-020",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "Alembic 迁移：identity + terms + llm_config 相关表",
       "priority": "P0",
       "max_duration_days": 2,
@@ -238,12 +251,13 @@
         "AG-008",
         "AG-009",
         "AG-010"
-      ]
+      ],
+      "done_at": "2026-04-20T11:28:30.020695"
     },
     {
       "id": "AG-021",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "Alembic 迁移：chat（conversations/messages/chat_jobs）",
       "priority": "P0",
       "max_duration_days": 2,
@@ -251,47 +265,51 @@
         "AG-011",
         "AG-012",
         "AG-013"
-      ]
+      ],
+      "done_at": "2026-04-20T11:31:22.823347"
     },
     {
       "id": "AG-022",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "Alembic 迁移：document_tasks",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-014"
-      ]
+      ],
+      "done_at": "2026-04-20T11:32:46.421594"
     },
     {
       "id": "AG-023",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "Alembic 迁移：topics + topic_portraits",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-015",
         "AG-016"
-      ]
+      ],
+      "done_at": "2026-04-20T11:34:30.354466"
     },
     {
       "id": "AG-024",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "Alembic 迁移：applications + assignments",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-017",
         "AG-018"
-      ]
+      ],
+      "done_at": "2026-04-20T11:35:35.305388"
     },
     {
       "id": "AG-025",
       "layer": "model",
-      "status": "ready",
+      "status": "done",
       "title": "Alembic 迁移：milestones",
       "priority": "P1",
       "max_duration_days": 2,
@@ -302,13 +320,14 @@
     {
       "id": "AG-026",
       "layer": "adapter",
-      "status": "ready",
+      "status": "running",
       "title": "`app.adapter` 包布局与对外导入约定（子包 llm/pdf/nlp/storage）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-001"
-      ]
+      ],
+      "done_at": "2026-04-20T11:42:48.668120"
     },
     {
       "id": "AG-027",

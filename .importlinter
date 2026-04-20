@@ -8,7 +8,7 @@ include_external_packages = True
 #   forbidden_api_use_cases → R-API-UC
 #   forbidden_api_task      → R-API-TASK
 #   forbidden_task_api      → R-TASK-API
-#   forbidden_task_adapter    → R-UC-SKIP / W6 (TASK 不得 import app.adapter)
+#   forbidden_task_adapter    → R-UC-SKIP / W6（TASK 不得 **直连** app.adapter；允许 TASK→use_cases→adapter，见 allow_indirect_imports）
 #   forbidden_use_cases_flask / forbidden_use_cases_api → R-UC-API
 #   domain_api_service_layers → W1 (api→service only within domain)
 #   use_cases_over_adapter    → W5 (UC 可依赖 adapter；adapter 不得反向依赖 UC)
@@ -134,3 +134,4 @@ source_modules =
     app.task
 forbidden_modules =
     app.adapter
+allow_indirect_imports = True
