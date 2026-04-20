@@ -600,19 +600,20 @@
     {
       "id": "AG-048",
       "layer": "worker_runtime",
-      "status": "running",
+      "status": "done",
       "title": "Worker 进程入口：连接 broker、注册 `chat_jobs` 消费",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-043",
         "AG-003"
-      ]
+      ],
+      "done_at": "2026-04-20T16:28:16.234752"
     },
     {
       "id": "AG-049",
       "layer": "worker_runtime",
-      "status": "ready",
+      "status": "done",
       "title": "Worker：注册 `pdf_parse` / `document_jobs` 消费",
       "priority": "P0",
       "max_duration_days": 2,
@@ -620,12 +621,13 @@
         "AG-044",
         "AG-045",
         "AG-048"
-      ]
+      ],
+      "done_at": "2026-04-20T16:30:56.847317"
     },
     {
       "id": "AG-050",
       "layer": "worker_runtime",
-      "status": "ready",
+      "status": "done",
       "title": "Worker：注册 `keyword_jobs` / `reconcile_jobs` 消费",
       "priority": "P0",
       "max_duration_days": 2,
@@ -633,68 +635,74 @@
         "AG-046",
         "AG-047",
         "AG-048"
-      ]
+      ],
+      "done_at": "2026-04-20T16:33:31.329949"
     },
     {
       "id": "AG-051",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`IdentityService`：凭据校验与用户加载",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-008"
-      ]
+      ],
+      "done_at": "2026-04-20T16:42:33.144532"
     },
     {
       "id": "AG-052",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`IdentityService`：access token 签发与过期策略",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-20T16:56:18.591515"
     },
     {
       "id": "AG-053",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`IdentityService`：refresh token / HttpOnly Cookie 与轮换",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-052"
-      ]
+      ],
+      "done_at": "2026-04-20T16:58:43.401680"
     },
     {
       "id": "AG-054",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`IdentityService`：logout 作废 refresh 与 Cookie 清除语义",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-053"
-      ]
+      ],
+      "done_at": "2026-04-20T17:17:38.764749"
     },
     {
       "id": "AG-055a",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`IdentityService`：`GET /users/me` 读取当前用户资料",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-008",
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-20T17:20:39.845800"
     },
     {
       "id": "AG-055b",
       "layer": "service",
-      "status": "ready",
+      "status": "running",
       "title": "`IdentityService`：`PATCH /users/me` 更新资料（含画像字段）",
       "priority": "P0",
       "max_duration_days": 2,
@@ -1772,94 +1780,6 @@
       "max_duration_days": 2,
       "depends_on": [
         "AG-001"
-      ]
-    },
-    {
-      "id": "AG-121",
-      "layer": "jobs",
-      "status": "ready",
-      "title": "`task/chat_jobs.py`：补齐 `ChatJobPayload` 必填校验 + 按真实 payload 调 `chat_orchestration`（禁止空消息硬编码）",
-      "priority": "P0",
-      "max_duration_days": 2,
-      "depends_on": [
-        "AG-043",
-        "AG-012",
-        "AG-013"
-      ]
-    },
-    {
-      "id": "AG-122",
-      "layer": "jobs",
-      "status": "ready",
-      "title": "`task/document_jobs.py`：`run` 默认接入状态回写（pending/running/done/failed）与 `last_completed_chunk` 持久化",
-      "priority": "P0",
-      "max_duration_days": 2,
-      "depends_on": [
-        "AG-045",
-        "AG-014",
-        "AG-040"
-      ]
-    },
-    {
-      "id": "AG-123",
-      "layer": "jobs",
-      "status": "ready",
-      "title": "`task/keyword_jobs.py`：失败路径统一回写 `llm_keyword_job_status=failed` + 错误字段（含 topic 不存在/LLM 异常）",
-      "priority": "P0",
-      "max_duration_days": 2,
-      "depends_on": [
-        "AG-046",
-        "AG-016",
-        "AG-041"
-      ]
-    },
-    {
-      "id": "AG-124",
-      "layer": "ci_docs",
-      "status": "ready",
-      "title": "集成测：`it-job-writeback-failures`（chat/document/keyword 异常时状态回写与错误码落库）",
-      "priority": "P0",
-      "max_duration_days": 2,
-      "depends_on": [
-        "AG-121",
-        "AG-122",
-        "AG-123"
-      ]
-    },
-    {
-      "id": "AG-125",
-      "layer": "jobs",
-      "status": "ready",
-      "title": "`task/pdf_parse_jobs.py`：异常路径回写 `document_tasks.status=failed` + `error_code/error_message`（防悬挂 pending）",
-      "priority": "P0",
-      "max_duration_days": 2,
-      "depends_on": [
-        "AG-044",
-        "AG-014",
-        "AG-039"
-      ]
-    },
-    {
-      "id": "AG-126",
-      "layer": "ci_docs",
-      "status": "ready",
-      "title": "契约一致性：`ChatJobPayload` 的 `content` 必填约束与 worker 校验对齐（spec/实现二选一写死）",
-      "priority": "P0",
-      "max_duration_days": 2,
-      "depends_on": [
-        "AG-121"
-      ]
-    },
-    {
-      "id": "AG-127",
-      "layer": "jobs",
-      "status": "ready",
-      "title": "`task/keyword_jobs.py`：失败回写改为 merge 画像，避免覆盖既有 `portrait_json.keywords/extracted_at`",
-      "priority": "P0",
-      "max_duration_days": 2,
-      "depends_on": [
-        "AG-123",
-        "AG-016"
       ]
     }
   ],
