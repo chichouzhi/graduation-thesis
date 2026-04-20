@@ -1,7 +1,7 @@
 """
 M-CHAIN-WORKER / W4：task/*_jobs 消费路径须调用 app.use_cases。
 
-- reconcile_jobs → app.use_cases.selection_reconcile.run（ADR）
+- reconcile_jobs → app.use_cases.selection_reconcile.reconcile_assignments（ADR）
 - chat_jobs → app.use_cases.chat_orchestration.run_turn（或等价符号，见 CANDIDATES）
 """
 from __future__ import annotations
@@ -24,9 +24,9 @@ def test_reconcile_jobs_invokes_use_cases_run():
         "scope": "by_term",
         "term_id": "term-1",
     }
-    with patch("app.use_cases.selection_reconcile.run") as mock_run:
+    with patch("app.use_cases.selection_reconcile.reconcile_assignments") as mock_uc:
         handler(payload)
-    mock_run.assert_called_once()
+    mock_uc.assert_called_once()
 
 
 def test_chat_jobs_invokes_use_cases_run_turn():

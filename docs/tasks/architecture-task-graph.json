@@ -392,76 +392,82 @@
     {
       "id": "AG-032",
       "layer": "use_cases",
-      "status": "running",
+      "status": "done",
       "title": "`chat_orchestration`：从入参构建 messages 列表（无 IO、无 LLM）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-001"
-      ]
+      ],
+      "done_at": "2026-04-20T12:41:27.401796"
     },
     {
       "id": "AG-033",
       "layer": "use_cases",
-      "status": "ready",
+      "status": "done",
       "title": "`chat_orchestration`：token 级裁剪与配置读取挂钩",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-032",
         "AG-003"
-      ]
+      ],
+      "done_at": "2026-04-20T12:45:51.053287"
     },
     {
       "id": "AG-034",
       "layer": "use_cases",
-      "status": "ready",
+      "status": "done",
       "title": "`document_pipeline`：`stage`/`chunk_index` 幂等键与计划数据结构（纯函数为主）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-001"
-      ]
+      ],
+      "done_at": "2026-04-20T12:50:19.528776"
     },
     {
       "id": "AG-035",
       "layer": "use_cases",
-      "status": "ready",
+      "status": "done",
       "title": "`document_pipeline`：chunk 并行度上限读取与校验",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-034",
         "AG-003"
-      ]
+      ],
+      "done_at": "2026-04-20T12:51:51.624853"
     },
     {
       "id": "AG-036",
       "layer": "use_cases",
-      "status": "ready",
+      "status": "done",
       "title": "`topic_keywords`：快照文本 → 调 `adapter.llm` 编排（仅 Worker 路径使用）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-027",
         "AG-028"
-      ]
+      ],
+      "done_at": "2026-04-20T12:56:15.582746"
     },
     {
       "id": "AG-037",
       "layer": "use_cases",
-      "status": "ready",
+      "status": "done",
       "title": "`reconcile_assignments`（或 ADR 命名）：`assignments` 与 `selected_count` 对账编排入口",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-018"
-      ]
+      ],
+      "done_at": "2026-04-20T13:01:04.019875"
     },
     {
       "id": "AG-038",
       "layer": "task_queue",
-      "status": "ready",
+      "status": "running",
       "title": "`app/task/queue.py`：`enqueue_chat_jobs` 使用契约字面量 `chat_jobs`",
       "priority": "P0",
       "max_duration_days": 2,
