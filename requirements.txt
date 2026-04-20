@@ -1,0 +1,9 @@
+# 与 .github/workflows/ci.yml 对齐；AG-002 起含 ORM / 迁移 / JWT
+Flask
+pytest
+PyYAML
+import-linter
+openapi-spec-validator
+flask-sqlalchemy
+Flask-Migrate
+Flask-JWT-Extended

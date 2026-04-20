@@ -705,10 +705,12 @@ paths:
             schema: { $ref: "#/components/schemas/LoginRequest" }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/LoginResponse" }
         "401":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -719,10 +721,12 @@ paths:
       summary: 刷新访问令牌（默认使用 HttpOnly Refresh Cookie）
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/RefreshResponse" }
         "401":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -735,6 +739,7 @@ paths:
         "204":
           description: No Content
         "401":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -745,6 +750,7 @@ paths:
       summary: 当前用户资料
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/UserMe" }
@@ -758,6 +764,7 @@ paths:
             schema: { $ref: "#/components/schemas/PatchUserMeRequest" }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/UserMe" }
@@ -768,6 +775,7 @@ paths:
       summary: 学期列表（角色可见范围由实现裁剪）
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema:
@@ -786,10 +794,12 @@ paths:
             schema: { $ref: "#/components/schemas/CreateTermRequest" }
       responses:
         "201":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Term" }
         "403":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -805,6 +815,7 @@ paths:
       summary: 单学期详情
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Term" }
@@ -818,10 +829,12 @@ paths:
             schema: { $ref: "#/components/schemas/PatchTermRequest" }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Term" }
         "403":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -837,6 +850,7 @@ paths:
       summary: 读取该学期 LLM 配置（单一真源）
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/LlmConfig" }
@@ -850,10 +864,12 @@ paths:
             schema: { $ref: "#/components/schemas/LlmConfig" }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/LlmConfig" }
         "403":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -880,6 +896,7 @@ paths:
           schema: { type: integer }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema:
@@ -900,6 +917,7 @@ paths:
             schema: { $ref: "#/components/schemas/CreateMilestoneRequest" }
       responses:
         "201":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Milestone" }
@@ -914,6 +932,7 @@ paths:
       tags: [taskboard]
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Milestone" }
@@ -926,6 +945,7 @@ paths:
             schema: { $ref: "#/components/schemas/PatchMilestoneRequest" }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Milestone" }
@@ -941,6 +961,7 @@ paths:
       summary: 当前用户会话列表
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema:
@@ -961,6 +982,7 @@ paths:
             schema: { $ref: "#/components/schemas/CreateConversationRequest" }
       responses:
         "201":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Conversation" }
@@ -976,6 +998,7 @@ paths:
       summary: 会话元数据
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Conversation" }
@@ -1020,6 +1043,7 @@ paths:
           schema: { type: string }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema:
@@ -1031,6 +1055,7 @@ paths:
                         type: array
                         items: { $ref: "#/components/schemas/Message" }
         "400":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -1044,14 +1069,17 @@ paths:
             schema: { $ref: "#/components/schemas/PostUserMessageRequest" }
       responses:
         "202":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/PostUserMessageResponse" }
         "429":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "503":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -1067,6 +1095,7 @@ paths:
           schema: { type: string }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ChatJob" }
@@ -1088,6 +1117,7 @@ paths:
               schema:
                 type: string
         "401":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -1132,14 +1162,17 @@ paths:
                   enum: [zh, en]
       responses:
         "202":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/DocumentTask" }
         "429":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "503":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -1155,6 +1188,7 @@ paths:
           schema: { type: integer }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema:
@@ -1177,6 +1211,7 @@ paths:
           schema: { type: string }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/DocumentTask" }
@@ -1206,6 +1241,7 @@ paths:
           schema: { type: integer }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema:
@@ -1226,6 +1262,7 @@ paths:
             schema: { $ref: "#/components/schemas/CreateTopicRequest" }
       responses:
         "201":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Topic" }
@@ -1250,6 +1287,7 @@ paths:
       tags: [topic]
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Topic" }
@@ -1263,14 +1301,17 @@ paths:
             schema: { $ref: "#/components/schemas/PatchTopicRequest" }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Topic" }
         "429":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "503":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }
@@ -1292,6 +1333,7 @@ paths:
           schema: { type: string }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Topic" }
@@ -1312,6 +1354,7 @@ paths:
             schema: { $ref: "#/components/schemas/TopicReviewRequest" }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Topic" }
@@ -1327,6 +1370,7 @@ paths:
             schema: { $ref: "#/components/schemas/CreateApplicationRequest" }
       responses:
         "201":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Application" }
@@ -1348,6 +1392,7 @@ paths:
           schema: { type: integer }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema:
@@ -1381,6 +1426,7 @@ paths:
             schema: { $ref: "#/components/schemas/PatchApplicationRequest" }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Application" }
@@ -1401,6 +1447,7 @@ paths:
             schema: { $ref: "#/components/schemas/ApplicationDecisionRequest" }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema:
@@ -1408,9 +1455,9 @@ paths:
                 properties:
                   application: { $ref: "#/components/schemas/Application" }
                   assignment:
-                    oneOf:
-                      - { $ref: "#/components/schemas/Assignment" }
-                      - { type: "null" }
+                    nullable: true
+                    allOf:
+                      - $ref: "#/components/schemas/Assignment"
 
   /assignments:
     get:
@@ -1425,6 +1472,7 @@ paths:
           schema: { type: integer }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema:
@@ -1447,6 +1495,7 @@ paths:
           schema: { type: string }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Assignment" }
@@ -1468,10 +1517,12 @@ paths:
           schema: { type: boolean, default: false }
       responses:
         "200":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/RecommendationTopicList" }
         "403":
+          description: OK
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorEnvelope" }

@@ -25,7 +25,8 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install --upgrade pip
-          python -m pip install pytest PyYAML import-linter openapi-spec-validator
+          python -m pip install Flask pytest PyYAML import-linter openapi-spec-validator \
+            flask-sqlalchemy Flask-Migrate Flask-JWT-Extended
 
       # 规则真源：spec/architecture.spec.md；可执行映射：scripts/arch_rules_registry.py
       # 本步 = import-linter（.importlinter）+ scripts/check_rules.py + tests/test_architecture.py

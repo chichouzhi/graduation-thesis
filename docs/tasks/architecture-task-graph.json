@@ -17,60 +17,65 @@
     {
       "id": "AG-001",
       "layer": "bootstrap",
-      "status": "ready",
+      "status": "done",
       "title": "Flask 应用工厂骨架（无业务域路由）",
       "priority": "P0",
       "max_duration_days": 2,
-      "depends_on": []
+      "depends_on": [],
+      "done_at": "2026-04-20T09:38:01.741785"
     },
     {
       "id": "AG-002",
       "layer": "bootstrap",
-      "status": "ready",
+      "status": "done",
       "title": "`app/extensions.py` 挂载 db/migrate/jwt 等扩展（占位可 import）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-001"
-      ]
+      ],
+      "done_at": "2026-04-20T09:41:55.135089"
     },
     {
       "id": "AG-003",
       "layer": "bootstrap",
-      "status": "ready",
+      "status": "done",
       "title": "`app/config.py`：production 缺 broker URL 时启动失败（R-NO-QUEUE）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-001"
-      ]
+      ],
+      "done_at": "2026-04-20T09:55:25.949446"
     },
     {
       "id": "AG-004",
       "layer": "bootstrap",
-      "status": "ready",
+      "status": "done",
       "title": "注册 `/api/v1` 与 8 域 Blueprint 空壳（路由文件可空）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-001"
-      ]
+      ],
+      "done_at": "2026-04-20T10:28:33.033026"
     },
     {
       "id": "AG-005",
       "layer": "common",
-      "status": "ready",
+      "status": "done",
       "title": "全局 `ErrorEnvelope` 序列化与 `error.code` 常量（对齐 contract 枚举）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-001"
-      ]
+      ],
+      "done_at": "2026-04-20T10:33:40.389584"
     },
     {
       "id": "AG-006",
       "layer": "common",
-      "status": "ready",
+      "status": "running",
       "title": "`PolicyGateway` / `assert_can_enqueue` 门面签名与依赖注入点",
       "priority": "P0",
       "max_duration_days": 2,
