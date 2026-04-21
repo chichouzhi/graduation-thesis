@@ -21,7 +21,7 @@ from app.selection.model import (
 )
 from app.task import queue as queue_mod
 from app.terms.model import Term
-from app.topic.model import Topic
+from app.topic.model import Topic, TopicStatus
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +30,21 @@ class SelectionService:
         self._identity = identity_service or IdentityService()
 
     @staticmethod
-    def _require_non_empty(name: str, value: str) -> str:
+    def _require_non_empty(name: str, value: str | None) -> str:
+        if value is None:
+            raise ValueError(f"{name} is required")
         text = str(value).strip()
         if not text:
             raise ValueError(f"{name} must be non-empty")
         return text
+
+    @staticmethod
+    def _strip_optional_query(value: str | None) -> str | None:
+        """Query 参数：``None`` 或仅空白视为「未传」，不参与过滤。"""
+        if value is None:
+            return None
+        s = str(value).strip()
+        return s or None
 
     @staticmethod
     def _in_selection_window(term: Term) -> bool:
@@ -46,6 +56,7 @@ class SelectionService:
         return True
 
     def create_application_as_student(self, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """创建志愿：``term_id`` 须与 ``Topic`` 一致；库级唯一约束 ``(student,term,topic)`` / ``(student,term,priority)``。"""
         uid = self._require_non_empty("user_id", user_id)
         user = self._identity.load_user_by_id(uid)
         if user is None:
@@ -54,14 +65,16 @@ class SelectionService:
             raise PermissionError("only student can create applications")
         if not isinstance(payload, dict):
             raise ValueError("payload must be a mapping")
-        topic_id = self._require_non_empty("topic_id", payload.get("topic_id", ""))
-        term_id = self._require_non_empty("term_id", payload.get("term_id", ""))
+        topic_id = self._require_non_empty("topic_id", payload.get("topic_id"))
+        term_id = self._require_non_empty("term_id", payload.get("term_id"))
         priority = int(payload.get("priority", 0))
         if priority not in (1, 2):
             raise ValueError("priority must be 1 or 2")
         topic = db.session.get(Topic, topic_id)
         if topic is None:
             raise ValueError("topic not found")
+        if topic.status != TopicStatus.published:
+            raise ValueError("topic is not published")
         if topic.term_id != term_id:
             raise ValueError("topic.term_id mismatch")
         term = db.session.get(Term, term_id)
@@ -93,6 +106,7 @@ class SelectionService:
         page: int = 1,
         page_size: int = 20,
     ) -> dict[str, Any]:
+        """志愿分页列表；契约 ``GET /applications``：``term_id`` / ``topic_id`` 过滤（教师侧含 ``topic_id``）。"""
         if page < 1 or page_size < 1:
             raise ValueError("page and page_size must be >= 1")
         uid = self._require_non_empty("user_id", user_id)
@@ -106,10 +120,12 @@ class SelectionService:
             q = q.join(Topic, Topic.id == Application.topic_id).filter(Topic.teacher_id == uid)
         elif user.role != UserRole.admin:
             raise PermissionError("role cannot list applications")
-        if term_id is not None:
-            q = q.filter(Application.term_id == str(term_id).strip())
-        if topic_id is not None:
-            q = q.filter(Application.topic_id == str(topic_id).strip())
+        term_key = self._strip_optional_query(term_id)
+        topic_key = self._strip_optional_query(topic_id)
+        if term_key is not None:
+            q = q.filter(Application.term_id == term_key)
+        if topic_key is not None:
+            q = q.filter(Application.topic_id == topic_key)
         q = q.order_by(Application.created_at.desc(), Application.id.desc())
         total = q.count()
         rows = q.offset((page - 1) * page_size).limit(page_size).all()
@@ -117,6 +133,7 @@ class SelectionService:
         return {"items": items, "page": page, "page_size": page_size, "total": total}
 
     def withdraw_application_as_student(self, user_id: str, application_id: str) -> bool:
+        """撤销志愿：须为本人 ``pending`` 志愿，且学期 ``selection_*`` 窗口内（契约 ``DELETE /applications/{id}``）。"""
         uid = self._require_non_empty("user_id", user_id)
         aid = self._require_non_empty("application_id", application_id)
         user = self._identity.load_user_by_id(uid)
@@ -139,6 +156,7 @@ class SelectionService:
     def update_application_priority_as_student(
         self, user_id: str, application_id: str, payload: dict[str, Any]
     ) -> dict[str, Any] | None:
+        """调整志愿优先级（仅 ``1``/``2``）：须为本人 ``pending`` 且在学期志愿填报窗口内（契约 ``PATCH /applications/{id}``）。"""
         uid = self._require_non_empty("user_id", user_id)
         aid = self._require_non_empty("application_id", application_id)
         user = self._identity.load_user_by_id(uid)
@@ -170,6 +188,12 @@ class SelectionService:
     def teacher_accept_application(
         self, application_id: str, action: str, teacher_id: str, **kwargs: Any
     ) -> dict[str, Any]:
+        """教师决策：``reject`` 在单事务内将 ``applications.status`` 置 ``rejected`` 并 ``commit``（不入队）。
+
+        ``accept``：**同一 ``commit``** 内写入 ``assignments(active)``、将本行 ``accepted``、
+        **父课题 ``topics.selected_count += 1``**，并将同学期其它 ``pending`` 志愿置 ``superseded``；
+        **主事务 ``commit`` 成功后** 再调 ``enqueue_reconcile_jobs``（其内 **Policy → broker 入队**，失败见 ``ReconcileDispatchFailure``，不改变已提交主事务结果）。
+        """
         aid = self._require_non_empty("application_id", application_id)
         teacher_uid = self._require_non_empty("teacher_id", teacher_id)
         decided_action = self._require_non_empty("action", action)

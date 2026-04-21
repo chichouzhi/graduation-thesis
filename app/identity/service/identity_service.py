@@ -190,3 +190,12 @@ class IdentityService:
             return None
         return self.issue_access_token(user)
 
+    def login_with_refresh_session(self, username: str, password: str) -> dict[str, Any] | None:
+        """登录成功时返回 ``LoginResponse`` 体与 HttpOnly refresh ``set_cookie`` 参数；凭据错误返回 ``None``。"""
+        user = self.validate_credentials(username, password)
+        if user is None:
+            return None
+        login_body = self.issue_access_token(user)
+        refresh = self.rotate_refresh_token(user)
+        return {"login": login_body, "refresh_cookie": refresh["cookie"]}
+

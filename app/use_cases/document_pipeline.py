@@ -85,6 +85,45 @@ def parse_document_job_idempotency_key(key: str) -> tuple[str, DocumentJobStage,
     return tid, st, chunk
 
 
+def build_document_job_payloads_for_plan(
+    plan: DocumentChunkingPlan,
+    *,
+    document_task_id: str,
+    user_id: str,
+    storage_path: str,
+    term_id: str,
+    request_id: str | None = None,
+) -> tuple[dict[str, Any], ...]:
+    """由默认分块计划生成 ``document_jobs`` 契约载荷列表（纯数据、无 IO）。
+
+    供 ``pdf_parse`` worker 在 **PDF 抽取成功** 且已具备 ``max_chunks`` 之后，
+    按 ADR 经本模块决策再 ``enqueue_document_jobs``；顺序与
+    :func:`expand_default_document_job_plan` 一致。
+    """
+    tid = (document_task_id or "").strip()
+    uid = (user_id or "").strip()
+    sp = (storage_path or "").strip()
+    te = (term_id or "").strip()
+    if not tid or not uid or not sp or not te:
+        raise ValueError("document_task_id, user_id, storage_path, term_id must be non-empty")
+
+    jobs: list[dict[str, Any]] = []
+    for item in expand_default_document_job_plan(plan):
+        body: dict[str, Any] = {
+            "document_task_id": tid,
+            "user_id": uid,
+            "storage_path": sp,
+            "term_id": te,
+            "stage": item.stage.value,
+            "chunk_index": item.chunk_index,
+            "max_chunks": int(plan.max_chunks),
+        }
+        if request_id is not None:
+            body["request_id"] = request_id
+        jobs.append(body)
+    return tuple(jobs)
+
+
 def expand_default_document_job_plan(plan: DocumentChunkingPlan) -> tuple[PlannedDocumentJob, ...]:
     """默认流水线：``extract`` → 每块 ``summarize_chunk`` → ``aggregate`` → ``finalize``。
 

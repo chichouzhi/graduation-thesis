@@ -1069,6 +1069,84 @@ class TestImplementationOutputsMatchContract:
         )
         assert errors == [], f"DocumentService enqueue payload must satisfy PdfJobPayload; errors: {errors}"
 
+    def test_document_create_task_202_body_matches_document_task_schema(
+        self,
+        contract: dict[str, Any],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(
+            "app.document.service.document_service.queue_mod.enqueue_pdf_parse",
+            lambda *_a, **_k: {"job_id": "00000000-0000-0000-0000-000000000089"},
+            raising=True,
+        )
+        from app import create_app
+        from app.extensions import db
+        from app.identity.model import User, UserRole
+        from app.terms.model import Term
+        from app.document.service.document_service import DocumentService
+
+        app = create_app()
+        with app.app_context():
+            db.create_all()
+            user = User(username="ct-doc-u2", role=UserRole.student, display_name="u2")
+            term = Term(name="ct-doc-term-2")
+            db.session.add_all([user, term])
+            db.session.commit()
+            body = DocumentService().create_document_task(
+                user_id=user.id,
+                term_id=term.id,
+                storage_path="/tmp/contract-doc.pdf",
+                filename="contract-doc.pdf",
+            )
+        errors = validate_instance(
+            body,
+            schema_by_name(contract, "DocumentTask"),
+            contract,
+        )
+        assert errors == [], f"POST /document-tasks 202 DocumentTask body; errors: {errors}"
+
+    def test_topic_get_body_matches_topic_schema(
+        self,
+        contract: dict[str, Any],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(
+            "app.topic.service.topic_service.queue_mod.enqueue_keyword_jobs",
+            lambda *_a, **_k: {"job_id": "00000000-0000-0000-0000-000000000090"},
+            raising=True,
+        )
+        from app import create_app
+        from app.extensions import db
+        from app.identity.model import User, UserRole
+        from app.terms.model import Term
+        from app.topic.service.topic_service import TopicService
+
+        app = create_app()
+        with app.app_context():
+            db.create_all()
+            teacher = User(username="ct-topic-get", role=UserRole.teacher, display_name="t")
+            term = Term(name="ct-topic-term")
+            db.session.add_all([teacher, term])
+            db.session.commit()
+            created = TopicService().create_topic_as_teacher(
+                teacher.id,
+                {
+                    "title": "T",
+                    "summary": "S",
+                    "requirements": "R",
+                    "capacity": 3,
+                    "term_id": term.id,
+                },
+            )
+            body = TopicService().get_topic(created["id"])
+        assert body is not None
+        errors = validate_instance(
+            body,
+            schema_by_name(contract, "Topic"),
+            contract,
+        )
+        assert errors == [], f"GET /topics/{{topic_id}} Topic body; errors: {errors}"
+
     def test_selection_accept_enqueue_payload_matches_reconcile_job_payload(
         self,
         contract: dict[str, Any],

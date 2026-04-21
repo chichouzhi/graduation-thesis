@@ -58,8 +58,9 @@ def test_get_term_for_user_applies_student_visibility() -> None:
     with app.app_context():
         db.create_all()
         student = _create_user(username="s2", role=UserRole.student)
-        older = _create_term("2025 秋")
-        latest = _create_term("2026 春")
+        base = datetime.now(timezone.utc).replace(tzinfo=None)
+        older = _create_term("2025 秋", created_at=base)
+        latest = _create_term("2026 春", created_at=base + timedelta(seconds=1))
         svc = TermService()
 
         assert svc.get_term_for_user(student.id, latest.id) is not None
@@ -150,8 +151,9 @@ def test_get_llm_config_for_user_visibility_and_missing_config() -> None:
     with app.app_context():
         db.create_all()
         student = _create_user(username="s3", role=UserRole.student)
-        older = _create_term("2030 春")
-        latest = _create_term("2030 秋")
+        base = datetime.now(timezone.utc).replace(tzinfo=None)
+        older = _create_term("2030 春", created_at=base)
+        latest = _create_term("2030 秋", created_at=base + timedelta(seconds=1))
         svc = TermService()
 
         # Student cannot read non-visible term config.

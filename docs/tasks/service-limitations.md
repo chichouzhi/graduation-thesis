@@ -35,3 +35,8 @@
 ## AG-079 / AG-080
 - Recommendation scoring is an in-memory keyword overlap baseline over existing topic/profile fields, without offline feature weights or collaborative filtering.
 - `explain` currently returns deterministic matched-keyword reasons; richer explanation templates and confidence calibration are not yet implemented.
+
+## AG-081（后续可补充）
+- `pdf_parse` 成功写回仅 `result_json.pdf_parse_outline`（页数、`max_chunks`、各页字符数）；**未**持久化分块全文或独立中间文件 URI。若要让 `document_jobs` 少重复读盘或支持断点，需在契约/ADR 中约定中间产物形状与读写方。
+- `enqueue_document_jobs` 仍无 `PolicyGateway.assert_can_enqueue` 包装（与 `enqueue_reconcile_jobs` 不同）；若要对文献队列做统一配额/封禁，需扩展 `queue.py` / 契约并补测试。
+- 解析成功后按 `expand_default_document_job_plan` **一次性**入队全部 `document_jobs`；高页数 PDF 下的队列峰值未做按波次（如结合 `chunk_summarize_waves`）的延迟入队或限流。

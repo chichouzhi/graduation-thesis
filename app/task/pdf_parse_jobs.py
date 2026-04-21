@@ -32,15 +32,23 @@ def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
         msg_raw = patch.get("error_message")
         task.error_message = None if msg_raw is None else str(msg_raw)
 
+    result_patch = patch.get("result_patch")
+    if isinstance(result_patch, dict):
+        base = dict(task.result_json or {})
+        base.update(result_patch)
+        task.result_json = base
+
     db.session.commit()
 
 
 def handle_pdf_parse_job(payload: dict[str, Any]) -> tuple[dict[str, Any], ...]:
     typed = PdfJobPayload.from_mapping(payload)
-    jobs = parse_pdf_and_plan_document_jobs(typed)
-    for job in jobs:
+    plan = parse_pdf_and_plan_document_jobs(typed)
+    # ADR：先持久化最小「可分块中间态」元数据，再按 document_pipeline 计划入队 document_jobs。
+    _default_writeback(typed.document_task_id, {"result_patch": plan.parsed_meta_for_result_json})
+    for job in plan.document_job_payloads:
         queue_mod.enqueue_document_jobs(job)
-    return jobs
+    return plan.document_job_payloads
 
 
 def run(payload: dict[str, Any]) -> None:

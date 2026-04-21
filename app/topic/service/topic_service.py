@@ -61,6 +61,7 @@ class TopicService:
         return "\n".join(lines).strip()
 
     def _sync_portrait(self, *, title: str, summary: str, requirements: str, tech_keywords: list[str]) -> dict[str, Any]:
+        """同步写 ``topics.portrait_json``：``tech_keywords`` 优先，再并入 ``adapter.nlp.tokenize``（Jieba）分词去重。"""
         text = "\n".join([title, summary, requirements]).strip()
         tokens = nlp_mod.tokenize(text)
         merged: list[str] = []
@@ -99,7 +100,15 @@ class TopicService:
         rows = query.offset((page - 1) * page_size).limit(page_size).all()
         return {"items": [x.to_topic() for x in rows], "page": page, "page_size": page_size, "total": total}
 
+    def get_topic(self, topic_id: str) -> dict[str, Any] | None:
+        """Return a single topic by id, or ``None`` if missing."""
+        row = Topic.query.filter_by(id=str(topic_id).strip()).one_or_none()
+        if row is None:
+            return None
+        return row.to_topic()
+
     def create_topic_as_teacher(self, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """M-POLICY-ENQUEUE（``keyword_jobs``）：Policy → ``topics`` 行 ``commit`` → ``enqueue_keyword_jobs``。"""
         uid, role = self._require_teacher_or_admin(user_id)
         if not isinstance(payload, dict):
             raise ValueError("payload must be a mapping")
@@ -153,6 +162,7 @@ class TopicService:
         return row.to_topic()
 
     def update_topic_as_teacher(self, user_id: str, topic_id: str, payload: dict[str, Any]) -> dict[str, Any] | None:
+        """文本变更且将入队 ``keyword_jobs`` 时：M-POLICY-ENQUEUE（Policy → ``commit`` → enqueue）；否则仅持久化字段（如容量）。"""
         uid, role = self._require_teacher_or_admin(user_id)
         if not isinstance(payload, dict):
             raise ValueError("payload must be a mapping")
@@ -190,9 +200,13 @@ class TopicService:
             )
             row.llm_keyword_job_id = str(uuid.uuid4())
             row.llm_keyword_job_status = TopicKeywordJobStatus.pending
-
-        policy_gateway = get_policy_gateway()
-        policy_gateway.assert_can_enqueue(queue=queue_mod.KEYWORD_JOBS, user_id=uid, term_id=row.term_id, role=role.value)
+            policy_gateway = get_policy_gateway()
+            policy_gateway.assert_can_enqueue(
+                queue=queue_mod.KEYWORD_JOBS,
+                user_id=uid,
+                term_id=row.term_id,
+                role=role.value,
+            )
         db.session.commit()
         if changed_text:
             try:
@@ -223,13 +237,18 @@ class TopicService:
             return False
         if role != UserRole.admin and row.teacher_id != uid:
             raise PermissionError("teacher can only delete own topics")
-        if row.status not in {TopicStatus.draft, TopicStatus.rejected}:
-            raise ValueError("only draft/rejected topic can be withdrawn")
+        if row.status not in {
+            TopicStatus.draft,
+            TopicStatus.rejected,
+            TopicStatus.pending_review,
+        }:
+            raise ValueError("only draft, rejected, or pending_review topic can be withdrawn")
         row.status = TopicStatus.closed
         db.session.commit()
         return True
 
     def submit_topic_for_review(self, user_id: str, topic_id: str) -> dict[str, Any] | None:
+        """``draft`` / ``rejected`` → ``pending_review``（无 LLM、无队列入队）。"""
         uid, role = self._require_teacher_or_admin(user_id)
         row = Topic.query.filter_by(id=str(topic_id).strip()).one_or_none()
         if row is None:
@@ -243,6 +262,10 @@ class TopicService:
         return row.to_topic()
 
     def review_topic_as_admin(self, user_id: str, topic_id: str, payload: dict[str, Any]) -> dict[str, Any] | None:
+        """``pending_review`` + ``approve`` → ``published``；``reject`` → ``rejected``（无 LLM）。
+
+        ``TopicReviewRequest.comment`` 可为 API 透传校验；持久化审计另见任务规划。
+        """
         uid = self._require_non_empty("user_id", user_id)
         user = self._identity.load_user_by_id(uid)
         if user is None:
@@ -257,6 +280,10 @@ class TopicService:
         if row.status != TopicStatus.pending_review:
             raise ValueError("only pending_review topic can be reviewed")
         action = self._require_non_empty("action", payload.get("action", ""))
+        if "comment" in payload:
+            comment = payload.get("comment")
+            if comment is not None and not isinstance(comment, str):
+                raise ValueError("comment must be a string")
         if action == "approve":
             row.status = TopicStatus.published
         elif action == "reject":

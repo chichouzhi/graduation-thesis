@@ -8,7 +8,7 @@ from typing import Any
 from app.adapter.pdf import parse_document
 from app.use_cases.document_pipeline import (
     DocumentChunkingPlan,
-    expand_default_document_job_plan,
+    build_document_job_payloads_for_plan,
 )
 
 _PDF_EXTRACT_STAGE = "pdf_extract"
@@ -52,8 +52,29 @@ class PdfJobPayload:
         )
 
 
-def parse_pdf_and_plan_document_jobs(payload: PdfJobPayload) -> tuple[dict[str, Any], ...]:
-    """Parse PDF and generate ``document_jobs`` payloads via document pipeline."""
+@dataclass(frozen=True, slots=True)
+class PdfParseSuccessPlan:
+    """``pdf_parse`` 成功路径：UC 决策出的 ``document_jobs`` 载荷 + 可落库的最小解析轮廓（ADR）。"""
+
+    document_job_payloads: tuple[dict[str, Any], ...]
+    parsed_meta_for_result_json: dict[str, Any]
+
+
+def _parsed_meta_for_writeback(parsed: dict[str, Any], *, max_chunks: int) -> dict[str, Any]:
+    """写入 ``result_json`` 的 ``pdf_parse_outline``（不含全文，避免撑爆 JSON 列）。"""
+    pages = parsed.get("pages") if isinstance(parsed.get("pages"), list) else []
+    page_count = int(parsed.get("page_count", max_chunks))
+    return {
+        "pdf_parse_outline": {
+            "page_count": page_count,
+            "max_chunks": int(max_chunks),
+            "page_text_char_counts": [len(str(p.get("text", ""))) for p in pages],
+        }
+    }
+
+
+def parse_pdf_and_plan_document_jobs(payload: PdfJobPayload) -> PdfParseSuccessPlan:
+    """解析 PDF，经 ``document_pipeline`` 生成默认 ``document_jobs`` 入队计划（无 LLM）。"""
     parsed = parse_document(payload.storage_path)
     pages = parsed.get("pages")
     if isinstance(pages, list):
@@ -64,18 +85,13 @@ def parse_pdf_and_plan_document_jobs(payload: PdfJobPayload) -> tuple[dict[str, 
         raise ValueError("parsed pdf must contain at least one page")
 
     plan = DocumentChunkingPlan(max_chunks=max_chunks)
-    jobs = []
-    for item in expand_default_document_job_plan(plan):
-        job_payload: dict[str, Any] = {
-            "document_task_id": payload.document_task_id,
-            "user_id": payload.user_id,
-            "storage_path": payload.storage_path,
-            "term_id": payload.term_id,
-            "stage": item.stage.value,
-            "chunk_index": item.chunk_index,
-            "max_chunks": max_chunks,
-        }
-        if payload.request_id is not None:
-            job_payload["request_id"] = payload.request_id
-        jobs.append(job_payload)
-    return tuple(jobs)
+    payloads = build_document_job_payloads_for_plan(
+        plan,
+        document_task_id=payload.document_task_id,
+        user_id=payload.user_id,
+        storage_path=payload.storage_path,
+        term_id=payload.term_id,
+        request_id=payload.request_id,
+    )
+    meta = _parsed_meta_for_writeback(parsed, max_chunks=max_chunks)
+    return PdfParseSuccessPlan(document_job_payloads=payloads, parsed_meta_for_result_json=meta)

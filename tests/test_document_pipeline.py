@@ -8,6 +8,7 @@ from app.use_cases.document_pipeline import (
     DocumentJobStage,
     PlannedDocumentJob,
     assert_valid_stage_and_chunk,
+    build_document_job_payloads_for_plan,
     chunk_summarize_waves,
     expand_default_document_job_plan,
     format_document_job_idempotency_key,
@@ -58,6 +59,31 @@ def test_control_stage_rejects_chunk_index() -> None:
             stage=DocumentJobStage.EXTRACT,
             chunk_index=0,
         )
+
+
+def test_build_document_job_payloads_for_plan_matches_default_plan() -> None:
+    plan = DocumentChunkingPlan(max_chunks=2)
+    payloads = build_document_job_payloads_for_plan(
+        plan,
+        document_task_id="d1",
+        user_id="u1",
+        storage_path="/x.pdf",
+        term_id="t1",
+        request_id="r1",
+    )
+    planned = expand_default_document_job_plan(plan)
+    assert len(payloads) == len(planned)
+    assert payloads[0]["stage"] == "extract" and payloads[0]["chunk_index"] is None
+    assert payloads[1] == {
+        "document_task_id": "d1",
+        "user_id": "u1",
+        "storage_path": "/x.pdf",
+        "term_id": "t1",
+        "stage": "summarize_chunk",
+        "chunk_index": 0,
+        "max_chunks": 2,
+        "request_id": "r1",
+    }
 
 
 def test_expand_default_plan_three_chunks() -> None:

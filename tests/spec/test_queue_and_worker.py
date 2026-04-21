@@ -127,10 +127,12 @@ def test_enqueue_reconcile_jobs_runs_policy_when_policy_context_given(
 ) -> None:
     policy_calls: list[dict[str, object]] = []
 
-    def capture_policy(*, queue: str, **context: object) -> None:
-        policy_calls.append({"queue": queue, **context})
+    class _GatewaySpy:
+        @staticmethod
+        def assert_can_enqueue(*, queue: str, **context: object) -> None:
+            policy_calls.append({"queue": queue, **context})
 
-    monkeypatch.setattr("app.task.queue.PolicyGateway.assert_can_enqueue", capture_policy)
+    monkeypatch.setattr("app.extensions.get_policy_gateway", lambda: _GatewaySpy())
 
     seen: list[tuple[str, dict | None]] = []
 

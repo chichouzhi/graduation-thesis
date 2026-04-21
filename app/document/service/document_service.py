@@ -20,11 +20,18 @@ class DocumentService:
         self._identity = identity_service or IdentityService()
 
     @staticmethod
-    def _require_non_empty(name: str, value: str) -> str:
+    def _require_non_empty(name: str, value: str | None) -> str:
+        if value is None:
+            raise ValueError(f"{name} is required")
         text = str(value).strip()
         if not text:
             raise ValueError(f"{name} must be non-empty")
         return text
+
+    @staticmethod
+    def _validate_pdf_filename(filename: str) -> None:
+        if not filename.lower().endswith(".pdf"):
+            raise ValueError("filename must be a PDF file (*.pdf)")
 
     @staticmethod
     def _parse_task_type(value: str | None) -> DocumentTaskType:
@@ -62,20 +69,22 @@ class DocumentService:
     def create_document_task(
         self, user_id: str, term_id: str, storage_path: str, filename: str, **kwargs: Any
     ) -> dict[str, Any]:
+        """M-POLICY-ENQUEUE：Policy → Storage（若有）→ ``document_tasks(status=pending)`` → ``commit`` → ``enqueue_pdf_parse``。
+
+        成功返回体与 ``contract.yaml`` → ``DocumentTask`` 一致（受理 **202**）。入队失败时任务行补偿为 ``failed`` + ``QUEUE_UNAVAILABLE`` 并抛出 :exc:`PolicyDenied`。
+        """
         normalized_user_id = self._require_non_empty("user_id", user_id)
         normalized_term_id = self._require_non_empty("term_id", term_id)
         normalized_filename = self._require_non_empty("filename", filename)
+        self._validate_pdf_filename(normalized_filename)
         task_type = self._parse_task_type(kwargs.pop("task_type", None))
         language = self._parse_language(kwargs.pop("language", None))
         file_bytes = kwargs.pop("file_bytes", None)
-        if file_bytes is not None and not isinstance(file_bytes, bytes):
-            raise ValueError("file_bytes must be bytes when provided")
-        normalized_storage_path = self._resolve_storage_path(
-            user_id=normalized_user_id,
-            filename=normalized_filename,
-            storage_path=storage_path,
-            file_bytes=file_bytes,
-        )
+        if file_bytes is not None:
+            if not isinstance(file_bytes, bytes):
+                raise ValueError("file_bytes must be bytes when provided")
+            if len(file_bytes) == 0:
+                raise ValueError("file must not be empty")
 
         identity = getattr(self, "_identity", IdentityService())
         if identity.load_user_by_id(normalized_user_id) is None:
@@ -88,6 +97,13 @@ class DocumentService:
             queue=queue_mod.PDF_PARSE,
             user_id=normalized_user_id,
             term_id=normalized_term_id,
+        )
+
+        normalized_storage_path = self._resolve_storage_path(
+            user_id=normalized_user_id,
+            filename=normalized_filename,
+            storage_path=storage_path,
+            file_bytes=file_bytes,
         )
 
         task_row = DocumentTask(

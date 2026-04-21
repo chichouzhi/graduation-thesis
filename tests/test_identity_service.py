@@ -206,6 +206,28 @@ def test_authenticate_and_issue_access_token_success_and_failure() -> None:
         assert bad_payload is None
 
 
+def test_login_with_refresh_session_returns_login_and_cookie_params() -> None:
+    app = create_app()
+    app.config["ACCESS_TOKEN_EXPIRES_IN"] = 600
+    app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False
+    with app.app_context():
+        db.create_all()
+        _create_user(username="login-wrap", password="wrap-pass")
+        svc = IdentityService()
+
+        ok = svc.login_with_refresh_session("login-wrap", "wrap-pass")
+        bad = svc.login_with_refresh_session("login-wrap", "nope")
+
+        assert bad is None
+        assert ok is not None
+        assert ok["login"]["expires_in"] == 600
+        assert ok["login"]["user"]["username"] == "login-wrap"
+        ck = ok["refresh_cookie"]
+        assert ck["key"] == "refresh_token"
+        assert isinstance(ck["value"], str) and ck["value"]
+        assert ck["httponly"] is True
+
+
 def test_issue_refresh_token_and_rotate_cookie_payload() -> None:
     app = create_app()
     app.config["REFRESH_TOKEN_EXPIRES_IN"] = 7200

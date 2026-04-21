@@ -882,42 +882,45 @@
     {
       "id": "AG-066",
       "layer": "service",
-      "status": "running",
+      "status": "done",
       "title": "`ChatService`：`enqueue` 失败补偿为 `failed` + `QUEUE_UNAVAILABLE`（占位/任务行）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-065"
-      ]
+      ],
+      "done_at": "2026-04-21T10:40:24.501478"
     },
     {
       "id": "AG-067",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`DocumentService`：multipart 校验与 `term_id` 必填语义",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-014",
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-21T11:22:09.508709"
     },
     {
       "id": "AG-068",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`DocumentService`：`adapter.storage` 落盘与 `storage_path` 写入任务行",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-067",
         "AG-030"
-      ]
+      ],
+      "done_at": "2026-04-21T11:25:04.251582"
     },
     {
       "id": "AG-069",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`DocumentService`：Policy → `document_tasks(pending)` → `commit` → `enqueue_pdf_parse`",
       "priority": "P0",
       "max_duration_days": 2,
@@ -925,36 +928,39 @@
         "AG-068",
         "AG-006",
         "AG-039"
-      ]
+      ],
+      "done_at": "2026-04-21T11:25:57.990625"
     },
     {
       "id": "AG-070",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`DocumentService`：`enqueue` 失败补偿与 **202** `DocumentTask` 形状（契约字段）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-069",
         "AG-005"
-      ]
+      ],
+      "done_at": "2026-04-21T11:29:32.227776"
     },
     {
       "id": "AG-071",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`TopicService`：课题 CRUD（不含 LLM）与删除/撤回规则",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-015",
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-21T11:37:19.297676"
     },
     {
       "id": "AG-072",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`TopicService`：`adapter.nlp`（Jieba）同步写画像字段",
       "priority": "P0",
       "max_duration_days": 2,
@@ -962,12 +968,13 @@
         "AG-071",
         "AG-031",
         "AG-016"
-      ]
+      ],
+      "done_at": "2026-04-21T11:42:34.177490"
     },
     {
       "id": "AG-073",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`TopicService`：`keyword_jobs` 路径 Policy → `commit` → `enqueue_keyword_jobs`",
       "priority": "P0",
       "max_duration_days": 2,
@@ -975,23 +982,25 @@
         "AG-072",
         "AG-006",
         "AG-041"
-      ]
+      ],
+      "done_at": "2026-04-21T11:47:27.287333"
     },
     {
       "id": "AG-074",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`TopicService`：提交审核/管理员审核状态迁移（无 LLM）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-071"
-      ]
+      ],
+      "done_at": "2026-04-21T11:52:35.126721"
     },
     {
       "id": "AG-075a",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`SelectionService`：创建志愿（唯一约束与 `term_id`）",
       "priority": "P0",
       "max_duration_days": 2,
@@ -999,24 +1008,26 @@
         "AG-017",
         "AG-009",
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-21T11:54:42.345328"
     },
     {
       "id": "AG-075b",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`SelectionService`：志愿列表与过滤（教师 `topic_id` 等）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-017",
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-21T11:57:27.081876"
     },
     {
       "id": "AG-075c",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`SelectionService`：撤销志愿（窗口与状态规则）",
       "priority": "P0",
       "max_duration_days": 2,
@@ -1024,60 +1035,65 @@
         "AG-017",
         "AG-009",
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-21T12:04:57.374869"
     },
     {
       "id": "AG-075d",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`SelectionService`：修改志愿优先级（允许窗口内）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-017",
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-21T12:06:07.158917"
     },
     {
       "id": "AG-076",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`SelectionService`：教师 `reject` 单事务与状态回写",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-075b",
         "AG-018"
-      ]
+      ],
+      "done_at": "2026-04-21T12:07:18.962519"
     },
     {
       "id": "AG-077",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`SelectionService`：教师 `accept` — `assignments` + `selected_count` 同事务",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-075b",
         "AG-018"
-      ]
+      ],
+      "done_at": "2026-04-21T12:10:24.837923"
     },
     {
       "id": "AG-078",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`SelectionService`：`accept` **commit 成功后** Policy/同等检查 → `enqueue_reconcile_jobs`（P0）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-077",
         "AG-042"
-      ]
+      ],
+      "done_at": "2026-04-21T12:52:45.505560"
     },
     {
       "id": "AG-079",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`RecommendService`：Top-N 打分查询（只读 SQL/内存，无 LLM）",
       "priority": "P0",
       "max_duration_days": 2,
@@ -1085,7 +1101,8 @@
         "AG-015",
         "AG-016",
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-21T12:55:05.012041"
     },
     {
       "id": "AG-080",
@@ -1101,7 +1118,7 @@
     {
       "id": "AG-081",
       "layer": "document_enqueue_chain",
-      "status": "ready",
+      "status": "done",
       "title": "`pdf_parse` 成功路径：由 `document_pipeline`/UC 决策触发 `enqueue_document_jobs`（对齐 ADR）",
       "priority": "P0",
       "max_duration_days": 2,
@@ -1109,24 +1126,26 @@
         "AG-044",
         "AG-034",
         "AG-040"
-      ]
+      ],
+      "done_at": "2026-04-21T13:04:27.035289"
     },
     {
       "id": "AG-082",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.identity.api`：`POST /auth/login` 仅转 `IdentityService`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-004",
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-21T14:32:28.431898"
     },
     {
       "id": "AG-083",
       "layer": "api",
-      "status": "ready",
+      "status": "running",
       "title": "`app.identity.api`：`POST /auth/refresh`",
       "priority": "P0",
       "max_duration_days": 2,

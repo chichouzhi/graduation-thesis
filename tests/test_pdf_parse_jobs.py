@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from app.task.pdf_parse_jobs import handle_pdf_parse_job, run
-from app.use_cases.document_pdf_parse import PdfJobPayload, parse_pdf_and_plan_document_jobs
+from app.use_cases.document_pdf_parse import PdfJobPayload, PdfParseSuccessPlan, parse_pdf_and_plan_document_jobs
 
 
 def _valid_pdf_payload() -> dict[str, str]:
@@ -46,7 +46,8 @@ def test_parse_pdf_and_plan_document_jobs_hooks_adapter_and_pipeline(
 
     monkeypatch.setattr("app.use_cases.document_pdf_parse.parse_document", fake_parse_document)
     payload = PdfJobPayload.from_mapping(_valid_pdf_payload())
-    jobs = parse_pdf_and_plan_document_jobs(payload)
+    plan = parse_pdf_and_plan_document_jobs(payload)
+    jobs = plan.document_job_payloads
 
     assert called_paths == ["/tmp/demo.pdf"]
     assert len(jobs) == 5  # extract + 2 summarize_chunk + aggregate + finalize
@@ -54,30 +55,67 @@ def test_parse_pdf_and_plan_document_jobs_hooks_adapter_and_pipeline(
     assert jobs[1]["stage"] == "summarize_chunk"
     assert jobs[-1]["stage"] == "finalize"
     assert all(job["request_id"] == "req-1" for job in jobs)
+    assert plan.parsed_meta_for_result_json["pdf_parse_outline"]["max_chunks"] == 2
+    assert plan.parsed_meta_for_result_json["pdf_parse_outline"]["page_text_char_counts"] == [1, 1]
 
 
 def test_handle_pdf_parse_job_enqueues_document_jobs(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     enqueued: list[dict[str, object]] = []
+    writebacks: list[tuple[str, dict[str, object]]] = []
+    events: list[str] = []
 
-    def fake_planner(_: PdfJobPayload) -> tuple[dict[str, object], ...]:
-        return (
-            {"document_task_id": "dt-1", "user_id": "u-1", "storage_path": "/tmp/demo.pdf", "term_id": "term-1", "stage": "extract", "chunk_index": None, "max_chunks": 1},
-            {"document_task_id": "dt-1", "user_id": "u-1", "storage_path": "/tmp/demo.pdf", "term_id": "term-1", "stage": "finalize", "chunk_index": None, "max_chunks": 1},
+    def fake_planner(_: PdfJobPayload) -> PdfParseSuccessPlan:
+        payloads = (
+            {
+                "document_task_id": "dt-1",
+                "user_id": "u-1",
+                "storage_path": "/tmp/demo.pdf",
+                "term_id": "term-1",
+                "stage": "extract",
+                "chunk_index": None,
+                "max_chunks": 1,
+            },
+            {
+                "document_task_id": "dt-1",
+                "user_id": "u-1",
+                "storage_path": "/tmp/demo.pdf",
+                "term_id": "term-1",
+                "stage": "finalize",
+                "chunk_index": None,
+                "max_chunks": 1,
+            },
+        )
+        return PdfParseSuccessPlan(
+            document_job_payloads=payloads,
+            parsed_meta_for_result_json={"pdf_parse_outline": {"page_count": 1, "max_chunks": 1, "page_text_char_counts": [9]}},
         )
 
     def fake_enqueue(payload: dict[str, object] | None = None, **_: object) -> dict[str, str]:
         assert payload is not None
+        events.append("enqueue")
         enqueued.append(payload)
         return {"job_id": "doc-job"}
 
+    def capture_writeback(document_task_id: str, patch: dict[str, object]) -> None:
+        events.append("writeback_meta")
+        writebacks.append((document_task_id, patch))
+
     monkeypatch.setattr("app.task.pdf_parse_jobs.parse_pdf_and_plan_document_jobs", fake_planner)
     monkeypatch.setattr("app.task.pdf_parse_jobs.queue_mod.enqueue_document_jobs", fake_enqueue)
+    monkeypatch.setattr("app.task.pdf_parse_jobs._default_writeback", capture_writeback)
 
     jobs = handle_pdf_parse_job(_valid_pdf_payload())
     assert len(jobs) == 2
     assert enqueued == list(jobs)
+    assert writebacks == [
+        (
+            "dt-1",
+            {"result_patch": {"pdf_parse_outline": {"page_count": 1, "max_chunks": 1, "page_text_char_counts": [9]}}},
+        )
+    ]
+    assert events == ["writeback_meta", "enqueue", "enqueue"]
 
 
 def test_run_writes_failed_status_when_pdf_parse_raises(

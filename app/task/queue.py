@@ -5,8 +5,6 @@ from __future__ import annotations
 import uuid
 from typing import Any
 
-from app.common.policy import PolicyGateway
-
 # x-task-contracts.queues — spec/contract.yaml
 CHAT_JOBS = "chat_jobs"
 PDF_PARSE = "pdf_parse"
@@ -56,11 +54,13 @@ def enqueue_reconcile_jobs(
 ) -> dict[str, str]:
     """入队 ``reconcile_jobs``（``#/components/schemas/ReconcileJobPayload``）。
 
-    入队前必须执行 ``PolicyGateway.assert_can_enqueue``（与受理侧 **M-POLICY-ENQUEUE** 同等）。
+    入队前经 ``get_policy_gateway().assert_can_enqueue``（与 **SVC** 侧 **PolicyGateway** 注入一致，**M-POLICY-ENQUEUE**）。
     """
     if policy_context is None:
         raise ValueError("policy_context is required for reconcile enqueue")
-    PolicyGateway.assert_can_enqueue(queue=RECONCILE_JOBS, **policy_context)
+    from app.extensions import get_policy_gateway
+
+    get_policy_gateway().assert_can_enqueue(queue=RECONCILE_JOBS, **policy_context)
     return enqueue(RECONCILE_JOBS, payload, **kwargs)
 
 

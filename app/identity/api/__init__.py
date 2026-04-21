@@ -1,4 +1,4 @@
-"""Identity HTTP API Blueprint（AG-004 空壳；具体路由见后续 AG-*）。"""
+"""Identity HTTP API Blueprint（AG-004；``POST /auth/login`` 见 AG-082）。"""
 from __future__ import annotations
 
 from flask import Blueprint
