@@ -1107,13 +1107,14 @@
     {
       "id": "AG-080",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`RecommendService`：`explain` 分支与 **403** 角色守卫",
       "priority": "P1",
       "max_duration_days": 2,
       "depends_on": [
         "AG-079"
-      ]
+      ],
+      "done_at": "2026-04-22T12:02:27.772271"
     },
     {
       "id": "AG-081",
@@ -1145,122 +1146,132 @@
     {
       "id": "AG-083",
       "layer": "api",
-      "status": "running",
+      "status": "done",
       "title": "`app.identity.api`：`POST /auth/refresh`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-082",
         "AG-053"
-      ]
+      ],
+      "done_at": "2026-04-21T15:34:29.874564"
     },
     {
       "id": "AG-084",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.identity.api`：`POST /auth/logout`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-083",
         "AG-054"
-      ]
+      ],
+      "done_at": "2026-04-21T16:09:47.278386"
     },
     {
       "id": "AG-085a",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.identity.api`：`GET /users/me`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-084",
         "AG-055a"
-      ]
+      ],
+      "done_at": "2026-04-21T16:32:41.006930"
     },
     {
       "id": "AG-085b",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.identity.api`：`PATCH /users/me`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-085a",
         "AG-055b"
-      ]
+      ],
+      "done_at": "2026-04-21T16:44:09.186063"
     },
     {
       "id": "AG-086a",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.terms.api`：`GET /terms`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-004",
         "AG-056"
-      ]
+      ],
+      "done_at": "2026-04-21T16:47:55.925640"
     },
     {
       "id": "AG-086b",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.terms.api`：`POST /terms`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-086a",
         "AG-057"
-      ]
+      ],
+      "done_at": "2026-04-21T16:55:44.736690"
     },
     {
       "id": "AG-087a",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.terms.api`：`GET /terms/{term_id}`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-086b",
         "AG-056"
-      ]
+      ],
+      "done_at": "2026-04-21T17:11:06.307808"
     },
     {
       "id": "AG-087b",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.terms.api`：`PATCH /terms/{term_id}`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-087a",
         "AG-057"
-      ]
+      ],
+      "done_at": "2026-04-21T17:19:24.554873"
     },
     {
       "id": "AG-088a",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.terms.api`：`GET /terms/{term_id}/llm-config`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-087b",
         "AG-058"
-      ]
+      ],
+      "done_at": "2026-04-21T17:28:06.379946"
     },
     {
       "id": "AG-088b",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.terms.api`：`PATCH /terms/{term_id}/llm-config`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-088a",
         "AG-059"
-      ]
+      ],
+      "done_at": "2026-04-21T17:29:12.443549"
     },
     {
       "id": "AG-089a",
@@ -1337,74 +1348,80 @@
     {
       "id": "AG-092a",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.chat.api`：`GET /conversations`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-004",
         "AG-062a"
-      ]
+      ],
+      "done_at": "2026-04-21T17:39:58.330555"
     },
     {
       "id": "AG-092b",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.chat.api`：`POST /conversations`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-092a",
         "AG-062b"
-      ]
+      ],
+      "done_at": "2026-04-21T18:03:12.194741"
     },
     {
       "id": "AG-092c",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.chat.api`：`GET /conversations/{conversation_id}`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-092b",
         "AG-062c"
-      ]
+      ],
+      "done_at": "2026-04-21T18:15:25.303136"
     },
     {
       "id": "AG-092d",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.chat.api`：`DELETE /conversations/{conversation_id}`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-092c",
         "AG-062d"
-      ]
+      ],
+      "done_at": "2026-04-21T18:33:36.956392"
     },
     {
       "id": "AG-093",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.chat.api`：`GET /conversations/{conversation_id}/messages`（分页与游标）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-092d",
         "AG-063"
-      ]
+      ],
+      "done_at": "2026-04-21T18:46:49.705330"
     },
     {
       "id": "AG-094",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.chat.api`：`POST .../messages` 返回 **202** 与契约响应体",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-093",
         "AG-066"
-      ]
+      ],
+      "done_at": "2026-04-21T19:58:42.427636"
     },
     {
       "id": "AG-095",
@@ -1421,78 +1438,84 @@
     {
       "id": "AG-096a",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.document.api`：`POST /document-tasks`（**202**）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-004",
         "AG-070"
-      ]
+      ],
+      "done_at": "2026-04-21T20:09:46.203637"
     },
     {
       "id": "AG-096b",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.document.api`：`GET /document-tasks`（列表）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-096a",
         "AG-070"
-      ]
+      ],
+      "done_at": "2026-04-21T20:22:42.330847"
     },
     {
       "id": "AG-097",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.document.api`：`GET /document-tasks/{task_id}`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-096b"
-      ]
+      ],
+      "done_at": "2026-04-21T20:47:46.527035"
     },
     {
       "id": "AG-098a",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.topic.api`：`GET /topics`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-004",
         "AG-071"
-      ]
+      ],
+      "done_at": "2026-04-22T11:19:00.477920"
     },
     {
       "id": "AG-098b",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.topic.api`：`POST /topics`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-098a",
         "AG-073"
-      ]
+      ],
+      "done_at": "2026-04-22T11:20:54.580970"
     },
     {
       "id": "AG-099a",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.topic.api`：`GET /topics/{topic_id}`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-098a",
         "AG-071"
-      ]
+      ],
+      "done_at": "2026-04-22T11:24:08.052400"
     },
     {
       "id": "AG-099b",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.topic.api`：`PATCH /topics/{topic_id}`",
       "priority": "P0",
       "max_duration_days": 2,
@@ -1500,96 +1523,104 @@
         "AG-099a",
         "AG-071",
         "AG-073"
-      ]
+      ],
+      "done_at": "2026-04-22T11:26:58.513426"
     },
     {
       "id": "AG-099c",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.topic.api`：`DELETE /topics/{topic_id}`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-099a",
         "AG-071"
-      ]
+      ],
+      "done_at": "2026-04-22T11:28:45.645343"
     },
     {
       "id": "AG-100a",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.topic.api`：`POST /topics/{topic_id}/submit`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-099a",
         "AG-074"
-      ]
+      ],
+      "done_at": "2026-04-22T11:31:27.696085"
     },
     {
       "id": "AG-100b",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.topic.api`：`POST /topics/{topic_id}/review`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-099a",
         "AG-074"
-      ]
+      ],
+      "done_at": "2026-04-22T11:34:31.376268"
     },
     {
       "id": "AG-101a",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.selection.api`：`POST /applications`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-004",
         "AG-075a"
-      ]
+      ],
+      "done_at": "2026-04-22T11:36:54.666781"
     },
     {
       "id": "AG-101b",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.selection.api`：`GET /applications`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-101a",
         "AG-075b"
-      ]
+      ],
+      "done_at": "2026-04-22T11:38:33.329140"
     },
     {
       "id": "AG-102a",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.selection.api`：`DELETE /applications/{application_id}`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-101b",
         "AG-075c"
-      ]
+      ],
+      "done_at": "2026-04-22T11:40:30.234902"
     },
     {
       "id": "AG-102b",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.selection.api`：`PATCH /applications/{application_id}`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-101b",
         "AG-075d"
-      ]
+      ],
+      "done_at": "2026-04-22T11:43:55.920719"
     },
     {
       "id": "AG-103",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.selection.api`：`POST /applications/{application_id}/decisions`（**200** 载荷形状）",
       "priority": "P0",
       "max_duration_days": 2,
@@ -1598,55 +1629,60 @@
         "AG-076",
         "AG-077",
         "AG-078"
-      ]
+      ],
+      "done_at": "2026-04-22T11:46:16.243803"
     },
     {
       "id": "AG-104a",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.selection.api`：`GET /assignments`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-103",
         "AG-018"
-      ]
+      ],
+      "done_at": "2026-04-22T11:49:13.342744"
     },
     {
       "id": "AG-104b",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.selection.api`：`GET /assignments/{assignment_id}`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-104a",
         "AG-018"
-      ]
+      ],
+      "done_at": "2026-04-22T11:51:01.359553"
     },
     {
       "id": "AG-105",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.recommendations.api`：`GET /recommendations/topics`",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-004",
         "AG-079"
-      ]
+      ],
+      "done_at": "2026-04-22T11:54:51.737479"
     },
     {
       "id": "AG-106",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.recommendations.api`：`explain` 与 **403** 走 `RecommendService` 分支",
       "priority": "P1",
       "max_duration_days": 2,
       "depends_on": [
         "AG-105",
         "AG-080"
-      ]
+      ],
+      "done_at": "2026-04-22T12:02:27.772271"
     },
     {
       "id": "AG-107",
@@ -1663,29 +1699,31 @@
     {
       "id": "AG-108",
       "layer": "ci_docs",
-      "status": "ready",
+      "status": "done",
       "title": "CI：`lint-imports` 覆盖 `architecture.spec` §4 合约",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-004"
-      ]
+      ],
+      "done_at": "2026-04-22T12:02:27.772271"
     },
     {
       "id": "AG-109",
       "layer": "ci_docs",
-      "status": "ready",
+      "status": "done",
       "title": "CI：`rg-guard-api` / `rg-guard-api-task` / `rg-guard-task-adapter` 脚本接入",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-108"
-      ]
+      ],
+      "done_at": "2026-04-22T14:10:06.126223"
     },
     {
       "id": "AG-110",
       "layer": "ci_docs",
-      "status": "ready",
+      "status": "running",
       "title": "CI：`check_queue_contract_keys.py` 断言五队列键",
       "priority": "P0",
       "max_duration_days": 2,

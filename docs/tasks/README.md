@@ -13,7 +13,7 @@
 | **`architecture-task-graph.json`** | **唯一进度真源**：每个任务的 `status`（`ready` / `running` / `done` / `blocked`）、`depends_on`、`priority` 等。 |
 | **`queue.json`** | **当前派发给 AI 的一条任务**（由脚本写入，**不要**当进度本手改）。 |
 | **`.task.lock`** | 防止多终端同时跑编排脚本；异常退出可能残留，可按 README 故障排除处理。 |
-| **`auto-run.py`** | 选下一个可执行任务 → 写 `queue.json` → 标 `running` → 等人按 Enter → 标 `done`。 |
+| **`auto-run.py`** | **单任务串行循环**：选下一个可执行任务 → 写 `queue.json` → 标 `running` → 等人按 Enter → **仅**标该条 `done` → 再选下一条；**禁止**并发多条 `running`、**不会**在启动时把全部 `running` 批量打回 `ready`。 |
 | **`architecture-task-graph.md`** | 由 `scripts/gen_architecture_task_graph_md.py` 从 JSON **生成**，勿手改正文。 |
 | **`todolist.md`** | 人类可读实现清单，与任务图互补；**范围裁决**以当前 `queue.json` 中的 `task` 为准。 |
 
@@ -54,11 +54,18 @@ python scripts/check_rules.py
 
 5. 重复直到脚本退出（没有可执行的 `ready` 任务）。
 
+**单任务 / 不并发约定**
+
+- 任意时刻任务图中 **`running` 至多一条**；若 JSON 里出现多条 `running`，脚本会 **直接报错退出**，需人工改图。
+- 若上一轮异常中断（Ctrl+C），图中可能残留 **一条** `running` 且无锁：下次启动脚本会把 **这一条** 降回 `ready` 再重新派发（**不会**把无关任务一并 reopen）。
+- Cursor 侧：**每一轮对话只完成当前 `queue.json` 的一条 AG**；不要用同一轮 diff 批量把多条任务标 `done`。批量修补图请用 `TASKOS_BATCH_MARK_OK=1` 且仅限运维场景（见 `scripts/tasks/export_ready_tasks.py` 说明）。
+
 ### 3. 环境变量（可选）
 
 | 变量 | 含义 | 默认 |
 |------|------|------|
-| **`TASKOS_LOCK_STALE_HOURS`** | `.task.lock` 超过该小时数视为陈旧并自动清除 | `48` |
+| **`TASKOS_LOCK_STALE_HOURS`** | `.task.lock` 超过该小时数视为陈旧；启动时若需回收孤儿 `running` 会先删陈旧锁 | `48` |
+| **`TASKOS_BATCH_MARK_OK`** | 设为 `1` 时允许 `scripts/tasks/export_ready_tasks.py --mark-done` 一次写多个 id（默认禁止，与单任务模式一致） | （未设置） |
 
 ---
 
@@ -77,6 +84,7 @@ python scripts/check_rules.py
    - 若文件不存在、JSON 无法解析、缺少顶层键 task、或 task 为空/非对象：
      → 在回复中写明原因；停止执行本任务（不要假装已完成）。
    - 「ALL TASKS COMPLETED」只能由终端里的 auto-run.py 在任务图耗尽时打印；你不得在聊天中用该句表示本任务状态。
+   - **单任务**：本轮对话与本轮 diff **只**服务 `queue.json` 中的这一条 AG；**禁止**在同一轮把其它 `ready` 任务标为 `done`、禁止批量改 `architecture-task-graph.json` 关多条任务（关账仅由本终端按 Enter 触发、一次一条）。
 
 2) 条件完备验证（**先于**对仓库任意文件的增删改；本步仅允许读取与检索，不得提交实现性 diff）
    - 校验 `task.id`、`task.title` 均存在且为非空字符串；否则等同 1) 失败并停止。
@@ -116,7 +124,7 @@ python scripts/check_rules.py
 【Limitations】
 - 无则写「无」
 
-9) 严禁：聊天中输出「ALL TASKS COMPLETED」；在步骤 2 已阻塞时仍改仓库；无阻塞却无仓库变更即结束；多任务混做。进度由人类在运行本脚本的终端按 Enter 后才记为 done；未完成前不要假定对方已按 Enter。
+9) 严禁：聊天中输出「ALL TASKS COMPLETED」；在步骤 2 已阻塞时仍改仓库；无阻塞却无仓库变更即结束；多任务混做；**一次合并关闭多条 AG** 或顺带实现其它 `queue.json` 外的任务。进度由人类在运行本脚本的终端按 Enter 后才记为 done；未完成前不要假定对方已按 Enter。
 ```
 
 **为何先做条件完备验证**：避免在 `queue` 损坏、真源缺失或 task 与 spec 明显冲突时仍改仓库；阻塞时允许零 diff，由人类修复环境或任务图后再跑。**为何不把「必须改代码」写死**：任务图里含文档/CI/配置类条目，交付物应是**可提交的仓库变更**，不限定为 `.py`。**为何收紧 stub**：与 `spec/`、TDD 与 import-linter 等门禁一致，避免「占位骗过对话」。

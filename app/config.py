@@ -9,6 +9,7 @@ from typing import Final
 
 # 与队列客户端对齐：优先显式 broker，其次常见 Redis 直连 URL（R-NO-QUEUE）
 _ENV_BROKER_KEYS: Final[tuple[str, ...]] = ("BROKER_URL", "REDIS_URL")
+_DEV_DEFAULT_SECRET_KEY: Final[str] = "dev-only-change-in-production-please-use-32+bytes"
 
 
 def _int_from_env(name: str, default: int) -> int:
@@ -46,7 +47,7 @@ def _bool_from_env(name: str, default: bool) -> bool:
 class Config:
     """默认配置（开发可用环境变量覆盖）。"""
 
-    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-change-in-production")
+    SECRET_KEY = os.environ.get("SECRET_KEY", _DEV_DEFAULT_SECRET_KEY)
     TESTING = False
 
     # Flask-SQLAlchemy / Flask-Migrate（AG-002）
@@ -56,7 +57,7 @@ class Config:
     # Flask-JWT-Extended
     JWT_SECRET_KEY = os.environ.get(
         "JWT_SECRET_KEY",
-        os.environ.get("SECRET_KEY", "dev-only-change-in-production"),
+        os.environ.get("SECRET_KEY", _DEV_DEFAULT_SECRET_KEY),
     )
     # Identity access token TTL (seconds); AG-052 default aligns with architecture draft.
     ACCESS_TOKEN_EXPIRES_IN = _positive_int_from_env("ACCESS_TOKEN_EXPIRES_IN", 3600, minimum=1)

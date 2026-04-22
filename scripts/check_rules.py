@@ -309,6 +309,10 @@ def run_subprocess_suite() -> list[RuleError]:
         ("R-UC-ONLY", "scripts/ci/check_llm_entrypoints_doc.py"),
         ("R-POLICY-SVC", "scripts/ci/check_policy_deny_tests.py"),
         ("R-APP-EXAMPLES", "scripts/ci/rg_guard_app_examples.py"),
+        ("openapi-contract", "scripts/ci/validate_openapi_contract.py"),
+        ("rg-guard-api", "scripts/ci/rg_guard_api.py"),
+        ("rg-guard-api-task", "scripts/ci/rg_guard_api_task.py"),
+        ("rg-guard-task-adapter", "scripts/ci/rg_guard_task_adapter.py"),
         ("R-API-ADAPTER", "scripts/ci/check_api_packages_in_linter.py"),
         ("DOCS-TASK-GRAPH", "docs/tasks/auto-run.py", ["--validate-only"]),
     ]

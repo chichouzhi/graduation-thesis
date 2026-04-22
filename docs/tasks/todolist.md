@@ -2,6 +2,15 @@
 
 > **文档**：[`docs/DOCUMENT-CATALOG.md`](docs/DOCUMENT-CATALOG.md)（**分类总目**）· [`docs/README.md`](docs/README.md)（`docs/` 索引）。与本清单互补；冲突以根目录 `contract.yaml` / `architecture.spec.md` / `execution_plan.md` 及 `docs/arch/ADR-*.md` 为准。
 
+## Task OS：`architecture-task-graph.json` 中仍为 `ready` 的 AG
+
+- **自动导出表**（从 JSON 生成）：[`unimplemented-ready-tasks.md`](unimplemented-ready-tasks.md)
+- **刷新命令**（仓库根）：`python scripts/tasks/export_ready_tasks.py`；**默认** `--mark-done` 一次仅允许 **一个** id（与 `auto-run.py` 单条关账一致）；批量修补须 `TASKOS_BATCH_MARK_OK=1`
+- **备忘勾选项**（与 JSON 真源并行维护；完成后请在图中标 `done` 并导出上表）：
+  - [x] Milestones API + 服务补强（`AG-060`～`AG-061`、`AG-089a`～`AG-091`）
+  - [x] Chat 可选：`GET /chat/jobs/{job_id}`、`GET .../stream` 占位（`AG-095`、`AG-107`）
+  - [ ] 其余 `ready` 行见上表（CI 集成项等按队列继续）
+
 ## Data
 
 ### 身份与用户画像

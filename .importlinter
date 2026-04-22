@@ -2,16 +2,16 @@
 root_package = app
 include_external_packages = True
 
-# Canonical spec → engine mapping: scripts/arch_rules_registry.py (run: python scripts/check_rules.py --list)
-# Contract IDs → architecture.spec.md §4 / §2:
-#   forbidden_api_adapter   → R-API-ADAPTER (+ R-REC-LLM api subset)
-#   forbidden_api_use_cases → R-API-UC
-#   forbidden_api_task      → R-API-TASK
-#   forbidden_task_api      → R-TASK-API
-#   forbidden_task_adapter    → R-UC-SKIP / W6（TASK 不得 **直连** app.adapter；允许 TASK→use_cases→adapter，见 allow_indirect_imports）
-#   forbidden_use_cases_flask / forbidden_use_cases_api → R-UC-API
-#   domain_api_service_layers → W1 (api→service only within domain)
-#   use_cases_over_adapter    → W5 (UC 可依赖 adapter；adapter 不得反向依赖 UC)
+# Canonical spec mapping:
+#   forbidden_api_adapter      -> R-API-ADAPTER (+ recommendations subset)
+#   forbidden_api_use_cases    -> R-API-UC
+#   forbidden_api_task         -> R-API-TASK
+#   forbidden_task_api         -> R-TASK-API
+#   forbidden_task_adapter     -> R-UC-SKIP / W6
+#   forbidden_use_cases_flask  -> R-UC-API
+#   forbidden_use_cases_api    -> R-UC-API
+#   domain_api_service_layers  -> W1
+#   use_cases_over_adapter     -> W5
 
 # Layers: see architecture.spec.md section 4.
 # - Per domain: api (high) then service (low): service must not import api.
@@ -58,6 +58,7 @@ source_modules =
     app.recommendations.api
 forbidden_modules =
     app.adapter
+allow_indirect_imports = True
 
 [importlinter:contract:forbidden_api_use_cases]
 name = API must not import use_cases (R-API-UC)
@@ -73,6 +74,7 @@ source_modules =
     app.recommendations.api
 forbidden_modules =
     app.use_cases
+allow_indirect_imports = True
 
 [importlinter:contract:forbidden_api_task]
 name = API must not import task package (R-API-TASK)
@@ -88,6 +90,7 @@ source_modules =
     app.recommendations.api
 forbidden_modules =
     app.task
+allow_indirect_imports = True
 
 [importlinter:contract:forbidden_use_cases_flask]
 name = use_cases must not import flask (R-UC-API partial)

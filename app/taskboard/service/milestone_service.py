@@ -65,6 +65,8 @@ class MilestoneService:
         user_id: str,
         *,
         student_id: str | None = None,
+        from_date: date | None = None,
+        to_date: date | None = None,
         page: int = 1,
         page_size: int = 20,
     ) -> dict[str, Any]:
@@ -72,6 +74,8 @@ class MilestoneService:
             raise ValueError("page must be >= 1")
         if page_size < 1:
             raise ValueError("page_size must be >= 1")
+        if from_date is not None and to_date is not None and from_date > to_date:
+            raise ValueError("from_date must be <= to_date")
         uid = self._require_non_empty("user_id", user_id)
         user = self._identity.load_user_by_id(uid)
         if user is None:
@@ -91,7 +95,12 @@ class MilestoneService:
         else:
             raise PermissionError("role cannot list milestones")
 
-        q = Milestone.query.filter_by(student_id=target_student_id).order_by(
+        q = Milestone.query.filter_by(student_id=target_student_id)
+        if from_date is not None:
+            q = q.filter(Milestone.end_date >= from_date)
+        if to_date is not None:
+            q = q.filter(Milestone.start_date <= to_date)
+        q = q.order_by(
             Milestone.sort_order.asc(),
             Milestone.id.asc(),
         )
@@ -174,3 +183,23 @@ class MilestoneService:
         db.session.delete(row)
         db.session.commit()
         return True
+
+    def get_milestone_for_user(self, user_id: str, milestone_id: str) -> dict[str, Any] | None:
+        uid = self._require_non_empty("user_id", user_id)
+        mid = self._require_non_empty("milestone_id", milestone_id)
+        user = self._identity.load_user_by_id(uid)
+        if user is None:
+            return None
+        row = Milestone.query.filter_by(id=mid).one_or_none()
+        if row is None:
+            return None
+        if user.role == UserRole.student:
+            if row.student_id != uid:
+                return None
+            return row.to_milestone()
+        if user.role == UserRole.teacher:
+            self._require_guidance(uid, row.student_id)
+            return row.to_milestone()
+        if user.role == UserRole.admin:
+            return row.to_milestone()
+        return None

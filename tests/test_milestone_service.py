@@ -107,3 +107,43 @@ def test_student_only_operations() -> None:
         except PermissionError:
             raised = True
         assert raised
+
+
+def test_list_milestones_date_range_and_get_single() -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        student = _create_user("ms-range", UserRole.student)
+        svc = MilestoneService()
+        early = svc.create_milestone_as_student(
+            student.id,
+            {
+                "title": "early",
+                "start_date": "2026-01-01",
+                "end_date": "2026-01-10",
+                "status": "todo",
+            },
+        )
+        late = svc.create_milestone_as_student(
+            student.id,
+            {
+                "title": "late",
+                "start_date": "2026-02-01",
+                "end_date": "2026-02-28",
+                "status": "todo",
+            },
+        )
+        from datetime import date
+
+        listed = svc.list_milestones_for_user(
+            student.id,
+            from_date=date(2026, 1, 5),
+            to_date=date(2026, 2, 5),
+        )
+        ids = {x["id"] for x in listed["items"]}
+        assert early["id"] in ids
+        assert late["id"] in ids
+
+        got = svc.get_milestone_for_user(student.id, early["id"])
+        assert got is not None
+        assert got["title"] == "early"

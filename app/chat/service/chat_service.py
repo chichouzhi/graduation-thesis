@@ -249,7 +249,13 @@ class ChatService:
             "total": total,
         }
 
-    def send_user_message(self, conversation_id: str, content: str, user_id: str, **kwargs) -> None:
+    def send_user_message(
+        self,
+        conversation_id: str,
+        content: str,
+        user_id: str,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
         from app.use_cases import chat_orchestration as uc
 
         job_id = str(uuid.uuid4())
@@ -257,20 +263,14 @@ class ChatService:
         assistant_message_id = str(uuid.uuid4())
         if not has_app_context():
             # Compatibility path for architecture spy tests and non-Flask script usage.
-            term_id = str(kwargs.pop("term_id", ""))
-            queue_mod.enqueue_chat_jobs(
-                {
-                    "job_id": job_id,
-                    "conversation_id": conversation_id,
-                    "user_message_id": user_message_id,
-                    "assistant_message_id": assistant_message_id,
-                    "term_id": term_id,
-                    "user_id": user_id,
-                    "content": content,
-                    **kwargs,
-                },
+            term_id = str(kwargs.pop("term_id", "")).strip()
+            return create_chat(
+                conversation_id=str(conversation_id),
+                term_id=term_id,
+                user_id=str(user_id),
+                content=str(content),
+                **kwargs,
             )
-            return
 
         conv = Conversation.query.filter_by(id=str(conversation_id).strip(), user_id=str(user_id).strip()).one_or_none()
         if conv is None or conv.archived_at is not None:
@@ -353,3 +353,24 @@ class ChatService:
                 "chat queue is unavailable",
                 code=ErrorCode.QUEUE_UNAVAILABLE,
             ) from exc
+        return {
+            "job_id": job_id,
+            "user_message": user_message.to_message(),
+            "assistant_message": assistant_message.to_message(),
+        }
+
+    def get_chat_job_for_user(self, user_id: str, job_id: str) -> dict[str, Any] | None:
+        """Return a ``ChatJob`` when the job's conversation belongs to ``user_id``."""
+        uid = str(user_id or "").strip()
+        jid = str(job_id or "").strip()
+        if not jid:
+            raise ValueError("job_id must be non-empty")
+        if not uid:
+            raise ValueError("user_id must be non-empty")
+        row = db.session.get(ChatJob, jid)
+        if row is None:
+            return None
+        conv = db.session.get(Conversation, row.conversation_id)
+        if conv is None or conv.user_id != uid or conv.archived_at is not None:
+            return None
+        return row.to_chat_job()

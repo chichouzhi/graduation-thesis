@@ -35,9 +35,8 @@ jobs:
           export DATABASE_URL=sqlite:////tmp/ci_migrations.db
           python -m flask db upgrade
 
-      # 规则真源：spec/architecture.spec.md；可执行映射：scripts/arch_rules_registry.py
-      # 本步 = import-linter（.importlinter）+ scripts/check_rules.py + tests/test_architecture.py
-      - name: Architecture rules (import-linter, check_rules, test_architecture)
+      # Source of truth: spec/architecture.spec.md section 4 contracts.
+      - name: lint-imports (architecture.spec section 4 contracts)
         run: |
           set -euo pipefail
           if [ -f app/__init__.py ]; then
@@ -45,6 +44,33 @@ jobs:
           else
             echo "::notice::Skipping import-linter until app/__init__.py exists"
           fi
+
+      # architecture.spec.md §5: rg-guard-api / rg-guard-api-task / rg-guard-task-adapter
+      - name: rg-guard-api + rg-guard-api-task + rg-guard-task-adapter
+        run: |
+          set -euo pipefail
+          if [ -f app/__init__.py ]; then
+            python scripts/ci/rg_guard_api.py
+            python scripts/ci/rg_guard_api_task.py
+            python scripts/ci/rg_guard_task_adapter.py
+          else
+            echo "::notice::Skipping rg-guard-* until app/__init__.py exists"
+          fi
+
+      - name: Queue contract keys (R-QUEUE-ISO)
+        run: |
+          set -euo pipefail
+          python scripts/ci/check_queue_contract_keys.py
+
+      - name: OpenAPI validate contract.yaml
+        run: |
+          set -euo pipefail
+          python scripts/ci/validate_openapi_contract.py
+
+      # Architecture registry + regression tests.
+      - name: Architecture rules (check_rules, test_architecture)
+        run: |
+          set -euo pipefail
           python scripts/check_rules.py
           python -m pytest tests/test_architecture.py -vv --tb=short
 

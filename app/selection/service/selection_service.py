@@ -132,6 +132,64 @@ class SelectionService:
         items = [r.to_application(topic_title=(r.topic.title if r.topic is not None else None)) for r in rows]
         return {"items": items, "page": page, "page_size": page_size, "total": total}
 
+    def list_assignments_for_user(
+        self,
+        user_id: str,
+        *,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> dict[str, Any]:
+        """指导关系分页列表；学生看本人、教师看本人指导、管理员看全部。"""
+        if page < 1 or page_size < 1:
+            raise ValueError("page and page_size must be >= 1")
+        uid = self._require_non_empty("user_id", user_id)
+        user = self._identity.load_user_by_id(uid)
+        if user is None:
+            return {"items": [], "page": page, "page_size": page_size, "total": 0}
+
+        q = Assignment.query
+        if user.role == UserRole.student:
+            q = q.filter_by(student_id=uid)
+        elif user.role == UserRole.teacher:
+            q = q.filter_by(teacher_id=uid)
+        elif user.role != UserRole.admin:
+            raise PermissionError("role cannot list assignments")
+
+        q = q.order_by(Assignment.confirmed_at.desc(), Assignment.id.desc())
+        total = q.count()
+        rows = q.offset((page - 1) * page_size).limit(page_size).all()
+        items = [
+            row.to_assignment(
+                student_name=(row.student.display_name if row.student is not None else None),
+                topic_title=(row.topic.title if row.topic is not None else None),
+            )
+            for row in rows
+        ]
+        return {"items": items, "page": page, "page_size": page_size, "total": total}
+
+    def get_assignment_for_user(self, user_id: str, assignment_id: str) -> dict[str, Any] | None:
+        """单条指导关系详情；学生看本人、教师看本人指导、管理员看全部。"""
+        uid = self._require_non_empty("user_id", user_id)
+        aid = self._require_non_empty("assignment_id", assignment_id)
+        user = self._identity.load_user_by_id(uid)
+        if user is None:
+            return None
+
+        q = Assignment.query.filter_by(id=aid)
+        if user.role == UserRole.student:
+            q = q.filter_by(student_id=uid)
+        elif user.role == UserRole.teacher:
+            q = q.filter_by(teacher_id=uid)
+        elif user.role != UserRole.admin:
+            raise PermissionError("role cannot get assignment")
+        row = q.one_or_none()
+        if row is None:
+            return None
+        return row.to_assignment(
+            student_name=(row.student.display_name if row.student is not None else None),
+            topic_title=(row.topic.title if row.topic is not None else None),
+        )
+
     def withdraw_application_as_student(self, user_id: str, application_id: str) -> bool:
         """撤销志愿：须为本人 ``pending`` 志愿，且学期 ``selection_*`` 窗口内（契约 ``DELETE /applications/{id}``）。"""
         uid = self._require_non_empty("user_id", user_id)

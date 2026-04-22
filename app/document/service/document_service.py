@@ -138,3 +138,49 @@ class DocumentService:
             raise PolicyDenied("pdf_parse queue is unavailable", code=ErrorCode.QUEUE_UNAVAILABLE) from exc
 
         return task_row.to_document_task()
+
+    def list_document_tasks_for_user(
+        self,
+        user_id: str,
+        *,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> dict[str, Any]:
+        """Return paginated document task list for current user."""
+        if page < 1:
+            raise ValueError("page must be >= 1")
+        if page_size < 1:
+            raise ValueError("page_size must be >= 1")
+
+        normalized_user_id = self._require_non_empty("user_id", user_id)
+        identity = getattr(self, "_identity", IdentityService())
+        user = identity.load_user_by_id(normalized_user_id)
+        if user is None:
+            return {"items": [], "page": page, "page_size": page_size, "total": 0}
+
+        q = DocumentTask.query.filter_by(user_id=user.id).order_by(
+            DocumentTask.created_at.desc(),
+            DocumentTask.id.desc(),
+        )
+        total = q.count()
+        rows = q.offset((page - 1) * page_size).limit(page_size).all()
+        return {
+            "items": [row.to_document_task() for row in rows],
+            "page": page,
+            "page_size": page_size,
+            "total": total,
+        }
+
+    def get_document_task_for_user(self, user_id: str, task_id: str) -> dict[str, Any] | None:
+        """Return one document task visible to current user."""
+        normalized_user_id = self._require_non_empty("user_id", user_id)
+        normalized_task_id = self._require_non_empty("task_id", task_id)
+        identity = getattr(self, "_identity", IdentityService())
+        user = identity.load_user_by_id(normalized_user_id)
+        if user is None:
+            return None
+
+        row = DocumentTask.query.filter_by(id=normalized_task_id, user_id=user.id).one_or_none()
+        if row is None:
+            return None
+        return row.to_document_task()

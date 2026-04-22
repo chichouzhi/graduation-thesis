@@ -102,7 +102,8 @@ class TopicService:
 
     def get_topic(self, topic_id: str) -> dict[str, Any] | None:
         """Return a single topic by id, or ``None`` if missing."""
-        row = Topic.query.filter_by(id=str(topic_id).strip()).one_or_none()
+        normalized_topic_id = self._require_non_empty("topic_id", topic_id)
+        row = Topic.query.filter_by(id=normalized_topic_id).one_or_none()
         if row is None:
             return None
         return row.to_topic()
@@ -166,7 +167,8 @@ class TopicService:
         uid, role = self._require_teacher_or_admin(user_id)
         if not isinstance(payload, dict):
             raise ValueError("payload must be a mapping")
-        row = Topic.query.filter_by(id=str(topic_id).strip()).one_or_none()
+        normalized_topic_id = self._require_non_empty("topic_id", topic_id)
+        row = Topic.query.filter_by(id=normalized_topic_id).one_or_none()
         if row is None:
             return None
         if role != UserRole.admin and row.teacher_id != uid:
@@ -232,7 +234,8 @@ class TopicService:
 
     def delete_or_withdraw_topic_as_teacher(self, user_id: str, topic_id: str) -> bool:
         uid, role = self._require_teacher_or_admin(user_id)
-        row = Topic.query.filter_by(id=str(topic_id).strip()).one_or_none()
+        normalized_topic_id = self._require_non_empty("topic_id", topic_id)
+        row = Topic.query.filter_by(id=normalized_topic_id).one_or_none()
         if row is None:
             return False
         if role != UserRole.admin and row.teacher_id != uid:
@@ -250,7 +253,8 @@ class TopicService:
     def submit_topic_for_review(self, user_id: str, topic_id: str) -> dict[str, Any] | None:
         """``draft`` / ``rejected`` → ``pending_review``（无 LLM、无队列入队）。"""
         uid, role = self._require_teacher_or_admin(user_id)
-        row = Topic.query.filter_by(id=str(topic_id).strip()).one_or_none()
+        normalized_topic_id = self._require_non_empty("topic_id", topic_id)
+        row = Topic.query.filter_by(id=normalized_topic_id).one_or_none()
         if row is None:
             return None
         if role != UserRole.admin and row.teacher_id != uid:
@@ -274,7 +278,8 @@ class TopicService:
             raise PermissionError("only admin can review topics")
         if not isinstance(payload, dict):
             raise ValueError("payload must be a mapping")
-        row = Topic.query.filter_by(id=str(topic_id).strip()).one_or_none()
+        normalized_topic_id = self._require_non_empty("topic_id", topic_id)
+        row = Topic.query.filter_by(id=normalized_topic_id).one_or_none()
         if row is None:
             return None
         if row.status != TopicStatus.pending_review:
