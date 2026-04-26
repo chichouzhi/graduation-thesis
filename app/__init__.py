@@ -19,6 +19,7 @@ from app.config import (
     Config,
     get_config_class,
     is_production_config,
+    llm_runtime_overrides,
     production_runtime_overrides,
     validate_production_runtime_requirements,
 )
@@ -65,6 +66,7 @@ def create_app(config: type[Config] | Config | None = None) -> Flask:
     app = Flask(__name__)
     cfg = config or get_config_class()
     app.config.from_object(cfg)
+    app.config.update(llm_runtime_overrides(cfg))
     if is_production_config(cfg):
         app.config.update(production_runtime_overrides(cfg))
         validate_production_runtime_requirements(cfg, app.config)

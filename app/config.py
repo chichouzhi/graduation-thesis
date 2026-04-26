@@ -46,6 +46,16 @@ def _positive_int_from_env(name: str, default: int, *, minimum: int = 1) -> int:
     return max(int(minimum), v)
 
 
+def _float_from_env(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None or not str(raw).strip():
+        return default
+    try:
+        return float(str(raw).strip())
+    except ValueError:
+        return default
+
+
 def _bool_from_env(name: str, default: bool) -> bool:
     """读取布尔配置：支持 1/true/yes/on 与 0/false/no/off。"""
     raw = os.environ.get(name)
@@ -89,6 +99,11 @@ class Config:
 
     # document_pipeline：summarize_chunk 同级并行度上界（in-flight ≤ 此值）；见 execution_plan / architecture.spec
     DOCUMENT_CHUNK_MAX_PARALLEL = _positive_int_from_env("DOCUMENT_CHUNK_MAX_PARALLEL", 4, minimum=1)
+    LLM_PROVIDER = str(os.environ.get("LLM_PROVIDER", "mock")).strip() or "mock"
+    LLM_HTTP_API_KEY = str(os.environ.get("LLM_HTTP_API_KEY") or os.environ.get("OPENAI_API_KEY") or "").strip()
+    LLM_HTTP_BASE_URL = str(os.environ.get("LLM_HTTP_BASE_URL") or os.environ.get("OPENAI_BASE_URL") or "").strip()
+    LLM_HTTP_MODEL = str(os.environ.get("LLM_HTTP_MODEL") or os.environ.get("OPENAI_MODEL") or "").strip()
+    LLM_HTTP_TIMEOUT_S = _float_from_env("LLM_HTTP_TIMEOUT_S", 60.0)
 
 
 class ProductionConfig(Config):
@@ -185,21 +200,12 @@ def production_runtime_overrides(config: type[Config] | Config) -> dict[str, str
             "SECRET_KEY": _secret_key_from_environ(),
             "JWT_SECRET_KEY": _jwt_secret_key_from_environ(),
             "BROKER_URL": broker_url_from_environ(),
-            "LLM_PROVIDER": _llm_provider_from_environ(),
-            "LLM_HTTP_API_KEY": _llm_http_api_key_from_environ(),
-            "LLM_HTTP_BASE_URL": _llm_http_base_url_from_environ(),
-            "LLM_HTTP_MODEL": _llm_http_model_from_environ(),
         }
 
     overrides: dict[str, str] = {}
     env_secret_key = _secret_key_from_environ()
     env_jwt_secret_key = _jwt_secret_key_from_environ()
     env_broker_url = broker_url_from_environ()
-    env_llm_provider = _llm_provider_from_environ()
-    env_llm_http_api_key = _llm_http_api_key_from_environ()
-    env_llm_http_base_url = _llm_http_base_url_from_environ()
-    env_llm_http_model = _llm_http_model_from_environ()
-
     if not _has_explicit_config_value(config, "SECRET_KEY"):
         overrides["SECRET_KEY"] = env_secret_key
 
@@ -209,17 +215,33 @@ def production_runtime_overrides(config: type[Config] | Config) -> dict[str, str
     if not _has_explicit_config_value(config, "BROKER_URL"):
         overrides["BROKER_URL"] = env_broker_url
 
-    if not _has_explicit_config_value(config, "LLM_PROVIDER"):
-        overrides["LLM_PROVIDER"] = env_llm_provider
+    return overrides
 
-    if not _has_explicit_config_value(config, "LLM_HTTP_API_KEY"):
-        overrides["LLM_HTTP_API_KEY"] = env_llm_http_api_key
 
-    if not _has_explicit_config_value(config, "LLM_HTTP_BASE_URL"):
-        overrides["LLM_HTTP_BASE_URL"] = env_llm_http_base_url
+def llm_runtime_overrides(config: type[Config] | Config) -> dict[str, object]:
+    """为任意运行环境应用当前 env 中显式提供的 LLM 设置。"""
+    overrides: dict[str, object] = {}
 
-    if not _has_explicit_config_value(config, "LLM_HTTP_MODEL"):
-        overrides["LLM_HTTP_MODEL"] = env_llm_http_model
+    if not _has_explicit_config_value(config, "LLM_PROVIDER") and "LLM_PROVIDER" in os.environ:
+        overrides["LLM_PROVIDER"] = _llm_provider_from_environ()
+
+    if not _has_explicit_config_value(config, "LLM_HTTP_API_KEY") and (
+        "LLM_HTTP_API_KEY" in os.environ or "OPENAI_API_KEY" in os.environ
+    ):
+        overrides["LLM_HTTP_API_KEY"] = _llm_http_api_key_from_environ()
+
+    if not _has_explicit_config_value(config, "LLM_HTTP_BASE_URL") and (
+        "LLM_HTTP_BASE_URL" in os.environ or "OPENAI_BASE_URL" in os.environ
+    ):
+        overrides["LLM_HTTP_BASE_URL"] = _llm_http_base_url_from_environ()
+
+    if not _has_explicit_config_value(config, "LLM_HTTP_MODEL") and (
+        "LLM_HTTP_MODEL" in os.environ or "OPENAI_MODEL" in os.environ
+    ):
+        overrides["LLM_HTTP_MODEL"] = _llm_http_model_from_environ()
+
+    if not _has_explicit_config_value(config, "LLM_HTTP_TIMEOUT_S") and "LLM_HTTP_TIMEOUT_S" in os.environ:
+        overrides["LLM_HTTP_TIMEOUT_S"] = _float_from_env("LLM_HTTP_TIMEOUT_S", 60.0)
 
     return overrides
 
@@ -301,6 +323,7 @@ __all__ = [
     "broker_url_from_environ",
     "get_config_class",
     "is_production_config",
+    "llm_runtime_overrides",
     "production_runtime_overrides",
     "validate_production_runtime_requirements",
 ]

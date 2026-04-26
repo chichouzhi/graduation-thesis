@@ -52,19 +52,25 @@ def configure_llm_client_from_environment(
     values: Mapping[str, object] | None = None,
     *,
     default_to_mock: bool = True,
+    set_as_default: bool = True,
 ) -> LlmClient:
     """按运行时环境注册默认 LLM 客户端。"""
-    provider = _normalize_provider(_string_value(values, "LLM_PROVIDER") or os.environ.get("LLM_PROVIDER", ""))
+    if values is None:
+        provider = _normalize_provider(os.environ.get("LLM_PROVIDER", ""))
+    else:
+        provider = _normalize_provider(_string_value(values, "LLM_PROVIDER"))
     if not provider:
         if default_to_mock:
             client = MockLlmClient()
-            set_llm_client(client)
+            if set_as_default:
+                set_llm_client(client)
             return client
         raise LlmConfigurationError("LLM_PROVIDER must be configured before bootstrapping the LLM client")
 
     if provider == "mock":
         client = MockLlmClient()
-        set_llm_client(client)
+        if set_as_default:
+            set_llm_client(client)
         return client
 
     if provider == "openai_compatible":
@@ -74,7 +80,8 @@ def configure_llm_client_from_environment(
                 "LLM_PROVIDER=openai_compatible requires LLM_HTTP_API_KEY, "
                 "LLM_HTTP_BASE_URL, and LLM_HTTP_MODEL"
             )
-        set_llm_client(client)
+        if set_as_default:
+            set_llm_client(client)
         return client
 
     raise LlmConfigurationError(f"Unsupported LLM_PROVIDER: {provider}")

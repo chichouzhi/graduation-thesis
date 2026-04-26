@@ -91,3 +91,46 @@ def test_get_llm_client_prefers_current_app_extension_client() -> None:
     app_stub.complete.assert_called_once()
     app_stub.invoke_chat.assert_called_once()
     app_stub.call.assert_called_once()
+
+
+def test_create_app_dev_bootstrap_uses_app_config_as_authoritative_source(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app import create_app
+    from app.config import Config
+
+    monkeypatch.setenv("LLM_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("LLM_HTTP_API_KEY", "dev-http-key")
+    monkeypatch.setenv("LLM_HTTP_BASE_URL", "https://dev.example.invalid/v1")
+    monkeypatch.setenv("LLM_HTTP_MODEL", "dev-model")
+    monkeypatch.setattr(Config, "LLM_PROVIDER", "mock", raising=False)
+    monkeypatch.setattr(Config, "LLM_HTTP_API_KEY", "", raising=False)
+    monkeypatch.setattr(Config, "LLM_HTTP_BASE_URL", "", raising=False)
+    monkeypatch.setattr(Config, "LLM_HTTP_MODEL", "", raising=False)
+
+    app = create_app()
+
+    assert app.config["LLM_PROVIDER"] == "openai_compatible"
+    assert app.config["LLM_HTTP_API_KEY"] == "dev-http-key"
+    assert app.config["LLM_HTTP_BASE_URL"] == "https://dev.example.invalid/v1"
+    assert app.config["LLM_HTTP_MODEL"] == "dev-model"
+    assert isinstance(app.extensions["llm_client"], OpenAiCompatibleHttpClient)
+
+
+def test_create_app_registration_does_not_replace_global_default_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app import create_app
+
+    default_stub = MagicMock(spec=LlmClient)
+    set_llm_client(default_stub)
+    monkeypatch.setenv("LLM_PROVIDER", "mock")
+
+    try:
+        app = create_app()
+
+        assert get_llm_client() is default_stub
+        with app.app_context():
+            assert get_llm_client() is app.extensions["llm_client"]
+    finally:
+        set_llm_client(MockLlmClient())

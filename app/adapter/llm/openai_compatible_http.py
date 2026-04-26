@@ -160,9 +160,13 @@ def _env_or_value(
     *,
     aliases: tuple[str, ...] = (),
 ) -> str:
-    configured = _string_value(values, key)
-    if configured:
-        return configured
+    if values is not None:
+        for candidate in (key, *aliases):
+            configured = _string_value(values, candidate)
+            if configured:
+                return configured
+        return ""
+
     for alias in (key, *aliases):
         raw = os.environ.get(alias)
         if raw is not None and raw.strip():

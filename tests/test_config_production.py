@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import pytest
 
@@ -87,6 +88,22 @@ def test_production_without_broker_raises(monkeypatch: pytest.MonkeyPatch) -> No
 
     with pytest.raises(RuntimeError, match="R-NO-QUEUE"):
         create_app()
+
+
+def test_env_example_defaults_to_local_development_bootstrap() -> None:
+    example_path = Path(__file__).resolve().parents[1] / ".env.example"
+    lines = example_path.read_text(encoding="utf-8").splitlines()
+    uncommented = {
+        line.split("=", 1)[0]: line.split("=", 1)[1]
+        for line in lines
+        if line and not line.startswith("#") and "=" in line
+    }
+
+    assert uncommented["FLASK_ENV"] == "development"
+    assert uncommented["LLM_PROVIDER"] == "mock"
+    assert "SECRET_KEY" not in uncommented
+    assert "JWT_SECRET_KEY" not in uncommented
+    assert "LLM_HTTP_API_KEY" not in uncommented
 
 
 def test_production_rejects_known_placeholder_secret(monkeypatch: pytest.MonkeyPatch) -> None:
