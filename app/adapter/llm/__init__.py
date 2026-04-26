@@ -37,7 +37,7 @@ def get_llm_client() -> LlmClient:
     """返回当前默认客户端；集成测试可 patch 本函数注入 stub。"""
     if has_app_context():
         client = current_app.extensions.get("llm_client")
-        if isinstance(client, LlmClient):
+        if isinstance(client, LlmClientProtocol):
             return client
     if _default_client is None:
         raise LlmConfigurationError(

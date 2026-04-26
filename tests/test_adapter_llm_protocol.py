@@ -105,6 +105,39 @@ def test_get_llm_client_prefers_current_app_extension_client() -> None:
     app_stub.call.assert_called_once()
 
 
+def test_get_llm_client_accepts_protocol_only_client_from_app_extensions() -> None:
+    class _ProtocolOnlyClient:
+        def complete(self, messages, /, **kwargs):
+            _ = (messages, kwargs)
+            return {"content": "protocol-complete"}
+
+        def invoke_chat(self, messages, /, **kwargs):
+            _ = (messages, kwargs)
+            return {"content": "protocol-invoke"}
+
+        def chat(self, *args, **kwargs):
+            _ = (args, kwargs)
+            return {"content": "protocol-chat"}
+
+        def call(self, *, messages, conversation_id, term_id, **kwargs):
+            _ = (messages, conversation_id, term_id, kwargs)
+            return {"content": "protocol-call"}
+
+    app = Flask(__name__)
+    app.extensions["llm_client"] = _ProtocolOnlyClient()
+
+    with app.app_context():
+        client = get_llm_client()
+        assert isinstance(client, LlmClientProtocol)
+        assert complete([{"role": "user", "content": "x"}]) == {"content": "protocol-complete"}
+        assert invoke_chat([{"role": "user", "content": "x"}]) == {"content": "protocol-invoke"}
+        assert call(
+            messages=[{"role": "user", "content": "x"}],
+            conversation_id="conv-1",
+            term_id="term-1",
+        ) == {"content": "protocol-call"}
+
+
 def test_complete_without_explicit_default_client_raises_configuration_error() -> None:
     set_llm_client(None)
 

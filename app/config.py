@@ -263,6 +263,41 @@ def runtime_config_overrides(config: type[Config] | Config) -> dict[str, object]
     if not preserve(config, "SQLALCHEMY_DATABASE_URI"):
         overrides["SQLALCHEMY_DATABASE_URI"] = _database_url_from_runtime(production=production)
 
+    if not preserve(config, "ACCESS_TOKEN_EXPIRES_IN"):
+        overrides["ACCESS_TOKEN_EXPIRES_IN"] = _positive_int_from_env("ACCESS_TOKEN_EXPIRES_IN", 3600, minimum=1)
+
+    if not preserve(config, "REFRESH_TOKEN_EXPIRES_IN"):
+        overrides["REFRESH_TOKEN_EXPIRES_IN"] = _positive_int_from_env("REFRESH_TOKEN_EXPIRES_IN", 1209600, minimum=1)
+
+    if not preserve(config, "REFRESH_TOKEN_COOKIE_NAME"):
+        overrides["REFRESH_TOKEN_COOKIE_NAME"] = _string_from_env("REFRESH_TOKEN_COOKIE_NAME", "refresh_token")
+
+    if not preserve(config, "REFRESH_TOKEN_COOKIE_PATH"):
+        overrides["REFRESH_TOKEN_COOKIE_PATH"] = _string_from_env(
+            "REFRESH_TOKEN_COOKIE_PATH", "/api/v1/auth"
+        )
+
+    if not preserve(config, "REFRESH_TOKEN_COOKIE_SAMESITE"):
+        overrides["REFRESH_TOKEN_COOKIE_SAMESITE"] = _string_from_env(
+            "REFRESH_TOKEN_COOKIE_SAMESITE", "Lax"
+        )
+
+    if not preserve(config, "REFRESH_TOKEN_COOKIE_SECURE"):
+        overrides["REFRESH_TOKEN_COOKIE_SECURE"] = _bool_from_env("REFRESH_TOKEN_COOKIE_SECURE", True)
+
+    if not preserve(config, "MAX_CONTENT_LENGTH"):
+        overrides["MAX_CONTENT_LENGTH"] = _positive_int_from_env("MAX_CONTENT_LENGTH", 16 * 1024 * 1024, minimum=1)
+
+    if not preserve(config, "CHAT_CONTEXT_TOKEN_BUDGET"):
+        overrides["CHAT_CONTEXT_TOKEN_BUDGET"] = _positive_int_from_env(
+            "CHAT_CONTEXT_TOKEN_BUDGET", 8192, minimum=1
+        )
+
+    if not preserve(config, "DOCUMENT_CHUNK_MAX_PARALLEL"):
+        overrides["DOCUMENT_CHUNK_MAX_PARALLEL"] = _positive_int_from_env(
+            "DOCUMENT_CHUNK_MAX_PARALLEL", 4, minimum=1
+        )
+
     if not preserve(config, "BROKER_URL"):
         overrides["BROKER_URL"] = broker_url_from_environ()
 

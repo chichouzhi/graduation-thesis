@@ -180,6 +180,45 @@ def test_create_app_development_uses_current_runtime_env_for_core_and_llm_config
     assert isinstance(app.extensions["llm_client"], OpenAiCompatibleHttpClient)
 
 
+def test_create_app_development_replays_remaining_env_backed_runtime_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app import create_app
+    from app.config import Config
+
+    monkeypatch.setenv("ACCESS_TOKEN_EXPIRES_IN", "111")
+    monkeypatch.setenv("REFRESH_TOKEN_EXPIRES_IN", "222")
+    monkeypatch.setenv("REFRESH_TOKEN_COOKIE_NAME", "runtime_refresh_cookie")
+    monkeypatch.setenv("REFRESH_TOKEN_COOKIE_PATH", "/runtime/auth")
+    monkeypatch.setenv("REFRESH_TOKEN_COOKIE_SAMESITE", "Strict")
+    monkeypatch.setenv("REFRESH_TOKEN_COOKIE_SECURE", "false")
+    monkeypatch.setenv("MAX_CONTENT_LENGTH", "12345")
+    monkeypatch.setenv("CHAT_CONTEXT_TOKEN_BUDGET", "54321")
+    monkeypatch.setenv("DOCUMENT_CHUNK_MAX_PARALLEL", "7")
+
+    monkeypatch.setattr(Config, "ACCESS_TOKEN_EXPIRES_IN", 999, raising=False)
+    monkeypatch.setattr(Config, "REFRESH_TOKEN_EXPIRES_IN", 888, raising=False)
+    monkeypatch.setattr(Config, "REFRESH_TOKEN_COOKIE_NAME", "stale_cookie_name", raising=False)
+    monkeypatch.setattr(Config, "REFRESH_TOKEN_COOKIE_PATH", "/stale/path", raising=False)
+    monkeypatch.setattr(Config, "REFRESH_TOKEN_COOKIE_SAMESITE", "Lax", raising=False)
+    monkeypatch.setattr(Config, "REFRESH_TOKEN_COOKIE_SECURE", True, raising=False)
+    monkeypatch.setattr(Config, "MAX_CONTENT_LENGTH", 1, raising=False)
+    monkeypatch.setattr(Config, "CHAT_CONTEXT_TOKEN_BUDGET", 2, raising=False)
+    monkeypatch.setattr(Config, "DOCUMENT_CHUNK_MAX_PARALLEL", 3, raising=False)
+
+    app = create_app(config=Config)
+
+    assert app.config["ACCESS_TOKEN_EXPIRES_IN"] == 111
+    assert app.config["REFRESH_TOKEN_EXPIRES_IN"] == 222
+    assert app.config["REFRESH_TOKEN_COOKIE_NAME"] == "runtime_refresh_cookie"
+    assert app.config["REFRESH_TOKEN_COOKIE_PATH"] == "/runtime/auth"
+    assert app.config["REFRESH_TOKEN_COOKIE_SAMESITE"] == "Strict"
+    assert app.config["REFRESH_TOKEN_COOKIE_SECURE"] is False
+    assert app.config["MAX_CONTENT_LENGTH"] == 12345
+    assert app.config["CHAT_CONTEXT_TOKEN_BUDGET"] == 54321
+    assert app.config["DOCUMENT_CHUNK_MAX_PARALLEL"] == 7
+
+
 def test_production_rejects_known_placeholder_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     from app import create_app
 
