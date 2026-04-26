@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 from flask import Flask
 
 from app.adapter.llm import (
+    LlmConfigurationError,
     LlmClientProtocol,
     MockLlmClient,
     call,
@@ -18,6 +19,17 @@ from app.adapter.llm import (
 )
 from app.adapter.llm.client import LlmClient
 from app.adapter.llm.openai_compatible_http import OpenAiCompatibleHttpClient
+
+
+@pytest.fixture(autouse=True)
+def _restore_default_client() -> None:
+    from app.adapter import llm as llm_module
+
+    original = llm_module._default_client
+    try:
+        yield
+    finally:
+        llm_module._default_client = original
 
 
 def test_mock_llm_client_is_protocol_compatible() -> None:
@@ -34,7 +46,7 @@ def test_set_llm_client_switches_module_complete() -> None:
         assert out == {"content": "ok"}
         stub.complete.assert_called_once()
     finally:
-        set_llm_client(MockLlmClient())
+        set_llm_client(None)
 
 
 def test_configure_llm_client_from_environment_returns_http_client(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -93,6 +105,13 @@ def test_get_llm_client_prefers_current_app_extension_client() -> None:
     app_stub.call.assert_called_once()
 
 
+def test_complete_without_explicit_default_client_raises_configuration_error() -> None:
+    set_llm_client(None)
+
+    with pytest.raises(LlmConfigurationError, match="default LLM client"):
+        complete([{"role": "user", "content": "x"}])
+
+
 def test_create_app_dev_bootstrap_uses_app_config_as_authoritative_source(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -133,4 +152,18 @@ def test_create_app_registration_does_not_replace_global_default_client(
         with app.app_context():
             assert get_llm_client() is app.extensions["llm_client"]
     finally:
-        set_llm_client(MockLlmClient())
+        set_llm_client(None)
+
+
+def test_create_app_does_not_enable_no_context_llm_calls_without_explicit_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app import create_app
+
+    set_llm_client(None)
+    monkeypatch.setenv("LLM_PROVIDER", "mock")
+
+    create_app()
+
+    with pytest.raises(LlmConfigurationError, match="default LLM client"):
+        complete([{"role": "user", "content": "x"}])

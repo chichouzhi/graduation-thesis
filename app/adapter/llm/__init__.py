@@ -13,7 +13,7 @@ from app.adapter.llm.openai_compatible_http import openai_compatible_client_from
 from app.adapter.llm.protocol import LlmClientProtocol
 
 # 默认进程内实现：可测试替换为厂商客户端实例
-_default_client: LlmClient = MockLlmClient()
+_default_client: LlmClient | None = None
 
 
 class LlmConfigurationError(RuntimeError):
@@ -39,11 +39,16 @@ def get_llm_client() -> LlmClient:
         client = current_app.extensions.get("llm_client")
         if isinstance(client, LlmClient):
             return client
+    if _default_client is None:
+        raise LlmConfigurationError(
+            "No default LLM client configured for out-of-context usage; "
+            "use an app context or call set_llm_client(...) explicitly."
+        )
     return _default_client
 
 
-def set_llm_client(client: LlmClient) -> None:
-    """显式切换实现（例如单测或 AG-028 注册厂商客户端）。"""
+def set_llm_client(client: LlmClient | None) -> None:
+    """显式切换默认实现；``None`` 表示清除 no-context 默认客户端。"""
     global _default_client
     _default_client = client
 

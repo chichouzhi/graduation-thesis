@@ -56,6 +56,16 @@ def _float_from_env(name: str, default: float) -> float:
         return default
 
 
+def _string_from_env(name: str, default: str) -> str:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    value = str(raw).strip()
+    if not value:
+        return default
+    return value
+
+
 def _bool_from_env(name: str, default: bool) -> bool:
     """读取布尔配置：支持 1/true/yes/on 与 0/false/no/off。"""
     raw = os.environ.get(name)
@@ -161,6 +171,31 @@ def _jwt_secret_key_from_environ() -> str:
     return str(os.environ.get("JWT_SECRET_KEY", "")).strip()
 
 
+def _database_url_from_runtime(*, production: bool) -> str:
+    _ = production
+    default = "sqlite:///:memory:"
+    return _string_from_env("DATABASE_URL", default)
+
+
+def _secret_key_from_runtime(*, production: bool) -> str:
+    default = "" if production else _DEV_DEFAULT_SECRET_KEY
+    return _string_from_env("SECRET_KEY", default)
+
+
+def _jwt_secret_key_from_runtime(*, production: bool) -> str:
+    raw = _jwt_secret_key_from_environ()
+    if raw:
+        return raw
+    if production:
+        return ""
+    return _secret_key_from_runtime(production=False)
+
+
+def _llm_provider_from_runtime(*, production: bool) -> str:
+    default = "" if production else "mock"
+    return _string_from_env("LLM_PROVIDER", default)
+
+
 def _string_config_value(config: Mapping[str, object], key: str) -> str:
     value = config.get(key, "")
     if value is None:
@@ -193,57 +228,69 @@ def _has_explicit_config_value(config: type[Config] | Config, key: str) -> bool:
     return False
 
 
+def _has_non_base_config_value(config: type[Config] | Config, key: str) -> bool:
+    if not isinstance(config, type) and key in vars(config):
+        return True
+    config_class = _config_class_of(config)
+    for cls in config_class.__mro__:
+        if key not in vars(cls):
+            continue
+        return cls not in {Config, ProductionConfig}
+    return False
+
+
 def production_runtime_overrides(config: type[Config] | Config) -> dict[str, str]:
-    """为生产配置应用运行时 env 优先级；未标记为显式的类级值会被当前 env 覆盖。"""
-    if _is_base_production_config(config):
-        return {
-            "SECRET_KEY": _secret_key_from_environ(),
-            "JWT_SECRET_KEY": _jwt_secret_key_from_environ(),
-            "BROKER_URL": broker_url_from_environ(),
-        }
+    """兼容旧调用方：生产运行时覆盖委托给通用运行时覆盖。"""
+    return {
+        key: value
+        for key, value in runtime_config_overrides(config).items()
+        if key in {"SECRET_KEY", "JWT_SECRET_KEY", "BROKER_URL"}
+    }
 
-    overrides: dict[str, str] = {}
-    env_secret_key = _secret_key_from_environ()
-    env_jwt_secret_key = _jwt_secret_key_from_environ()
-    env_broker_url = broker_url_from_environ()
-    if not _has_explicit_config_value(config, "SECRET_KEY"):
-        overrides["SECRET_KEY"] = env_secret_key
 
-    if not _has_explicit_config_value(config, "JWT_SECRET_KEY"):
-        overrides["JWT_SECRET_KEY"] = env_jwt_secret_key
+def runtime_config_overrides(config: type[Config] | Config) -> dict[str, object]:
+    """为当前运行环境重新计算 env-backed 配置，避免导入时捕获旧值。"""
+    overrides: dict[str, object] = {}
+    production = is_production_config(config)
+    preserve = _has_explicit_config_value if production else _has_non_base_config_value
 
-    if not _has_explicit_config_value(config, "BROKER_URL"):
-        overrides["BROKER_URL"] = env_broker_url
+    if not preserve(config, "SECRET_KEY"):
+        overrides["SECRET_KEY"] = _secret_key_from_runtime(production=production)
+
+    if not preserve(config, "JWT_SECRET_KEY"):
+        overrides["JWT_SECRET_KEY"] = _jwt_secret_key_from_runtime(production=production)
+
+    if not preserve(config, "SQLALCHEMY_DATABASE_URI"):
+        overrides["SQLALCHEMY_DATABASE_URI"] = _database_url_from_runtime(production=production)
+
+    if not preserve(config, "BROKER_URL"):
+        overrides["BROKER_URL"] = broker_url_from_environ()
+
+    if not preserve(config, "LLM_PROVIDER"):
+        overrides["LLM_PROVIDER"] = _llm_provider_from_runtime(production=production)
+
+    if not preserve(config, "LLM_HTTP_API_KEY"):
+        overrides["LLM_HTTP_API_KEY"] = _llm_http_api_key_from_environ()
+
+    if not preserve(config, "LLM_HTTP_BASE_URL"):
+        overrides["LLM_HTTP_BASE_URL"] = _llm_http_base_url_from_environ()
+
+    if not preserve(config, "LLM_HTTP_MODEL"):
+        overrides["LLM_HTTP_MODEL"] = _llm_http_model_from_environ()
+
+    if not preserve(config, "LLM_HTTP_TIMEOUT_S"):
+        overrides["LLM_HTTP_TIMEOUT_S"] = _float_from_env("LLM_HTTP_TIMEOUT_S", 60.0)
 
     return overrides
 
 
 def llm_runtime_overrides(config: type[Config] | Config) -> dict[str, object]:
-    """为任意运行环境应用当前 env 中显式提供的 LLM 设置。"""
-    overrides: dict[str, object] = {}
-
-    if not _has_explicit_config_value(config, "LLM_PROVIDER") and "LLM_PROVIDER" in os.environ:
-        overrides["LLM_PROVIDER"] = _llm_provider_from_environ()
-
-    if not _has_explicit_config_value(config, "LLM_HTTP_API_KEY") and (
-        "LLM_HTTP_API_KEY" in os.environ or "OPENAI_API_KEY" in os.environ
-    ):
-        overrides["LLM_HTTP_API_KEY"] = _llm_http_api_key_from_environ()
-
-    if not _has_explicit_config_value(config, "LLM_HTTP_BASE_URL") and (
-        "LLM_HTTP_BASE_URL" in os.environ or "OPENAI_BASE_URL" in os.environ
-    ):
-        overrides["LLM_HTTP_BASE_URL"] = _llm_http_base_url_from_environ()
-
-    if not _has_explicit_config_value(config, "LLM_HTTP_MODEL") and (
-        "LLM_HTTP_MODEL" in os.environ or "OPENAI_MODEL" in os.environ
-    ):
-        overrides["LLM_HTTP_MODEL"] = _llm_http_model_from_environ()
-
-    if not _has_explicit_config_value(config, "LLM_HTTP_TIMEOUT_S") and "LLM_HTTP_TIMEOUT_S" in os.environ:
-        overrides["LLM_HTTP_TIMEOUT_S"] = _float_from_env("LLM_HTTP_TIMEOUT_S", 60.0)
-
-    return overrides
+    """兼容旧调用方：委托给通用运行时覆盖。"""
+    return {
+        key: value
+        for key, value in runtime_config_overrides(config).items()
+        if key.startswith("LLM_")
+    }
 
 
 def _validate_production_secret(key: str, value: str) -> None:
@@ -324,6 +371,7 @@ __all__ = [
     "get_config_class",
     "is_production_config",
     "llm_runtime_overrides",
+    "runtime_config_overrides",
     "production_runtime_overrides",
     "validate_production_runtime_requirements",
 ]

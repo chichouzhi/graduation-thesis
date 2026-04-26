@@ -106,6 +106,80 @@ def test_env_example_defaults_to_local_development_bootstrap() -> None:
     assert "LLM_HTTP_API_KEY" not in uncommented
 
 
+def test_env_example_supports_coherent_local_create_app_runtime(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app import create_app
+    from app.adapter.llm.client import MockLlmClient
+    from app.config import Config
+
+    example_path = Path(__file__).resolve().parents[1] / ".env.example"
+    lines = example_path.read_text(encoding="utf-8").splitlines()
+    env_values = {
+        line.split("=", 1)[0]: line.split("=", 1)[1]
+        for line in lines
+        if line and not line.startswith("#") and "=" in line
+    }
+
+    monkeypatch.setattr(Config, "SECRET_KEY", "stale-imported-secret-key-value-32b")
+    monkeypatch.setattr(Config, "JWT_SECRET_KEY", "stale-imported-jwt-secret-key-value-32b")
+    monkeypatch.setattr(Config, "SQLALCHEMY_DATABASE_URI", "sqlite:///stale-imported.db")
+    monkeypatch.setattr(Config, "BROKER_URL", "redis://stale-imported-broker:6379/8", raising=False)
+    monkeypatch.setattr(Config, "LLM_PROVIDER", "openai_compatible", raising=False)
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    monkeypatch.delenv("JWT_SECRET_KEY", raising=False)
+    for key, value in env_values.items():
+        monkeypatch.setenv(key, value)
+
+    app = create_app(config=Config)
+
+    assert app.config["SECRET_KEY"] == "dev-only-change-in-production-please-use-32+bytes"
+    assert app.config["JWT_SECRET_KEY"] == "dev-only-change-in-production-please-use-32+bytes"
+    assert app.config["SQLALCHEMY_DATABASE_URI"] == "sqlite:///:memory:"
+    assert app.config["BROKER_URL"] == env_values["BROKER_URL"]
+    assert app.config["LLM_PROVIDER"] == "mock"
+    assert isinstance(app.extensions["llm_client"], MockLlmClient)
+
+
+def test_create_app_development_uses_current_runtime_env_for_core_and_llm_config(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app import create_app
+    from app.adapter.llm.openai_compatible_http import OpenAiCompatibleHttpClient
+    from app.config import Config
+
+    monkeypatch.setenv("FLASK_ENV", "development")
+    monkeypatch.setenv("SECRET_KEY", "dev-current-secret-key-value-32b")
+    monkeypatch.setenv("JWT_SECRET_KEY", "dev-current-jwt-secret-key-value-32b")
+    monkeypatch.setenv("DATABASE_URL", "sqlite:///current-runtime.db")
+    monkeypatch.setenv("BROKER_URL", "redis://current-runtime-broker:6379/4")
+    monkeypatch.setenv("LLM_PROVIDER", "openai_compatible")
+    monkeypatch.setenv("LLM_HTTP_API_KEY", "dev-current-http-key")
+    monkeypatch.setenv("LLM_HTTP_BASE_URL", "https://current-runtime.example.invalid/v1")
+    monkeypatch.setenv("LLM_HTTP_MODEL", "current-runtime-model")
+
+    monkeypatch.setattr(Config, "SECRET_KEY", "stale-imported-secret-key-value-32b")
+    monkeypatch.setattr(Config, "JWT_SECRET_KEY", "stale-imported-jwt-secret-key-value-32b")
+    monkeypatch.setattr(Config, "SQLALCHEMY_DATABASE_URI", "sqlite:///stale-imported.db")
+    monkeypatch.setattr(Config, "BROKER_URL", "redis://stale-imported-broker:6379/5", raising=False)
+    monkeypatch.setattr(Config, "LLM_PROVIDER", "mock", raising=False)
+    monkeypatch.setattr(Config, "LLM_HTTP_API_KEY", "", raising=False)
+    monkeypatch.setattr(Config, "LLM_HTTP_BASE_URL", "", raising=False)
+    monkeypatch.setattr(Config, "LLM_HTTP_MODEL", "", raising=False)
+
+    app = create_app(config=Config)
+
+    assert app.config["SECRET_KEY"] == "dev-current-secret-key-value-32b"
+    assert app.config["JWT_SECRET_KEY"] == "dev-current-jwt-secret-key-value-32b"
+    assert app.config["SQLALCHEMY_DATABASE_URI"] == "sqlite:///current-runtime.db"
+    assert app.config["BROKER_URL"] == "redis://current-runtime-broker:6379/4"
+    assert app.config["LLM_PROVIDER"] == "openai_compatible"
+    assert app.config["LLM_HTTP_API_KEY"] == "dev-current-http-key"
+    assert app.config["LLM_HTTP_BASE_URL"] == "https://current-runtime.example.invalid/v1"
+    assert app.config["LLM_HTTP_MODEL"] == "current-runtime-model"
+    assert isinstance(app.extensions["llm_client"], OpenAiCompatibleHttpClient)
+
+
 def test_production_rejects_known_placeholder_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     from app import create_app
 
