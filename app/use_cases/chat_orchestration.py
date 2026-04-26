@@ -9,8 +9,13 @@ token 级裁剪：与 ``execution_plan`` chat 子任务及 §14.6 引用一致�
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from datetime import datetime, timezone
+from typing import Any
 
+from app.chat.model import ChatJob, Message, MessageAsyncTaskStatus
+from app.common.error_envelope import ErrorCode
 from app.config import Config
+from app.extensions import db
 
 # 与 execution_plan「系统角色与免责声明」对齐
 CHAT_SYSTEM_DISCLAIMER_ZH = (
@@ -164,9 +169,91 @@ def build_messages(
     return trim_messages_to_token_budget(out, max_tokens=budget)
 
 
-def run_turn(conversation_id: str, messages: list, term_id: str, **kwargs) -> None:
-    """Worker 路径：调用 LLM（由架构测试 patch ``adapter.llm``）。"""
+def _utc_now_naive() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _normalize_llm_output(result: Any) -> dict[str, Any]:
+    if isinstance(result, Mapping):
+        usage_raw = result.get("usage")
+        usage = dict(usage_raw) if isinstance(usage_raw, Mapping) else None
+        model_name = str(result.get("model") or result.get("model_name") or "").strip() or None
+        provider_request_id = (
+            str(result.get("provider_request_id") or result.get("request_id") or result.get("id") or "").strip() or None
+        )
+        content_raw = result.get("content", "")
+        return {
+            "content": "" if content_raw is None else str(content_raw),
+            "usage": usage,
+            "model_name": model_name,
+            "provider_request_id": provider_request_id,
+        }
+    return {
+        "content": "" if result is None else str(result),
+        "usage": None,
+        "model_name": None,
+        "provider_request_id": None,
+    }
+
+
+def run_turn(conversation_id: str, messages: list, term_id: str, **kwargs: Any) -> None:
+    """Worker 路径：调用 LLM 并将 ChatJob / assistant 占位写回到终态。"""
     from app.adapter import llm as llm_mod
 
-    _ = (conversation_id, term_id, kwargs)
-    llm_mod.complete(messages)
+    job_id = str(kwargs.get("job_id", "")).strip()
+    assistant_message_id = str(kwargs.get("assistant_message_id", "")).strip()
+    user_message_id = str(kwargs.get("user_message_id", "")).strip()
+
+    job = db.session.get(ChatJob, job_id)
+    user_message = db.session.get(Message, user_message_id)
+    assistant_message = db.session.get(Message, assistant_message_id)
+    if job is None or user_message is None or assistant_message is None:
+        raise ValueError("chat job persistence rows are missing")
+    if job.conversation_id != str(conversation_id).strip():
+        raise ValueError("chat job conversation_id mismatch")
+    if user_message.conversation_id != job.conversation_id or assistant_message.conversation_id != job.conversation_id:
+        raise ValueError("chat job message rows do not belong to the same conversation")
+
+    started_at = job.started_at or _utc_now_naive()
+    job.status = MessageAsyncTaskStatus.running
+    job.started_at = started_at
+    job.finished_at = None
+    job.error_code = None
+    job.error_message = None
+    job.provider_request_id = None
+    job.model_name = None
+    job.usage_json = None
+    assistant_message.delivery_status = MessageAsyncTaskStatus.running
+    db.session.commit()
+
+    try:
+        llm_result = llm_mod.complete(
+            messages,
+            term_id=term_id,
+            user_id=kwargs.get("user_id"),
+            request_id=kwargs.get("request_id"),
+        )
+        normalized = _normalize_llm_output(llm_result)
+        assistant_message.content = normalized["content"]
+        assistant_message.delivery_status = MessageAsyncTaskStatus.done
+        job.status = MessageAsyncTaskStatus.done
+        job.finished_at = _utc_now_naive()
+        job.provider_request_id = normalized["provider_request_id"]
+        job.model_name = normalized["model_name"]
+        job.usage_json = normalized["usage"]
+        job.error_code = None
+        job.error_message = None
+        db.session.commit()
+    except Exception as exc:
+        error_code = getattr(exc, "error_code", ErrorCode.DOMAIN_ERROR.value)
+        job.status = MessageAsyncTaskStatus.failed
+        job.finished_at = _utc_now_naive()
+        job.error_code = str(error_code)
+        job.error_message = str(exc)
+        job.provider_request_id = None
+        job.model_name = None
+        job.usage_json = None
+        assistant_message.delivery_status = MessageAsyncTaskStatus.failed
+        assistant_message.content = assistant_message.content or ""
+        db.session.commit()
+        raise

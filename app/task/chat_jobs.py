@@ -116,6 +116,10 @@ def handle_chat_job(payload: dict[str, Any]) -> None:
         seq=typed.seq,
         request_id=typed.request_id,
         dispatch_attempt=typed.dispatch_attempt,
+        content=typed.content,
+        history=list(typed.history),
+        context_type=typed.context_type,
+        context_ref_id=typed.context_ref_id,
     )
 
 

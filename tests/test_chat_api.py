@@ -432,6 +432,52 @@ def test_get_chat_job_success_200() -> None:
     assert body["status"] == "pending"
 
 
+def test_get_chat_job_returns_terminal_metadata_after_worker(monkeypatch) -> None:
+    app = create_app()
+    app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False
+    with app.app_context():
+        db.create_all()
+        user = _create_user(username="chat-api-job-done", role=UserRole.student)
+        term = _create_term("2046 夏")
+        conv = _create_conversation(user_id=user.id, term_id=term.id, title="job-done-conv")
+        conv_id = conv.id
+
+    monkeypatch.setattr(
+        "app.adapter.llm.complete",
+        lambda messages, **_: {
+            "content": "final answer",
+            "usage": {"total_tokens": 5},
+            "model": "gpt-4o-mini",
+            "provider_request_id": "provider-req-200",
+        },
+    )
+
+    client = app.test_client()
+    token = _login_and_get_token(client, "chat-api-job-done", "pass-123")
+    post = client.post(
+        f"/api/v1/conversations/{conv_id}/messages",
+        json={"content": "ping"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert post.status_code == 202
+    job_id = post.get_json()["job_id"]
+
+    from app.worker import run_once
+
+    with app.app_context():
+        assert run_once() == 1
+
+    get = client.get(f"/api/v1/chat/jobs/{job_id}", headers={"Authorization": f"Bearer {token}"})
+    assert get.status_code == 200
+    body = get.get_json()
+    assert body["status"] == "done"
+    assert body["provider_request_id"] == "provider-req-200"
+    assert body["model_name"] == "gpt-4o-mini"
+    assert body["usage"] == {"total_tokens": 5}
+    assert body["started_at"] is not None
+    assert body["finished_at"] is not None
+
+
 def test_get_chat_job_not_found_404() -> None:
     app = create_app()
     app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False

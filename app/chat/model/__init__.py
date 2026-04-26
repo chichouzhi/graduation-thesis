@@ -194,6 +194,11 @@ class ChatJob(db.Model):
     )
     error_code = db.Column(db.String(128), nullable=True)
     error_message = db.Column(db.Text, nullable=True)
+    started_at = db.Column(db.DateTime, nullable=True)
+    finished_at = db.Column(db.DateTime, nullable=True)
+    provider_request_id = db.Column(db.String(128), nullable=True)
+    model_name = db.Column(db.String(128), nullable=True)
+    usage_json = db.Column(db.JSON, nullable=True)
     retry_count = db.Column(db.Integer, nullable=False, default=0)
     max_attempts = db.Column(db.Integer, nullable=True)
     next_retry_at = db.Column(db.DateTime, nullable=True)
@@ -223,6 +228,11 @@ class ChatJob(db.Model):
         }
         body["error_code"] = self.error_code
         body["error_message"] = self.error_message
+        body["started_at"] = _dt_to_contract_iso(self.started_at)
+        body["finished_at"] = _dt_to_contract_iso(self.finished_at)
+        body["provider_request_id"] = self.provider_request_id
+        body["model_name"] = self.model_name
+        body["usage"] = self.usage_json
         body["max_attempts"] = self.max_attempts
         body["next_retry_at"] = _dt_to_contract_iso(self.next_retry_at)
         return body

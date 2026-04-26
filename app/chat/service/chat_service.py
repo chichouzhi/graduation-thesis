@@ -339,11 +339,13 @@ class ChatService:
         try:
             queue_mod.enqueue_chat_jobs(enqueue_payload)
         except Exception as exc:
+            finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
             chat_job = db.session.get(ChatJob, job_id)
             if chat_job is not None:
                 chat_job.status = MessageAsyncTaskStatus.failed
                 chat_job.error_code = ErrorCode.QUEUE_UNAVAILABLE.value
                 chat_job.error_message = str(exc)
+                chat_job.finished_at = finished_at
             assistant_row = db.session.get(Message, assistant_message_id)
             if assistant_row is not None:
                 assistant_row.delivery_status = MessageAsyncTaskStatus.failed
