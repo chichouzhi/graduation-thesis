@@ -23,7 +23,7 @@ from app.config import (
     validate_production_runtime_requirements,
 )
 from app.common.error_envelope import ErrorCode, ErrorEnvelope
-from app.extensions import init_extensions
+from app.extensions import init_extensions, register_runtime_clients
 
 
 def _request_entity_too_large_message() -> str:
@@ -69,6 +69,7 @@ def create_app(config: type[Config] | Config | None = None) -> Flask:
         app.config.update(production_runtime_overrides(cfg))
         validate_production_runtime_requirements(cfg, app.config)
     init_extensions(app)
+    register_runtime_clients(app, default_to_mock=not is_production_config(cfg))
     from app.identity import model as _identity_model  # noqa: F401 — register ``users`` ORM (AG-008)
     from app.terms import model as _terms_model  # noqa: F401 — register ``terms`` ORM (AG-009)
     from app.chat import model as _chat_model  # noqa: F401 — register chat ORM (AG-011/AG-012)

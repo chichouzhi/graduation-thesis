@@ -11,6 +11,7 @@ import random
 import time
 import urllib.error
 import urllib.request
+from collections.abc import Mapping
 from typing import Any, Final
 from urllib.parse import urljoin
 
@@ -144,18 +145,49 @@ class OpenAiCompatibleHttpClient(LlmClient):
         return {"content": ""}
 
 
-def openai_compatible_client_from_environ() -> OpenAiCompatibleHttpClient | None:
-    """若配置了 ``LLM_HTTP_API_KEY``（或 ``OPENAI_API_KEY``）则构造客户端，否则 ``None``。"""
-    key = os.environ.get("LLM_HTTP_API_KEY") or os.environ.get("OPENAI_API_KEY")
-    if not key or not str(key).strip():
+def _string_value(values: Mapping[str, object] | None, key: str) -> str:
+    if values is None:
+        return ""
+    value = values.get(key, "")
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _env_or_value(
+    values: Mapping[str, object] | None,
+    key: str,
+    *,
+    aliases: tuple[str, ...] = (),
+) -> str:
+    configured = _string_value(values, key)
+    if configured:
+        return configured
+    for alias in (key, *aliases):
+        raw = os.environ.get(alias)
+        if raw is not None and raw.strip():
+            return raw.strip()
+    return ""
+
+
+def openai_compatible_client_from_environ(
+    values: Mapping[str, object] | None = None,
+) -> OpenAiCompatibleHttpClient | None:
+    """若存在 HTTP LLM 配置则构造客户端；若配置不完整则抛错。"""
+    key = _env_or_value(values, "LLM_HTTP_API_KEY", aliases=("OPENAI_API_KEY",))
+    base = _env_or_value(values, "LLM_HTTP_BASE_URL", aliases=("OPENAI_BASE_URL",))
+    model = _env_or_value(values, "LLM_HTTP_MODEL", aliases=("OPENAI_MODEL",))
+    timeout_raw = _env_or_value(values, "LLM_HTTP_TIMEOUT_S")
+
+    if not key and not base and not model and not timeout_raw:
         return None
-    base = (
-        os.environ.get("LLM_HTTP_BASE_URL")
-        or os.environ.get("OPENAI_BASE_URL")
-        or "https://api.openai.com/v1"
-    )
-    model = os.environ.get("LLM_HTTP_MODEL") or os.environ.get("OPENAI_MODEL") or "gpt-4o-mini"
-    timeout_raw = os.environ.get("LLM_HTTP_TIMEOUT_S")
+    if not key:
+        raise RuntimeError("LLM_HTTP_API_KEY is required for the OpenAI-compatible HTTP client")
+    if not base:
+        raise RuntimeError("LLM_HTTP_BASE_URL is required for the OpenAI-compatible HTTP client")
+    if not model:
+        raise RuntimeError("LLM_HTTP_MODEL is required for the OpenAI-compatible HTTP client")
+
     timeout_s = _DEFAULT_TIMEOUT_S
     if timeout_raw and timeout_raw.strip():
         try:
@@ -163,9 +195,9 @@ def openai_compatible_client_from_environ() -> OpenAiCompatibleHttpClient | None
         except ValueError:
             pass
     return OpenAiCompatibleHttpClient(
-        base_url=base.strip(),
-        api_key=str(key).strip(),
-        model=model.strip(),
+        base_url=base,
+        api_key=key,
+        model=model,
         timeout_s=timeout_s,
     )
 

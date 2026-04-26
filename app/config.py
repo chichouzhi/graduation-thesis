@@ -11,6 +11,13 @@ from typing import Final
 # 与队列客户端对齐：优先显式 broker，其次常见 Redis 直连 URL（R-NO-QUEUE）
 _ENV_BROKER_KEYS: Final[tuple[str, ...]] = ("BROKER_URL", "REDIS_URL")
 _DEV_DEFAULT_SECRET_KEY: Final[str] = "dev-only-change-in-production-please-use-32+bytes"
+_KNOWN_PLACEHOLDER_SECRETS: Final[frozenset[str]] = frozenset(
+    {
+        _DEV_DEFAULT_SECRET_KEY,
+        "change-me-to-32-bytes-minimum",
+    }
+)
+_MIN_SECRET_LENGTH: Final[int] = 32
 
 
 def _int_from_env(name: str, default: int) -> int:
@@ -108,6 +115,22 @@ def broker_url_from_environ() -> str:
     return ""
 
 
+def _llm_provider_from_environ() -> str:
+    return str(os.environ.get("LLM_PROVIDER", "")).strip()
+
+
+def _llm_http_api_key_from_environ() -> str:
+    return str(os.environ.get("LLM_HTTP_API_KEY") or os.environ.get("OPENAI_API_KEY") or "").strip()
+
+
+def _llm_http_base_url_from_environ() -> str:
+    return str(os.environ.get("LLM_HTTP_BASE_URL") or os.environ.get("OPENAI_BASE_URL") or "").strip()
+
+
+def _llm_http_model_from_environ() -> str:
+    return str(os.environ.get("LLM_HTTP_MODEL") or os.environ.get("OPENAI_MODEL") or "").strip()
+
+
 def _secret_key_from_environ() -> str:
     return str(os.environ.get("SECRET_KEY", "")).strip()
 
@@ -155,12 +178,20 @@ def production_runtime_overrides(config: type[Config] | Config) -> dict[str, str
             "SECRET_KEY": _secret_key_from_environ(),
             "JWT_SECRET_KEY": _jwt_secret_key_from_environ(),
             "BROKER_URL": broker_url_from_environ(),
+            "LLM_PROVIDER": _llm_provider_from_environ(),
+            "LLM_HTTP_API_KEY": _llm_http_api_key_from_environ(),
+            "LLM_HTTP_BASE_URL": _llm_http_base_url_from_environ(),
+            "LLM_HTTP_MODEL": _llm_http_model_from_environ(),
         }
 
     overrides: dict[str, str] = {}
     env_secret_key = _secret_key_from_environ()
     env_jwt_secret_key = _jwt_secret_key_from_environ()
     env_broker_url = broker_url_from_environ()
+    env_llm_provider = _llm_provider_from_environ()
+    env_llm_http_api_key = _llm_http_api_key_from_environ()
+    env_llm_http_base_url = _llm_http_base_url_from_environ()
+    env_llm_http_model = _llm_http_model_from_environ()
 
     if not _has_explicit_config_value(config, "SECRET_KEY"):
         overrides["SECRET_KEY"] = env_secret_key
@@ -171,7 +202,54 @@ def production_runtime_overrides(config: type[Config] | Config) -> dict[str, str
     if not _has_explicit_config_value(config, "BROKER_URL"):
         overrides["BROKER_URL"] = env_broker_url
 
+    if not _has_explicit_config_value(config, "LLM_PROVIDER"):
+        overrides["LLM_PROVIDER"] = env_llm_provider
+
+    if not _has_explicit_config_value(config, "LLM_HTTP_API_KEY"):
+        overrides["LLM_HTTP_API_KEY"] = env_llm_http_api_key
+
+    if not _has_explicit_config_value(config, "LLM_HTTP_BASE_URL"):
+        overrides["LLM_HTTP_BASE_URL"] = env_llm_http_base_url
+
+    if not _has_explicit_config_value(config, "LLM_HTTP_MODEL"):
+        overrides["LLM_HTTP_MODEL"] = env_llm_http_model
+
     return overrides
+
+
+def _validate_production_secret(key: str, value: str) -> None:
+    if not value:
+        raise RuntimeError(f"Production requires an explicit {key}")
+    if value in _KNOWN_PLACEHOLDER_SECRETS:
+        raise RuntimeError(f"Production rejects placeholder {key}")
+    if len(value) < _MIN_SECRET_LENGTH:
+        raise RuntimeError(
+            f"Production requires {key} to be at least {_MIN_SECRET_LENGTH} characters long"
+        )
+
+
+def _normalize_llm_provider(value: str) -> str:
+    return value.strip().lower().replace("-", "_")
+
+
+def _validate_production_llm_runtime(values: Mapping[str, object]) -> None:
+    provider = _normalize_llm_provider(_string_config_value(values, "LLM_PROVIDER"))
+    if not provider:
+        raise RuntimeError("Production requires an explicit LLM_PROVIDER")
+    if provider == "mock":
+        raise RuntimeError("Production does not allow LLM_PROVIDER=mock")
+    if provider != "openai_compatible":
+        raise RuntimeError(f"Production does not support LLM_PROVIDER={provider}")
+
+    api_key = _string_config_value(values, "LLM_HTTP_API_KEY")
+    base_url = _string_config_value(values, "LLM_HTTP_BASE_URL")
+    model = _string_config_value(values, "LLM_HTTP_MODEL")
+    if not api_key:
+        raise RuntimeError("Production requires LLM_HTTP_API_KEY when LLM_PROVIDER is openai_compatible")
+    if not base_url:
+        raise RuntimeError("Production requires LLM_HTTP_BASE_URL when LLM_PROVIDER is openai_compatible")
+    if not model:
+        raise RuntimeError("Production requires LLM_HTTP_MODEL when LLM_PROVIDER is openai_compatible")
 
 
 def validate_production_runtime_requirements(config: type[Config] | Config, values: Mapping[str, object]) -> None:
@@ -181,15 +259,14 @@ def validate_production_runtime_requirements(config: type[Config] | Config, valu
     secret_key = _string_config_value(values, "SECRET_KEY")
     jwt_secret_key = _string_config_value(values, "JWT_SECRET_KEY")
     broker_url = _string_config_value(values, "BROKER_URL")
-    if not secret_key or secret_key == _DEV_DEFAULT_SECRET_KEY:
-        raise RuntimeError("Production requires an explicit SECRET_KEY")
-    if not jwt_secret_key or jwt_secret_key == _DEV_DEFAULT_SECRET_KEY:
-        raise RuntimeError("Production requires an explicit JWT_SECRET_KEY")
+    _validate_production_secret("SECRET_KEY", secret_key)
+    _validate_production_secret("JWT_SECRET_KEY", jwt_secret_key)
     if not broker_url:
         raise RuntimeError(
             "R-NO-QUEUE: FLASK_ENV=production requires a non-empty BROKER_URL or "
             "REDIS_URL (queue + worker is mandatory; see spec/architecture.spec.md)."
         )
+    _validate_production_llm_runtime(values)
 
 
 def get_config_class() -> type[Config]:

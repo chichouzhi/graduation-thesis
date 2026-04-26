@@ -99,10 +99,27 @@ def test_k_retries_constant_matches_spec() -> None:
     assert K_RETRIES == 3
 
 
-def test_openai_compatible_client_from_environ_none_without_key(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_openai_compatible_client_from_environ_none_without_any_llm_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.delenv("LLM_HTTP_API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("LLM_HTTP_MODEL", raising=False)
+    monkeypatch.delenv("OPENAI_MODEL", raising=False)
+    monkeypatch.delenv("LLM_HTTP_BASE_URL", raising=False)
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
     assert openai_compatible_client_from_environ() is None
+
+
+def test_openai_compatible_client_from_environ_rejects_partial_env(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("LLM_HTTP_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setenv("LLM_HTTP_MODEL", "mm")
+
+    with pytest.raises(RuntimeError, match="LLM_HTTP_API_KEY"):
+        openai_compatible_client_from_environ()
 
 
 def test_openai_compatible_client_from_environ_with_key(monkeypatch: pytest.MonkeyPatch) -> None:

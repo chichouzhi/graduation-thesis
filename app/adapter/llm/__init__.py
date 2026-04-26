@@ -2,13 +2,33 @@
 
 from __future__ import annotations
 
+import os
+from collections.abc import Mapping
 from typing import Any
 
 from app.adapter.llm.client import LlmClient, MockLlmClient
+from app.adapter.llm.openai_compatible_http import openai_compatible_client_from_environ
 from app.adapter.llm.protocol import LlmClientProtocol
 
 # 默认进程内实现：可测试替换为厂商客户端实例
 _default_client: LlmClient = MockLlmClient()
+
+
+class LlmConfigurationError(RuntimeError):
+    """LLM 运行时配置缺失或非法。"""
+
+
+def _normalize_provider(value: str) -> str:
+    return value.strip().lower().replace("-", "_")
+
+
+def _string_value(values: Mapping[str, object] | None, key: str) -> str:
+    if values is None:
+        return ""
+    value = values.get(key, "")
+    if value is None:
+        return ""
+    return str(value).strip()
 
 
 def get_llm_client() -> LlmClient:
@@ -20,6 +40,38 @@ def set_llm_client(client: LlmClient) -> None:
     """显式切换实现（例如单测或 AG-028 注册厂商客户端）。"""
     global _default_client
     _default_client = client
+
+
+def configure_llm_client_from_environment(
+    values: Mapping[str, object] | None = None,
+    *,
+    default_to_mock: bool = True,
+) -> LlmClient:
+    """按运行时环境注册默认 LLM 客户端。"""
+    provider = _normalize_provider(_string_value(values, "LLM_PROVIDER") or os.environ.get("LLM_PROVIDER", ""))
+    if not provider:
+        if default_to_mock:
+            client = MockLlmClient()
+            set_llm_client(client)
+            return client
+        raise LlmConfigurationError("LLM_PROVIDER must be configured before bootstrapping the LLM client")
+
+    if provider == "mock":
+        client = MockLlmClient()
+        set_llm_client(client)
+        return client
+
+    if provider == "openai_compatible":
+        client = openai_compatible_client_from_environ(values)
+        if client is None:
+            raise LlmConfigurationError(
+                "LLM_PROVIDER=openai_compatible requires LLM_HTTP_API_KEY, "
+                "LLM_HTTP_BASE_URL, and LLM_HTTP_MODEL"
+            )
+        set_llm_client(client)
+        return client
+
+    raise LlmConfigurationError(f"Unsupported LLM_PROVIDER: {provider}")
 
 
 def complete(
@@ -56,4 +108,14 @@ def call(
     )
 
 
-__all__ = ("LlmClient", "LlmClientProtocol", "complete", "invoke_chat", "call")
+__all__ = (
+    "LlmClient",
+    "LlmClientProtocol",
+    "LlmConfigurationError",
+    "complete",
+    "configure_llm_client_from_environment",
+    "invoke_chat",
+    "call",
+    "get_llm_client",
+    "set_llm_client",
+)
