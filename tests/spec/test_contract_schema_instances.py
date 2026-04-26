@@ -614,6 +614,31 @@ def test_message_schema_contract(
     )
 
 
+def test_chat_job_schema_declares_terminal_runtime_metadata(contract: dict[str, Any]) -> None:
+    schema = schema_by_name(contract, "ChatJob")
+    properties = schema.get("properties", {})
+    for field in ("started_at", "finished_at", "provider_request_id", "model_name", "usage"):
+        assert field in properties, f"ChatJob schema must declare {field}"
+
+    instance = {
+        "job_id": "job-1",
+        "conversation_id": "conv-1",
+        "user_message_id": "um-1",
+        "assistant_message_id": "am-1",
+        "status": "done",
+        "retry_count": 1,
+        "created_at": "2026-04-26T08:00:00Z",
+        "updated_at": "2026-04-26T08:00:01Z",
+        "started_at": "2026-04-26T08:00:00Z",
+        "finished_at": "2026-04-26T08:00:01Z",
+        "provider_request_id": "provider-req-1",
+        "model_name": "gpt-4o-mini",
+        "usage": {"total_tokens": 12},
+    }
+    errors = validate_instance(instance, schema, contract)
+    assert errors == [], f"ChatJob terminal metadata shape must validate; errors: {errors}"
+
+
 @pytest.mark.parametrize(
     ("schema_name", "instance", "expect_valid", "error_substrings"),
     [

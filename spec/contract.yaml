@@ -11,7 +11,7 @@
 openapi: 3.0.3
 info:
   title: Graduation Design Assistant API Contract
-  version: "0.2.6"
+  version: "0.2.7"
   description: |
     Identity / Terms / Taskboard + Chat / Document / Topic / Selection REST + 推荐只读 + 队列任务 body 契约（与 execution_plan 阶段 5 对齐）。
     LLM 相关：仅经 queue + worker；HTTP 受理返回 202（Chat 发消息、Document 上传）。
@@ -193,6 +193,29 @@ components:
           minimum: 1
           nullable: true
           description: 策略快照；null 表示由服务端默认（与 execution_plan 有限重试一致）
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: worker 成功 claim 并开始处理的时间；若 claim 失败但已进入失败补偿，仍可回填
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 终态写回时间；pending/running 时通常为 null
+        provider_request_id:
+          type: string
+          nullable: true
+          description: 上游 LLM 厂商请求 id；若 provider 未返回则为 null
+        model_name:
+          type: string
+          nullable: true
+          description: 实际完成本次生成的模型名；若 provider 未返回则为 null
+        usage:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: provider usage 投影；字段集合由上游返回决定
         next_retry_at:
           type: string
           format: date-time

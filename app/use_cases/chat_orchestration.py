@@ -21,6 +21,12 @@ from app.extensions import db
 CHAT_SYSTEM_DISCLAIMER_ZH = (
     "你是毕业设计领域的辅助助手。以下回答仅供学习与研究参考，不构成正式学术结论或法律意见。"
 )
+_TERMINAL_CHAT_JOB_STATUSES = frozenset(
+    {
+        MessageAsyncTaskStatus.done,
+        MessageAsyncTaskStatus.failed,
+    }
+)
 
 
 def _context_hint_zh(
@@ -196,6 +202,72 @@ def _normalize_llm_output(result: Any) -> dict[str, Any]:
     }
 
 
+def _persist_failed_job_if_possible(
+    *,
+    job_id: str,
+    assistant_message_id: str | None,
+    error_code: str,
+    error_message: str,
+    started_at: datetime | None = None,
+) -> Exception | None:
+    try:
+        db.session.rollback()
+    except Exception:  # noqa: BLE001 - best-effort cleanup before failure writeback
+        return None
+
+    try:
+        job = db.session.get(ChatJob, job_id) if job_id else None
+        assistant_message = (
+            db.session.get(Message, assistant_message_id)
+            if assistant_message_id is not None and str(assistant_message_id).strip()
+            else None
+        )
+        if job is None:
+            return None
+        if job.status == MessageAsyncTaskStatus.done:
+            return None
+
+        job.status = MessageAsyncTaskStatus.failed
+        job.started_at = job.started_at or started_at or _utc_now_naive()
+        job.finished_at = _utc_now_naive()
+        job.error_code = error_code
+        job.error_message = error_message
+        job.provider_request_id = None
+        job.model_name = None
+        job.usage_json = None
+        if assistant_message is not None:
+            assistant_message.delivery_status = MessageAsyncTaskStatus.failed
+            assistant_message.content = assistant_message.content or ""
+        db.session.commit()
+    except Exception as exc:  # noqa: BLE001 - preserve primary failure while surfacing writeback issue
+        try:
+            db.session.rollback()
+        except Exception:  # noqa: BLE001 - best effort only
+            pass
+        return exc
+    return None
+
+
+def _raise_with_failure_writeback(
+    exc: Exception,
+    *,
+    job_id: str,
+    assistant_message_id: str,
+    error_code: str,
+    started_at: datetime | None = None,
+) -> None:
+    writeback_exc = _persist_failed_job_if_possible(
+        job_id=job_id,
+        assistant_message_id=assistant_message_id,
+        error_code=error_code,
+        error_message=str(exc),
+        started_at=started_at,
+    )
+    if writeback_exc is not None and hasattr(exc, "add_note"):
+        exc.add_note(f"chat failure writeback also failed: {writeback_exc}")
+    raise exc
+
+
 def run_turn(conversation_id: str, messages: list, term_id: str, **kwargs: Any) -> None:
     """Worker 路径：调用 LLM 并将 ChatJob / assistant 占位写回到终态。"""
     from app.adapter import llm as llm_mod
@@ -205,14 +277,37 @@ def run_turn(conversation_id: str, messages: list, term_id: str, **kwargs: Any) 
     user_message_id = str(kwargs.get("user_message_id", "")).strip()
 
     job = db.session.get(ChatJob, job_id)
+    if job is None:
+        raise ValueError("chat job row is missing")
+    if job.status in _TERMINAL_CHAT_JOB_STATUSES:
+        return
+
     user_message = db.session.get(Message, user_message_id)
     assistant_message = db.session.get(Message, assistant_message_id)
-    if job is None or user_message is None or assistant_message is None:
-        raise ValueError("chat job persistence rows are missing")
+    if user_message is None or assistant_message is None:
+        exc = ValueError("chat job persistence rows are missing")
+        _raise_with_failure_writeback(
+            exc,
+            job_id=job_id,
+            assistant_message_id=assistant_message_id,
+            error_code=ErrorCode.DOMAIN_ERROR.value,
+        )
     if job.conversation_id != str(conversation_id).strip():
-        raise ValueError("chat job conversation_id mismatch")
+        exc = ValueError("chat job conversation_id mismatch")
+        _raise_with_failure_writeback(
+            exc,
+            job_id=job_id,
+            assistant_message_id=assistant_message_id,
+            error_code=ErrorCode.DOMAIN_ERROR.value,
+        )
     if user_message.conversation_id != job.conversation_id or assistant_message.conversation_id != job.conversation_id:
-        raise ValueError("chat job message rows do not belong to the same conversation")
+        exc = ValueError("chat job message rows do not belong to the same conversation")
+        _raise_with_failure_writeback(
+            exc,
+            job_id=job_id,
+            assistant_message_id=assistant_message_id,
+            error_code=ErrorCode.DOMAIN_ERROR.value,
+        )
 
     started_at = job.started_at or _utc_now_naive()
     job.status = MessageAsyncTaskStatus.running
@@ -224,7 +319,16 @@ def run_turn(conversation_id: str, messages: list, term_id: str, **kwargs: Any) 
     job.model_name = None
     job.usage_json = None
     assistant_message.delivery_status = MessageAsyncTaskStatus.running
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception as exc:  # noqa: BLE001 - must fail terminally when worker claim cannot persist
+        _raise_with_failure_writeback(
+            exc,
+            job_id=job_id,
+            assistant_message_id=assistant_message_id,
+            error_code=ErrorCode.DOMAIN_ERROR.value,
+            started_at=started_at,
+        )
 
     try:
         llm_result = llm_mod.complete(
@@ -233,27 +337,32 @@ def run_turn(conversation_id: str, messages: list, term_id: str, **kwargs: Any) 
             user_id=kwargs.get("user_id"),
             request_id=kwargs.get("request_id"),
         )
-        normalized = _normalize_llm_output(llm_result)
-        assistant_message.content = normalized["content"]
-        assistant_message.delivery_status = MessageAsyncTaskStatus.done
-        job.status = MessageAsyncTaskStatus.done
-        job.finished_at = _utc_now_naive()
-        job.provider_request_id = normalized["provider_request_id"]
-        job.model_name = normalized["model_name"]
-        job.usage_json = normalized["usage"]
-        job.error_code = None
-        job.error_message = None
+    except Exception as exc:
+        _raise_with_failure_writeback(
+            exc,
+            job_id=job_id,
+            assistant_message_id=assistant_message_id,
+            error_code=str(getattr(exc, "error_code", ErrorCode.DOMAIN_ERROR.value)),
+            started_at=started_at,
+        )
+
+    normalized = _normalize_llm_output(llm_result)
+    assistant_message.content = normalized["content"]
+    assistant_message.delivery_status = MessageAsyncTaskStatus.done
+    job.status = MessageAsyncTaskStatus.done
+    job.finished_at = _utc_now_naive()
+    job.provider_request_id = normalized["provider_request_id"]
+    job.model_name = normalized["model_name"]
+    job.usage_json = normalized["usage"]
+    job.error_code = None
+    job.error_message = None
+    try:
         db.session.commit()
     except Exception as exc:
-        error_code = getattr(exc, "error_code", ErrorCode.DOMAIN_ERROR.value)
-        job.status = MessageAsyncTaskStatus.failed
-        job.finished_at = _utc_now_naive()
-        job.error_code = str(error_code)
-        job.error_message = str(exc)
-        job.provider_request_id = None
-        job.model_name = None
-        job.usage_json = None
-        assistant_message.delivery_status = MessageAsyncTaskStatus.failed
-        assistant_message.content = assistant_message.content or ""
-        db.session.commit()
-        raise
+        _raise_with_failure_writeback(
+            exc,
+            job_id=job_id,
+            assistant_message_id=assistant_message_id,
+            error_code=ErrorCode.DOMAIN_ERROR.value,
+            started_at=started_at,
+        )
