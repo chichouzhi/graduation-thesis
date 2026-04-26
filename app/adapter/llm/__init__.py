@@ -6,6 +6,8 @@ import os
 from collections.abc import Mapping
 from typing import Any
 
+from flask import current_app, has_app_context
+
 from app.adapter.llm.client import LlmClient, MockLlmClient
 from app.adapter.llm.openai_compatible_http import openai_compatible_client_from_environ
 from app.adapter.llm.protocol import LlmClientProtocol
@@ -33,6 +35,10 @@ def _string_value(values: Mapping[str, object] | None, key: str) -> str:
 
 def get_llm_client() -> LlmClient:
     """返回当前默认客户端；集成测试可 patch 本函数注入 stub。"""
+    if has_app_context():
+        client = current_app.extensions.get("llm_client")
+        if isinstance(client, LlmClient):
+            return client
     return _default_client
 
 
@@ -80,7 +86,7 @@ def complete(
     **kwargs: Any,
 ) -> Any:
     """UC/编排常用入口，与 ``chat_orchestration`` 对齐。"""
-    return _default_client.complete(messages, **kwargs)
+    return get_llm_client().complete(messages, **kwargs)
 
 
 def invoke_chat(
@@ -89,7 +95,7 @@ def invoke_chat(
     **kwargs: Any,
 ) -> Any:
     """与 ``complete`` 同语义的可选名。"""
-    return _default_client.invoke_chat(messages, **kwargs)
+    return get_llm_client().invoke_chat(messages, **kwargs)
 
 
 def call(
@@ -100,7 +106,7 @@ def call(
     **kwargs: Any,
 ) -> dict[str, Any]:
     """统一高层调用；默认委托 ``MockLlmClient.call``。"""
-    return _default_client.call(
+    return get_llm_client().call(
         messages=messages,
         conversation_id=conversation_id,
         term_id=term_id,

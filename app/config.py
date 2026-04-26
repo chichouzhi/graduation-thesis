@@ -17,6 +17,13 @@ _KNOWN_PLACEHOLDER_SECRETS: Final[frozenset[str]] = frozenset(
         "change-me-to-32-bytes-minimum",
     }
 )
+_KNOWN_PLACEHOLDER_RUNTIME_VALUES: Final[frozenset[str]] = frozenset(
+    {
+        "<set-a-unique-secret-with-at-least-32-characters>",
+        "<set-a-unique-jwt-secret-with-at-least-32-characters>",
+        "<set-your-openai-compatible-api-key>",
+    }
+)
 _MIN_SECRET_LENGTH: Final[int] = 32
 
 
@@ -220,7 +227,7 @@ def production_runtime_overrides(config: type[Config] | Config) -> dict[str, str
 def _validate_production_secret(key: str, value: str) -> None:
     if not value:
         raise RuntimeError(f"Production requires an explicit {key}")
-    if value in _KNOWN_PLACEHOLDER_SECRETS:
+    if _looks_like_placeholder_value(value) or value in _KNOWN_PLACEHOLDER_SECRETS:
         raise RuntimeError(f"Production rejects placeholder {key}")
     if len(value) < _MIN_SECRET_LENGTH:
         raise RuntimeError(
@@ -230,6 +237,15 @@ def _validate_production_secret(key: str, value: str) -> None:
 
 def _normalize_llm_provider(value: str) -> str:
     return value.strip().lower().replace("-", "_")
+
+
+def _looks_like_placeholder_value(value: str) -> bool:
+    normalized = value.strip().lower()
+    if value in _KNOWN_PLACEHOLDER_RUNTIME_VALUES:
+        return True
+    if normalized.startswith("<") and normalized.endswith(">"):
+        return True
+    return False
 
 
 def _validate_production_llm_runtime(values: Mapping[str, object]) -> None:
@@ -246,6 +262,8 @@ def _validate_production_llm_runtime(values: Mapping[str, object]) -> None:
     model = _string_config_value(values, "LLM_HTTP_MODEL")
     if not api_key:
         raise RuntimeError("Production requires LLM_HTTP_API_KEY when LLM_PROVIDER is openai_compatible")
+    if _looks_like_placeholder_value(api_key):
+        raise RuntimeError("Production rejects placeholder LLM_HTTP_API_KEY")
     if not base_url:
         raise RuntimeError("Production requires LLM_HTTP_BASE_URL when LLM_PROVIDER is openai_compatible")
     if not model:

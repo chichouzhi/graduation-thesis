@@ -103,6 +103,35 @@ def test_production_rejects_known_placeholder_secret(monkeypatch: pytest.MonkeyP
         create_app()
 
 
+def test_production_rejects_env_example_secret_placeholder(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app import create_app
+
+    _set_production_env(
+        monkeypatch,
+        broker="redis://localhost:6379/0",
+        secret="<set-a-unique-secret-with-at-least-32-characters>",
+        jwt_secret="production-jwt-secret-key-32-bytes",
+    )
+
+    with pytest.raises(RuntimeError, match="SECRET_KEY"):
+        create_app()
+
+
+def test_production_rejects_env_example_llm_api_key_placeholder(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app import create_app
+
+    _set_production_env(
+        monkeypatch,
+        broker="redis://localhost:6379/0",
+        secret="production-secret-key-32-bytes-minimum",
+        jwt_secret="production-jwt-secret-key-32-bytes",
+        llm_http_api_key="<set-your-openai-compatible-api-key>",
+    )
+
+    with pytest.raises(RuntimeError, match="LLM_HTTP_API_KEY"):
+        create_app()
+
+
 def test_production_rejects_short_jwt_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     from app import create_app
 
