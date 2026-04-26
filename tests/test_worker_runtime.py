@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app import create_app
+
 
 def test_run_once_registers_chat_jobs_and_dispatches(monkeypatch) -> None:
     pop_calls: list[tuple[str, str]] = []
@@ -59,6 +61,38 @@ def test_run_once_reads_broker_url_from_environment(monkeypatch) -> None:
         "redis://env-broker",
         "redis://env-broker",
         "redis://env-broker",
+    ]
+
+
+def test_run_once_uses_current_app_broker_config_when_env_missing(monkeypatch) -> None:
+    app = create_app()
+    app.config["BROKER_URL"] = "redis://app-config-broker"
+    seen_urls: list[str] = []
+
+    class _Redis:
+        def lpop(self, _key: str) -> bytes | None:
+            return None
+
+    def fake_redis_client_from_url(broker_url=None):
+        seen_urls.append(str(broker_url))
+        return _Redis()
+
+    monkeypatch.setattr("app.task.queue._redis_client_from_url", fake_redis_client_from_url)
+    monkeypatch.delenv("BROKER_URL", raising=False)
+    monkeypatch.delenv("REDIS_URL", raising=False)
+    monkeypatch.setattr("app.worker._queue_cursor", 0)
+
+    from app.worker import run_once
+
+    with app.app_context():
+        assert run_once() == 0
+
+    assert seen_urls == [
+        "redis://app-config-broker",
+        "redis://app-config-broker",
+        "redis://app-config-broker",
+        "redis://app-config-broker",
+        "redis://app-config-broker",
     ]
 
 

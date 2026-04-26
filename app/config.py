@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from typing import Final
 
 # 与队列客户端对齐：优先显式 broker，其次常见 Redis 直连 URL（R-NO-QUEUE）
@@ -67,6 +68,7 @@ class Config:
     REFRESH_TOKEN_COOKIE_PATH = os.environ.get("REFRESH_TOKEN_COOKIE_PATH", "/api/v1/auth")
     REFRESH_TOKEN_COOKIE_SAMESITE = os.environ.get("REFRESH_TOKEN_COOKIE_SAMESITE", "Lax")
     REFRESH_TOKEN_COOKIE_SECURE = _bool_from_env("REFRESH_TOKEN_COOKIE_SECURE", True)
+    MAX_CONTENT_LENGTH = _positive_int_from_env("MAX_CONTENT_LENGTH", 16 * 1024 * 1024, minimum=1)
 
     # chat_orchestration：上下文 token 预算（粗估，见 use_cases.chat_orchestration）；可由 CHAT_CONTEXT_TOKEN_BUDGET 覆盖
     CHAT_CONTEXT_TOKEN_BUDGET = _positive_int_from_env("CHAT_CONTEXT_TOKEN_BUDGET", 8192, minimum=1)
@@ -79,6 +81,22 @@ class ProductionConfig(Config):
     """生产：必须配置 broker，否则进程不得启动（architecture.spec R-NO-QUEUE）。"""
 
     DEBUG = False
+    PRODUCTION_EXPLICIT_KEYS: tuple[str, ...] = ()
+
+
+def _config_class_of(config: type[Config] | Config) -> type[Config]:
+    if isinstance(config, type):
+        return config
+    return type(config)
+
+
+def is_production_config(config: type[Config] | Config) -> bool:
+    """判断配置是否为 ProductionConfig 或其子类，支持类和实例。"""
+    return issubclass(_config_class_of(config), ProductionConfig)
+
+
+def _is_base_production_config(config: type[Config] | Config) -> bool:
+    return isinstance(config, type) and config is ProductionConfig
 
 
 def broker_url_from_environ() -> str:
@@ -90,11 +108,84 @@ def broker_url_from_environ() -> str:
     return ""
 
 
-def validate_production_broker(config_class: type[Config]) -> None:
-    """若选用 ProductionConfig，则要求非空 broker URL，否则抛错使工厂失败。"""
-    if config_class is not ProductionConfig:
+def _secret_key_from_environ() -> str:
+    return str(os.environ.get("SECRET_KEY", "")).strip()
+
+
+def _jwt_secret_key_from_environ() -> str:
+    return str(os.environ.get("JWT_SECRET_KEY", "")).strip()
+
+
+def _string_config_value(config: Mapping[str, object], key: str) -> str:
+    value = config.get(key, "")
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _class_declares_explicit_key(config_class: type[Config], key: str) -> bool:
+    keys = vars(config_class).get("PRODUCTION_EXPLICIT_KEYS", ())
+    return key in {str(item) for item in keys}
+
+
+def _has_explicit_config_value(config: type[Config] | Config, key: str) -> bool:
+    if not isinstance(config, type) and key in vars(config):
+        return True
+    config_class = _config_class_of(config)
+    for cls in config_class.__mro__:
+        if key not in vars(cls):
+            continue
+        if cls in {Config, ProductionConfig}:
+            return False
+        for marker_cls in config_class.__mro__:
+            if marker_cls in {Config, ProductionConfig}:
+                continue
+            if _class_declares_explicit_key(marker_cls, key):
+                return True
+            if marker_cls is cls:
+                break
+        return False
+    return False
+
+
+def production_runtime_overrides(config: type[Config] | Config) -> dict[str, str]:
+    """为生产配置应用运行时 env 优先级；未标记为显式的类级值会被当前 env 覆盖。"""
+    if _is_base_production_config(config):
+        return {
+            "SECRET_KEY": _secret_key_from_environ(),
+            "JWT_SECRET_KEY": _jwt_secret_key_from_environ(),
+            "BROKER_URL": broker_url_from_environ(),
+        }
+
+    overrides: dict[str, str] = {}
+    env_secret_key = _secret_key_from_environ()
+    env_jwt_secret_key = _jwt_secret_key_from_environ()
+    env_broker_url = broker_url_from_environ()
+
+    if not _has_explicit_config_value(config, "SECRET_KEY"):
+        overrides["SECRET_KEY"] = env_secret_key
+
+    if not _has_explicit_config_value(config, "JWT_SECRET_KEY"):
+        overrides["JWT_SECRET_KEY"] = env_jwt_secret_key
+
+    if not _has_explicit_config_value(config, "BROKER_URL"):
+        overrides["BROKER_URL"] = env_broker_url
+
+    return overrides
+
+
+def validate_production_runtime_requirements(config: type[Config] | Config, values: Mapping[str, object]) -> None:
+    """若选用生产配置，则要求最终生效的 broker 与关键 secrets 都显式配置。"""
+    if not is_production_config(config):
         return
-    if not broker_url_from_environ():
+    secret_key = _string_config_value(values, "SECRET_KEY")
+    jwt_secret_key = _string_config_value(values, "JWT_SECRET_KEY")
+    broker_url = _string_config_value(values, "BROKER_URL")
+    if not secret_key or secret_key == _DEV_DEFAULT_SECRET_KEY:
+        raise RuntimeError("Production requires an explicit SECRET_KEY")
+    if not jwt_secret_key or jwt_secret_key == _DEV_DEFAULT_SECRET_KEY:
+        raise RuntimeError("Production requires an explicit JWT_SECRET_KEY")
+    if not broker_url:
         raise RuntimeError(
             "R-NO-QUEUE: FLASK_ENV=production requires a non-empty BROKER_URL or "
             "REDIS_URL (queue + worker is mandatory; see spec/architecture.spec.md)."
@@ -114,5 +205,7 @@ __all__ = [
     "ProductionConfig",
     "broker_url_from_environ",
     "get_config_class",
-    "validate_production_broker",
+    "is_production_config",
+    "production_runtime_overrides",
+    "validate_production_runtime_requirements",
 ]

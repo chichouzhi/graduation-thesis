@@ -13,10 +13,24 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from app.common.error_envelope import ErrorCode, ErrorEnvelope
 from app.identity.api import bp
 from app.identity.service import IdentityService
+from app.identity.service.identity_service import InvalidRefreshTokenError
 
 
 def _json_error(code: ErrorCode, message: str, status: int) -> tuple[Response, int]:
     return jsonify(ErrorEnvelope(code=code, message=message).to_dict()), status
+
+
+def _apply_cookie(resp: Response, cookie: dict[str, Any]) -> None:
+    resp.set_cookie(
+        key=str(cookie["key"]),
+        value=str(cookie["value"]),
+        max_age=int(cookie["max_age"]),
+        expires=cookie.get("expires"),
+        httponly=bool(cookie["httponly"]),
+        secure=bool(cookie["secure"]),
+        samesite=str(cookie["samesite"]),
+        path=str(cookie["path"]),
+    )
 
 
 @bp.post("/auth/login")
@@ -47,15 +61,27 @@ def post_auth_login() -> tuple[Response, int]:
     login_body = result["login"]
     cookie: dict[str, Any] = result["refresh_cookie"]
     resp = jsonify(login_body)
-    resp.set_cookie(
-        key=str(cookie["key"]),
-        value=str(cookie["value"]),
-        max_age=int(cookie["max_age"]),
-        httponly=bool(cookie["httponly"]),
-        secure=bool(cookie["secure"]),
-        samesite=str(cookie["samesite"]),
-        path=str(cookie["path"]),
-    )
+    _apply_cookie(resp, cookie)
+    return resp, 200
+
+
+@bp.post("/auth/refresh")
+def post_auth_refresh() -> tuple[Response, int]:
+    svc = IdentityService()
+    refresh_cookie_name = str(svc.build_clear_refresh_cookie()["key"])
+    refresh_token = request.cookies.get(refresh_cookie_name, "")
+    if not str(refresh_token).strip():
+        return _json_error(ErrorCode.UNAUTHORIZED, "refresh token is required", 401)
+
+    try:
+        result = svc.refresh_access_session(str(refresh_token))
+    except InvalidRefreshTokenError:
+        return _json_error(ErrorCode.UNAUTHORIZED, "invalid refresh token", 401)
+
+    login_body = result["login"]
+    cookie: dict[str, Any] = result["refresh_cookie"]
+    resp = jsonify(login_body)
+    _apply_cookie(resp, cookie)
     return resp, 200
 
 
@@ -69,21 +95,12 @@ def post_auth_logout() -> tuple[Response, int]:
 
     try:
         result = svc.logout(str(refresh_token))
-    except Exception:
+    except InvalidRefreshTokenError:
         return _json_error(ErrorCode.UNAUTHORIZED, "invalid refresh token", 401)
 
     cookie: dict[str, Any] = result["cookie"]
     resp = Response(status=204)
-    resp.set_cookie(
-        key=str(cookie["key"]),
-        value=str(cookie["value"]),
-        max_age=int(cookie["max_age"]),
-        expires=cookie.get("expires"),
-        httponly=bool(cookie["httponly"]),
-        secure=bool(cookie["secure"]),
-        samesite=str(cookie["samesite"]),
-        path=str(cookie["path"]),
-    )
+    _apply_cookie(resp, cookie)
     return resp, 204
 
 

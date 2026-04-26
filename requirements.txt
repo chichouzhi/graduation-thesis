@@ -9,3 +9,4 @@ Flask-Migrate
 Flask-JWT-Extended
 pypdf
 jieba
+redis

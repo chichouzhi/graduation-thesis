@@ -562,11 +562,12 @@ components:
 
     RefreshResponse:
       type: object
-      required: [access_token, token_type, expires_in]
+      required: [access_token, token_type, expires_in, user]
       properties:
         access_token: { type: string }
         token_type: { type: string, enum: [Bearer] }
         expires_in: { type: integer }
+        user: { $ref: "#/components/schemas/UserSummary" }
 
     UserMe:
       type: object
@@ -728,10 +729,10 @@ paths:
   /auth/refresh:
     post:
       tags: [identity]
-      summary: 刷新访问令牌（默认使用 HttpOnly Refresh Cookie）
+      summary: 刷新访问令牌（默认使用 HttpOnly Refresh Cookie；成功时旋转并重写该 Cookie）
       responses:
         "200":
-          description: OK
+          description: OK，返回新的 access token，并旋转/重写 HttpOnly refresh cookie
           content:
             application/json:
               schema: { $ref: "#/components/schemas/RefreshResponse" }
@@ -1176,6 +1177,11 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/DocumentTask" }
+        "413":
+          description: Uploaded PDF exceeds server limit
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "429":
           description: OK
           content:

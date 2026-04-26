@@ -35,7 +35,14 @@ def _login_and_get_token(client, username: str, password: str) -> str:
     return resp.get_json()["access_token"]
 
 
-def test_post_document_tasks_success_202() -> None:
+def _stub_document_enqueue(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.task.queue.enqueue_pdf_parse",
+        lambda payload=None, **_kwargs: {"job_id": str((payload or {}).get("document_task_id") or "job-1")},
+    )
+
+
+def test_post_document_tasks_success_202(monkeypatch) -> None:
     app = create_app()
     app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False
     with app.app_context():
@@ -44,6 +51,7 @@ def test_post_document_tasks_success_202() -> None:
         term = _create_term("2046 春")
         term_id = term.id
 
+    _stub_document_enqueue(monkeypatch)
     client = app.test_client()
     token = _login_and_get_token(client, "document-api-user", "pass-123")
     resp = client.post(
@@ -81,6 +89,57 @@ def test_post_document_tasks_validation_error_400_when_term_missing() -> None:
     assert resp.get_json()["error"]["code"] == "VALIDATION_ERROR"
 
 
+def test_post_document_tasks_returns_413_when_file_exceeds_limit(monkeypatch) -> None:
+    app = create_app()
+    app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False
+    with app.app_context():
+        db.create_all()
+        _create_user(username="document-api-limit", role=UserRole.student)
+        term = _create_term("2049 春")
+        term_id = term.id
+
+    def fail_create_document_task(*_args, **_kwargs):
+        raise AssertionError("create_document_task should not be reached for oversized uploads")
+
+    monkeypatch.setattr(
+        "app.document.api.routes.DocumentService.create_document_task",
+        fail_create_document_task,
+    )
+    client = app.test_client()
+    token = _login_and_get_token(client, "document-api-limit", "pass-123")
+    app.config["MAX_CONTENT_LENGTH"] = 256
+    resp = client.post(
+        "/api/v1/document-tasks",
+        data={
+            "term_id": term_id,
+            "file": (io.BytesIO(b"0" * 1024), "paper.pdf"),
+        },
+        content_type="multipart/form-data",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 413
+    body = resp.get_json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert body["error"]["message"] == "uploaded file exceeds MAX_CONTENT_LENGTH"
+
+
+def test_oversized_non_document_request_returns_generic_413_message() -> None:
+    app = create_app()
+    app.config["MAX_CONTENT_LENGTH"] = 32
+    client = app.test_client()
+    resp = client.post(
+        "/api/v1/auth/login",
+        json={
+            "username": "u" * 128,
+            "password": "p" * 128,
+        },
+    )
+    assert resp.status_code == 413
+    body = resp.get_json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert body["error"]["message"] == "request payload exceeds MAX_CONTENT_LENGTH"
+
+
 def test_post_document_tasks_requires_access_token() -> None:
     app = create_app()
     client = app.test_client()
@@ -92,7 +151,7 @@ def test_post_document_tasks_requires_access_token() -> None:
     assert resp.status_code == 401
 
 
-def test_get_document_tasks_success_200() -> None:
+def test_get_document_tasks_success_200(monkeypatch) -> None:
     app = create_app()
     app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False
     with app.app_context():
@@ -101,6 +160,7 @@ def test_get_document_tasks_success_200() -> None:
         term = _create_term("2047 春")
         term_id = term.id
 
+    _stub_document_enqueue(monkeypatch)
     client = app.test_client()
     token = _login_and_get_token(client, "document-api-list", "pass-123")
     create_resp = client.post(
@@ -151,7 +211,7 @@ def test_get_document_tasks_requires_access_token() -> None:
     assert resp.status_code == 401
 
 
-def test_get_document_task_by_id_success_200() -> None:
+def test_get_document_task_by_id_success_200(monkeypatch) -> None:
     app = create_app()
     app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False
     with app.app_context():
@@ -160,6 +220,7 @@ def test_get_document_task_by_id_success_200() -> None:
         term = _create_term("2048 春")
         term_id = term.id
 
+    _stub_document_enqueue(monkeypatch)
     client = app.test_client()
     token = _login_and_get_token(client, "document-api-one", "pass-123")
     create_resp = client.post(

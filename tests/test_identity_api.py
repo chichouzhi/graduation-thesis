@@ -8,6 +8,15 @@ from app.extensions import db
 from app.identity.model import User, UserRole
 
 
+def _cookie_value(set_cookie: str, name: str) -> str:
+    prefix = f"{name}="
+    for chunk in set_cookie.split(";"):
+        item = chunk.strip()
+        if item.startswith(prefix):
+            return item[len(prefix) :]
+    return ""
+
+
 def _seed_user() -> None:
     user = User(
         username="api-login-user",
@@ -111,6 +120,108 @@ def test_post_auth_logout_invalid_refresh_token_401() -> None:
     assert resp.status_code == 401
     err = resp.get_json()
     assert err["error"]["code"] == "UNAUTHORIZED"
+
+
+def test_post_auth_refresh_success_200_and_rotates_cookie() -> None:
+    app = create_app()
+    app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False
+    with app.app_context():
+        db.create_all()
+        _seed_user()
+    client = app.test_client()
+    login_resp = client.post(
+        "/api/v1/auth/login",
+        json={"username": "api-login-user", "password": "correct-pass"},
+    )
+    assert login_resp.status_code == 200
+    original_cookie = login_resp.headers.get("Set-Cookie", "")
+
+    refresh_resp = client.post("/api/v1/auth/refresh")
+
+    assert refresh_resp.status_code == 200
+    body = refresh_resp.get_json()
+    assert body["token_type"] == "Bearer"
+    assert isinstance(body["access_token"], str) and body["access_token"]
+    assert body["user"]["username"] == "api-login-user"
+    rotated_cookie = refresh_resp.headers.get("Set-Cookie", "")
+    assert "refresh_token=" in rotated_cookie
+    assert rotated_cookie != original_cookie
+
+
+def test_post_auth_refresh_missing_cookie_401() -> None:
+    app = create_app()
+    client = app.test_client()
+
+    resp = client.post("/api/v1/auth/refresh")
+
+    assert resp.status_code == 401
+    err = resp.get_json()
+    assert err["error"]["code"] == "UNAUTHORIZED"
+
+
+def test_post_auth_refresh_invalid_or_revoked_refresh_token_401() -> None:
+    app = create_app()
+    app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False
+    with app.app_context():
+        db.create_all()
+        _seed_user()
+    client = app.test_client()
+
+    client.set_cookie(
+        key=app.config["REFRESH_TOKEN_COOKIE_NAME"],
+        value="not-a-jwt",
+        path=app.config["REFRESH_TOKEN_COOKIE_PATH"],
+    )
+    invalid_resp = client.post("/api/v1/auth/refresh")
+    assert invalid_resp.status_code == 401
+    assert invalid_resp.get_json()["error"]["code"] == "UNAUTHORIZED"
+
+    login_resp = client.post(
+        "/api/v1/auth/login",
+        json={"username": "api-login-user", "password": "correct-pass"},
+    )
+    assert login_resp.status_code == 200
+    old_refresh_token = _cookie_value(
+        login_resp.headers.get("Set-Cookie", ""),
+        app.config["REFRESH_TOKEN_COOKIE_NAME"],
+    )
+    assert old_refresh_token
+    revoked_resp = client.post("/api/v1/auth/logout")
+    assert revoked_resp.status_code == 204
+    client.set_cookie(
+        key=app.config["REFRESH_TOKEN_COOKIE_NAME"],
+        value=old_refresh_token,
+        path=app.config["REFRESH_TOKEN_COOKIE_PATH"],
+    )
+
+    resp = client.post("/api/v1/auth/refresh")
+
+    assert resp.status_code == 401
+    err = resp.get_json()
+    assert err["error"]["code"] == "UNAUTHORIZED"
+
+
+def test_post_auth_refresh_operational_failure_is_not_rewritten_to_401(monkeypatch) -> None:
+    app = create_app()
+    app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False
+    with app.app_context():
+        db.create_all()
+        _seed_user()
+    client = app.test_client()
+    login_resp = client.post(
+        "/api/v1/auth/login",
+        json={"username": "api-login-user", "password": "correct-pass"},
+    )
+    assert login_resp.status_code == 200
+
+    monkeypatch.setattr(
+        "app.identity.api.routes.IdentityService.refresh_access_session",
+        lambda self, refresh_token: (_ for _ in ()).throw(RuntimeError("redis down")),
+    )
+
+    resp = client.post("/api/v1/auth/refresh")
+
+    assert resp.status_code == 500
 
 
 def test_get_users_me_success_200() -> None:
