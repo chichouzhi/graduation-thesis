@@ -70,12 +70,11 @@ def test_it_job_writeback_failures_document_sets_failed_and_domain_error(
     with pytest.raises(RuntimeError, match="chunk llm timeout"):
         run_document_job(payload)
 
-    assert writes[0] == ("dt-1", {"status": "pending"})
-    assert writes[1] == ("dt-1", {"status": "running"})
-    assert writes[2][0] == "dt-1"
-    assert writes[2][1]["status"] == "failed"
-    assert writes[2][1]["error_code"] == "DOMAIN_ERROR"
-    assert "chunk llm timeout" in str(writes[2][1]["error_message"])
+    assert writes[0] == ("dt-1", {"status": "running"})
+    assert writes[1][0] == "dt-1"
+    assert writes[1][1]["status"] == "failed"
+    assert writes[1][1]["error_code"] == "DOMAIN_ERROR"
+    assert "chunk llm timeout" in str(writes[1][1]["error_message"])
 
 
 def test_it_job_writeback_failures_keyword_sets_failed_and_error_code(

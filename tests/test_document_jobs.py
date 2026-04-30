@@ -133,10 +133,9 @@ def test_run_keeps_non_terminal_document_stage_running(
         ),
     )
     run(_base_payload())
-    assert writes[0] == ("dt-1", {"status": "pending"})
-    assert writes[1] == ("dt-1", {"status": "running"})
-    assert writes[2] == ("dt-1", {"status": "running", "last_completed_chunk": 1})
-    assert len(writes) == 3
+    assert writes[0] == ("dt-1", {"status": "running"})
+    assert writes[1] == ("dt-1", {"status": "running", "last_completed_chunk": 1})
+    assert len(writes) == 2
 
 
 def test_run_preserves_finalize_terminal_status(
@@ -160,10 +159,9 @@ def test_run_preserves_finalize_terminal_status(
     payload["chunk_index"] = None
 
     run(payload)
-    assert writes[0] == ("dt-1", {"status": "pending"})
-    assert writes[1] == ("dt-1", {"status": "running"})
-    assert writes[2] == ("dt-1", {"status": "done", "current_stage": "finalize"})
-    assert len(writes) == 3
+    assert writes[0] == ("dt-1", {"status": "running"})
+    assert writes[1] == ("dt-1", {"status": "done", "current_stage": "finalize"})
+    assert len(writes) == 2
 
 
 def test_run_writes_failed_when_handler_raises(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -180,11 +178,11 @@ def test_run_writes_failed_when_handler_raises(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr("app.task.document_jobs.handle_document_job", _boom)
     with pytest.raises(RuntimeError, match="llm timeout"):
         run(_base_payload())
-    assert writes[0] == ("dt-1", {"status": "pending"})
-    assert writes[1] == ("dt-1", {"status": "running"})
-    assert writes[2][0] == "dt-1"
-    assert writes[2][1]["status"] == "failed"
-    assert writes[2][1]["error_code"] == "DOMAIN_ERROR"
+    assert writes[0] == ("dt-1", {"status": "running"})
+    assert writes[1][0] == "dt-1"
+    assert writes[1][1]["status"] == "failed"
+    assert writes[1][1]["error_code"] == "DOMAIN_ERROR"
+    assert len(writes) == 2
 
 
 def test_document_job_writeback_persists_chunk_summaries_independently(
@@ -261,6 +259,7 @@ def test_document_job_writeback_persists_chunk_summaries_independently(
             .all()
         )
         assert task is not None
+        assert task.status == DocumentTaskStatus.running
         assert task.last_completed_chunk == 1
         assert len(artifacts) == 2
         assert [artifact.chunk_index for artifact in artifacts] == [0, 1]

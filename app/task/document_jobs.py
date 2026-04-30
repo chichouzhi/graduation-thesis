@@ -197,7 +197,6 @@ def handle_document_job(
 
 def run(payload: dict[str, Any]) -> None:
     typed = DocumentJobPayload.from_mapping(payload)
-    _default_writeback(typed.document_task_id, {"status": "pending"})
     _default_writeback(typed.document_task_id, {"status": "running"})
     try:
         patch = handle_document_job(payload, writeback=_default_writeback)
