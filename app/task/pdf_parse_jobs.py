@@ -5,8 +5,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from app.common.error_envelope import ErrorCode
 from app.task import queue as queue_mod
 from app.use_cases.document_pdf_parse import PdfJobPayload, parse_pdf_and_plan_document_jobs
+
+
+class DocumentJobEnqueueError(RuntimeError):
+    error_code = ErrorCode.QUEUE_UNAVAILABLE.value
 
 
 def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
@@ -117,7 +122,10 @@ def handle_pdf_parse_job(payload: dict[str, Any]) -> tuple[dict[str, Any], ...]:
         },
     )
     for job in plan.document_job_payloads:
-        queue_mod.enqueue_document_jobs(job)
+        try:
+            queue_mod.enqueue_document_jobs(job)
+        except Exception as exc:
+            raise DocumentJobEnqueueError(str(exc)) from exc
     return plan.document_job_payloads
 
 
@@ -131,7 +139,7 @@ def run(payload: dict[str, Any]) -> None:
             typed.document_task_id,
             {
                 "status": "failed",
-                "error_code": "DOMAIN_ERROR",
+                "error_code": getattr(exc, "error_code", ErrorCode.DOMAIN_ERROR.value),
                 "error_message": str(exc),
             },
         )

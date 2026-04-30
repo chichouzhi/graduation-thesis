@@ -362,3 +362,74 @@ def test_run_writes_failed_status_when_pdf_parse_raises(
     assert writes[1][1]["status"] == "failed"
     assert writes[1][1]["error_code"] == "DOMAIN_ERROR"
     assert "pdf parse timeout" in str(writes[1][1]["error_message"])
+
+
+def test_run_writes_queue_unavailable_when_document_job_enqueue_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    writes: list[tuple[str, dict[str, object]]] = []
+
+    def fake_writeback(document_task_id: str, patch: dict[str, object]) -> None:
+        writes.append((document_task_id, patch))
+
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+
+        def fake_planner(_: PdfJobPayload) -> PdfParseSuccessPlan:
+            return PdfParseSuccessPlan(
+                document_job_payloads=(
+                    {
+                        "document_task_id": "dt-1",
+                        "user_id": "u-1",
+                        "storage_path": "/tmp/demo.pdf",
+                        "term_id": "term-1",
+                        "stage": "extract",
+                        "chunk_index": None,
+                        "max_chunks": 1,
+                    },
+                ),
+                parsed_meta_for_result_json={
+                    "pdf_parse_outline": {"page_count": 1, "max_chunks": 1, "page_text_char_counts": [9]}
+                },
+                extracted_text_artifact_payload={
+                    "artifact_type": "pdf_pages_text",
+                    "stage": "pdf_extract",
+                    "chunk_index": None,
+                    "content_text": "page text",
+                    "payload": {"pages": [{"page_index": 0, "text": "page text"}]},
+                },
+            )
+
+        def boom_enqueue(_payload: dict[str, object] | None = None, **_kwargs: object) -> dict[str, str]:
+            raise RuntimeError("broker down")
+
+        monkeypatch.setattr("app.task.pdf_parse_jobs._default_writeback", fake_writeback)
+        monkeypatch.setattr("app.task.pdf_parse_jobs.parse_pdf_and_plan_document_jobs", fake_planner)
+        monkeypatch.setattr("app.task.pdf_parse_jobs.queue_mod.enqueue_document_jobs", boom_enqueue)
+
+        with pytest.raises(RuntimeError, match="broker down"):
+            run(_valid_pdf_payload())
+
+    assert writes[0] == ("dt-1", {"status": "running", "current_stage": "pdf_extract"})
+    assert writes[1] == (
+        "dt-1",
+        {
+            "current_stage": "summarize_chunks",
+            "progress_patch": {"completed_chunks": 0, "total_chunks": 1},
+            "result_patch": {"pdf_parse_outline": {"page_count": 1, "max_chunks": 1, "page_text_char_counts": [9]}},
+            "artifacts": [
+                {
+                    "artifact_type": "pdf_pages_text",
+                    "stage": "pdf_extract",
+                    "chunk_index": None,
+                    "content_text": "page text",
+                    "payload": {"pages": [{"page_index": 0, "text": "page text"}]},
+                }
+            ],
+        },
+    )
+    assert writes[2][0] == "dt-1"
+    assert writes[2][1]["status"] == "failed"
+    assert writes[2][1]["error_code"] == "QUEUE_UNAVAILABLE"
+    assert "broker down" in str(writes[2][1]["error_message"])
