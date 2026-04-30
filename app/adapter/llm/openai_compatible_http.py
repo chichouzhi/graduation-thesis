@@ -185,10 +185,8 @@ def openai_compatible_client_from_environ(
     model = _env_or_value(values, "LLM_HTTP_MODEL", aliases=("OPENAI_MODEL",))
     timeout_raw = _env_or_value(values, "LLM_HTTP_TIMEOUT_S")
 
-    if not key and not base and not model:
-        return None
     if not key:
-        raise RuntimeError("LLM_HTTP_API_KEY is required for the OpenAI-compatible HTTP client")
+        return None
 
     timeout_s = _DEFAULT_TIMEOUT_S
     if timeout_raw and timeout_raw.strip():
