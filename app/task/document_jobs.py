@@ -99,6 +99,7 @@ def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
             task.result_json = base
 
         artifacts = patch.get("artifacts")
+        chunk_summary_total_chunks: int | None = None
         if isinstance(artifacts, list):
             for item in artifacts:
                 if not isinstance(item, dict):
@@ -106,6 +107,10 @@ def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
                 chunk_index = None if item.get("chunk_index") is None else int(item["chunk_index"])
                 artifact_type = DocumentArtifactType(str(item["artifact_type"]))
                 stage = str(item["stage"])
+                if artifact_type == DocumentArtifactType.chunk_summary:
+                    payload = item.get("payload")
+                    if isinstance(payload, dict) and payload.get("max_chunks") is not None:
+                        chunk_summary_total_chunks = int(payload["max_chunks"])
                 artifacts_found = (
                     db.session.query(DocumentArtifact)
                     .filter_by(
@@ -135,6 +140,21 @@ def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
                 artifact.payload_json = item.get("payload")
                 artifact.content_text = None if item.get("content_text") is None else str(item.get("content_text"))
                 db.session.add(artifact)
+
+        if chunk_summary_total_chunks is not None:
+            completed_chunks = (
+                db.session.query(DocumentArtifact)
+                .filter_by(
+                    document_task_id=document_task_id,
+                    artifact_type=DocumentArtifactType.chunk_summary,
+                    stage="summarize_chunk",
+                )
+                .count()
+            )
+            task.progress_json = {
+                "completed_chunks": int(completed_chunks),
+                "total_chunks": int(chunk_summary_total_chunks),
+            }
 
         if "error_code" in patch:
             code_raw = patch.get("error_code")

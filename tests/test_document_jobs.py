@@ -435,3 +435,45 @@ def test_document_job_writeback_updates_stage_progress_and_final_result() -> Non
             "bullet_points": ["point a", "point b"],
             "raw_model": "overall summary\n- point a\n- point b",
         }
+
+
+def test_document_job_writeback_counts_completed_chunks_from_saved_artifacts() -> None:
+    from app.task.document_jobs import _default_writeback
+
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="doc-job-progress", role=UserRole.student, display_name="Progress")
+        term = Term(name="Task4 Jobs Progress")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="progress.pdf",
+            storage_path="/tmp/progress.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+
+        _default_writeback(
+            task.id,
+            {
+                "status": "running",
+                "current_stage": "summarize_chunks",
+                "progress_patch": {"completed_chunks": 3, "total_chunks": 3},
+                "artifacts": [
+                    {
+                        "artifact_type": "chunk_summary",
+                        "stage": "summarize_chunk",
+                        "chunk_index": 2,
+                        "content_text": "summary two",
+                        "payload": {"chunk_text": "page two", "max_chunks": 3},
+                    }
+                ],
+            },
+        )
+
+        task = db.session.get(DocumentTask, task.id)
+        assert task is not None
+        assert task.progress_json == {"completed_chunks": 1, "total_chunks": 3}
