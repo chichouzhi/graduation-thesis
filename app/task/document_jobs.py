@@ -82,6 +82,16 @@ def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
             v = patch.get("last_completed_chunk")
             task.last_completed_chunk = None if v is None else int(v)
 
+        if "current_stage" in patch:
+            stage_raw = patch.get("current_stage")
+            task.current_stage = None if stage_raw is None else str(stage_raw)
+
+        progress_patch = patch.get("progress_patch")
+        if isinstance(progress_patch, dict):
+            base_progress = dict(task.progress_json or {})
+            base_progress.update(progress_patch)
+            task.progress_json = base_progress
+
         result_patch = patch.get("result_patch")
         if isinstance(result_patch, dict):
             base = dict(task.result_json or {})

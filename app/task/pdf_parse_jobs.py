@@ -34,6 +34,16 @@ def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
             msg_raw = patch.get("error_message")
             task.error_message = None if msg_raw is None else str(msg_raw)
 
+        if "current_stage" in patch:
+            stage_raw = patch.get("current_stage")
+            task.current_stage = None if stage_raw is None else str(stage_raw)
+
+        progress_patch = patch.get("progress_patch")
+        if isinstance(progress_patch, dict):
+            base_progress = dict(task.progress_json or {})
+            base_progress.update(progress_patch)
+            task.progress_json = base_progress
+
         result_patch = patch.get("result_patch")
         if isinstance(result_patch, dict):
             base = dict(task.result_json or {})
@@ -97,6 +107,11 @@ def handle_pdf_parse_job(payload: dict[str, Any]) -> tuple[dict[str, Any], ...]:
     _default_writeback(
         typed.document_task_id,
         {
+            "current_stage": "summarize_chunks",
+            "progress_patch": {
+                "completed_chunks": 0,
+                "total_chunks": int(plan.parsed_meta_for_result_json["pdf_parse_outline"]["max_chunks"]),
+            },
             "result_patch": plan.parsed_meta_for_result_json,
             "artifacts": [plan.extracted_text_artifact_payload],
         },
@@ -108,7 +123,7 @@ def handle_pdf_parse_job(payload: dict[str, Any]) -> tuple[dict[str, Any], ...]:
 
 def run(payload: dict[str, Any]) -> None:
     typed = PdfJobPayload.from_mapping(payload)
-    _default_writeback(typed.document_task_id, {"status": "running"})
+    _default_writeback(typed.document_task_id, {"status": "running", "current_stage": "pdf_extract"})
     try:
         handle_pdf_parse_job(payload)
     except Exception as exc:

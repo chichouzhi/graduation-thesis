@@ -129,6 +129,8 @@ def test_handle_pdf_parse_job_enqueues_document_jobs(
         (
             "dt-1",
             {
+                "current_stage": "summarize_chunks",
+                "progress_patch": {"completed_chunks": 0, "total_chunks": 1},
                 "result_patch": {"pdf_parse_outline": {"page_count": 1, "max_chunks": 1, "page_text_char_counts": [9]}},
                 "artifacts": [
                     {
@@ -364,7 +366,7 @@ def test_run_writes_failed_status_when_pdf_parse_raises(
     with pytest.raises(RuntimeError, match="pdf parse timeout"):
         run(_valid_pdf_payload())
 
-    assert writes[0] == ("dt-1", {"status": "running"})
+    assert writes[0] == ("dt-1", {"status": "running", "current_stage": "pdf_extract"})
     assert writes[1][0] == "dt-1"
     assert writes[1][1]["status"] == "failed"
     assert writes[1][1]["error_code"] == "DOMAIN_ERROR"

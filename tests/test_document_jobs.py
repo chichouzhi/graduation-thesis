@@ -361,3 +361,77 @@ def test_document_job_writeback_retries_once_after_integrity_error(
         assert seen["calls"] == 2
         assert len(artifacts) == 1
         assert artifacts[0].content_text == "newest"
+
+
+def test_document_job_writeback_updates_stage_progress_and_final_result() -> None:
+    from app.task.document_jobs import _default_writeback
+
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="doc-job-final", role=UserRole.student, display_name="Final")
+        term = Term(name="Task4 Jobs Final")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="final.pdf",
+            storage_path="/tmp/final.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+
+        _default_writeback(
+            task.id,
+            {
+                "status": "done",
+                "current_stage": "finalize",
+                "progress_patch": {"completed_chunks": 2, "total_chunks": 2},
+                "result_patch": {
+                    "summary": "overall summary",
+                    "bullet_points": ["point a", "point b"],
+                    "raw_model": "overall summary\n- point a\n- point b",
+                },
+                "artifacts": [
+                    {
+                        "artifact_type": "final_result",
+                        "stage": "finalize",
+                        "chunk_index": None,
+                        "content_text": "overall summary\n- point a\n- point b",
+                        "payload": {
+                            "summary": "overall summary",
+                            "bullet_points": ["point a", "point b"],
+                            "raw_model": "overall summary\n- point a\n- point b",
+                        },
+                    }
+                ],
+            },
+        )
+
+        task = db.session.get(DocumentTask, task.id)
+        assert task is not None
+        assert task.status == DocumentTaskStatus.done
+        assert task.current_stage == "finalize"
+        assert task.progress_json == {"completed_chunks": 2, "total_chunks": 2}
+        assert task.result_json == {
+            "summary": "overall summary",
+            "bullet_points": ["point a", "point b"],
+            "raw_model": "overall summary\n- point a\n- point b",
+        }
+        artifacts = (
+            db.session.query(DocumentArtifact)
+            .filter_by(
+                document_task_id=task.id,
+                artifact_type=DocumentArtifactType.final_result,
+                stage="finalize",
+                chunk_index=None,
+            )
+            .all()
+        )
+        assert len(artifacts) == 1
+        assert artifacts[0].payload_json == {
+            "summary": "overall summary",
+            "bullet_points": ["point a", "point b"],
+            "raw_model": "overall summary\n- point a\n- point b",
+        }

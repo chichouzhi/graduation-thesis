@@ -223,6 +223,74 @@ def _load_chunk_text(document_task_id: str, chunk_index: int) -> str:
     raise ValueError(f"missing chunk text for chunk_index={chunk_index}")
 
 
+def _load_chunk_summaries(document_task_id: str) -> list[str]:
+    from app.document.model import DocumentArtifact, DocumentArtifactType
+    from app.extensions import db
+
+    artifacts = (
+        db.session.query(DocumentArtifact)
+        .filter_by(
+            document_task_id=document_task_id,
+            artifact_type=DocumentArtifactType.chunk_summary,
+            stage=DocumentJobStage.SUMMARIZE_CHUNK.value,
+        )
+        .order_by(DocumentArtifact.chunk_index.asc(), DocumentArtifact.created_at.asc(), DocumentArtifact.id.asc())
+        .all()
+    )
+    summaries = [str(artifact.content_text or "").strip() for artifact in artifacts if str(artifact.content_text or "").strip()]
+    if not summaries:
+        raise ValueError(f"missing chunk_summary artifacts for document_task_id={document_task_id}")
+    return summaries
+
+
+def _load_aggregate_summary(document_task_id: str) -> tuple[str, dict[str, Any]]:
+    from app.document.model import DocumentArtifact, DocumentArtifactType
+    from app.extensions import db
+
+    artifact = (
+        db.session.query(DocumentArtifact)
+        .filter_by(
+            document_task_id=document_task_id,
+            artifact_type=DocumentArtifactType.aggregate_summary,
+            stage=DocumentJobStage.AGGREGATE.value,
+        )
+        .order_by(DocumentArtifact.updated_at.desc(), DocumentArtifact.created_at.desc(), DocumentArtifact.id.desc())
+        .first()
+    )
+    if artifact is None:
+        raise ValueError(f"missing aggregate_summary artifact for document_task_id={document_task_id}")
+    summary_text = str(artifact.content_text or "").strip()
+    if not summary_text:
+        raise ValueError(f"empty aggregate_summary artifact for document_task_id={document_task_id}")
+    payload = artifact.payload_json if isinstance(artifact.payload_json, dict) else {}
+    return summary_text, payload
+
+
+def _progress_patch(*, completed_chunks: int, total_chunks: int | None) -> dict[str, int]:
+    total = int(total_chunks) if total_chunks is not None else int(completed_chunks)
+    if total < completed_chunks:
+        total = completed_chunks
+    return {"completed_chunks": int(completed_chunks), "total_chunks": total}
+
+
+def _result_projection(text: str) -> dict[str, Any]:
+    lines = [line.strip() for line in str(text).splitlines() if line.strip()]
+    bullet_points = [line.lstrip("-* ").strip() for line in lines if line.startswith(("-", "*")) and line.lstrip("-* ").strip()]
+    summary = ""
+    for line in lines:
+        if line.startswith(("-", "*")):
+            continue
+        summary = line
+        break
+    if not summary and bullet_points:
+        summary = bullet_points[0]
+    return {
+        "summary": summary,
+        "bullet_points": bullet_points,
+        "raw_model": str(text),
+    }
+
+
 def run_document_job_stage(
     *,
     stage: DocumentJobStage | str,
@@ -246,11 +314,70 @@ def run_document_job_stage(
     if not (user_id or "").strip():
         raise ValueError("user_id must be non-empty")
 
-    if st in (DocumentJobStage.EXTRACT, DocumentJobStage.AGGREGATE, DocumentJobStage.FINALIZE):
-        patch: dict[str, Any] = {"status": "running"}
-        if st == DocumentJobStage.FINALIZE:
-            patch["status"] = "done"
-        return patch
+    if st == DocumentJobStage.EXTRACT:
+        return {"status": "running"}
+
+    if st == DocumentJobStage.AGGREGATE:
+        from app.adapter import llm as llm_mod
+
+        chunk_summaries = _load_chunk_summaries(document_task_id)
+        total_chunks = int(max_chunks) if max_chunks is not None else len(chunk_summaries)
+        prompt = (
+            f"Aggregate chunk summaries for document_task_id={document_task_id}. "
+            "Produce a concise final summary followed by bullet points.\n\n"
+            f"Chunk summaries:\n" + "\n".join(f"- {summary}" for summary in chunk_summaries)
+        )
+        llm_resp = llm_mod.complete(
+            [{"role": "user", "content": prompt}],
+            term_id=term_id,
+            user_id=user_id,
+            request_id=request_id,
+        )
+        if isinstance(llm_resp, dict):
+            aggregate_text = str(llm_resp.get("content", ""))
+        else:
+            aggregate_text = str(llm_resp)
+        return {
+            "status": "running",
+            "current_stage": "aggregate",
+            "progress_patch": _progress_patch(completed_chunks=len(chunk_summaries), total_chunks=total_chunks),
+            "artifacts": [
+                {
+                    "artifact_type": "aggregate_summary",
+                    "stage": DocumentJobStage.AGGREGATE.value,
+                    "chunk_index": None,
+                    "content_text": aggregate_text,
+                    "payload": {
+                        "chunk_summaries": chunk_summaries,
+                        "max_chunks": total_chunks,
+                    },
+                }
+            ],
+        }
+
+    if st == DocumentJobStage.FINALIZE:
+        aggregate_text, aggregate_payload = _load_aggregate_summary(document_task_id)
+        total_chunks_raw = aggregate_payload.get("max_chunks", max_chunks)
+        total_chunks = int(total_chunks_raw) if total_chunks_raw is not None else None
+        result = _result_projection(aggregate_text)
+        return {
+            "status": "done",
+            "current_stage": "finalize",
+            "progress_patch": _progress_patch(
+                completed_chunks=int(total_chunks or 0),
+                total_chunks=total_chunks,
+            ),
+            "result_patch": result,
+            "artifacts": [
+                {
+                    "artifact_type": "final_result",
+                    "stage": DocumentJobStage.FINALIZE.value,
+                    "chunk_index": None,
+                    "content_text": aggregate_text,
+                    "payload": result,
+                }
+            ],
+        }
 
     # summarize_chunk: UC 统一触达 LLM，task 层不直接 import adapter
     from app.adapter import llm as llm_mod
@@ -274,6 +401,11 @@ def run_document_job_stage(
 
     return {
         "status": "running",
+        "current_stage": "summarize_chunks",
+        "progress_patch": _progress_patch(
+            completed_chunks=chunk_id + 1,
+            total_chunks=None if max_chunks is None else int(max_chunks),
+        ),
         "last_completed_chunk": chunk_id,
         "artifacts": [
             {
