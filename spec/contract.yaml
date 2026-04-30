@@ -112,7 +112,10 @@ components:
       type: object
       required: [term_id]
       properties:
-        term_id: { type: string, description: 写入 conversations.term_id；发消息入队 ChatJobPayload 须同源读取 }
+        term_id:
+          type: string
+          minLength: 1
+          description: 写入 conversations.term_id；发消息入队 ChatJobPayload 须同源读取
         title: { type: string }
         context_type:
           type: string

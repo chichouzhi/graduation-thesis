@@ -70,10 +70,18 @@ class ChatJobPayload:
             text = str(raw).strip()
             return text or None
 
-        seq_raw = payload.get("seq")
-        seq = None if seq_raw is None else int(seq_raw)
-        dispatch_attempt_raw = payload.get("dispatch_attempt")
-        dispatch_attempt = None if dispatch_attempt_raw is None else int(dispatch_attempt_raw)
+        def _opt_int(name: str, *, minimum: int | None = None) -> int | None:
+            raw = payload.get(name)
+            if raw is None:
+                return None
+            if isinstance(raw, bool) or not isinstance(raw, int):
+                raise ValueError(f"ChatJobPayload.{name} must be an integer when provided")
+            if minimum is not None and raw < minimum:
+                raise ValueError(f"ChatJobPayload.{name} must be >= {minimum} when provided")
+            return raw
+
+        seq = _opt_int("seq")
+        dispatch_attempt = _opt_int("dispatch_attempt", minimum=0)
 
         return cls(
             job_id=normalized["job_id"],

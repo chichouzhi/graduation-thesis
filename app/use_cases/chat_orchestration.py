@@ -202,6 +202,13 @@ def _normalize_llm_output(result: Any) -> dict[str, Any]:
     }
 
 
+def _normalize_error_code(value: object) -> str:
+    if isinstance(value, ErrorCode):
+        return value.value
+    text = str(value).strip() if value is not None else ""
+    return text or ErrorCode.DOMAIN_ERROR.value
+
+
 def _persist_failed_job_if_possible(
     *,
     job_id: str,
@@ -342,7 +349,7 @@ def run_turn(conversation_id: str, messages: list, term_id: str, **kwargs: Any) 
             exc,
             job_id=job_id,
             assistant_message_id=assistant_message_id,
-            error_code=str(getattr(exc, "error_code", ErrorCode.DOMAIN_ERROR.value)),
+            error_code=_normalize_error_code(getattr(exc, "error_code", ErrorCode.DOMAIN_ERROR.value)),
             started_at=started_at,
         )
 

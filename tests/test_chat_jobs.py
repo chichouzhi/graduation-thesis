@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app import create_app
 from app.chat.model import ChatJob, Conversation, Message, MessageAsyncTaskStatus, MessageRole
+from app.common.error_envelope import ErrorCode
 from app.extensions import db
 from app.identity.model import User, UserRole
 from app.task.chat_jobs import ChatJobPayload, handle_chat_job
@@ -39,6 +40,19 @@ def test_chat_job_payload_requires_contract_fields() -> None:
 def test_chat_job_payload_requires_content() -> None:
     with pytest.raises(ValueError, match="ChatJobPayload.content must be non-empty"):
         ChatJobPayload.from_mapping(_payload(content="  "))
+
+
+def test_chat_job_payload_rejects_non_integer_seq_values() -> None:
+    with pytest.raises(ValueError, match="ChatJobPayload.seq must be an integer when provided"):
+        ChatJobPayload.from_mapping(_payload(seq=1.5))
+
+    with pytest.raises(ValueError, match="ChatJobPayload.seq must be an integer when provided"):
+        ChatJobPayload.from_mapping(_payload(seq="1"))
+
+
+def test_chat_job_payload_rejects_negative_dispatch_attempt() -> None:
+    with pytest.raises(ValueError, match="ChatJobPayload.dispatch_attempt must be >= 0 when provided"):
+        ChatJobPayload.from_mapping(_payload(dispatch_attempt=-1))
 
 
 def test_handle_chat_job_dispatches_with_real_payload_content(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -187,6 +201,40 @@ def test_handle_chat_job_persists_failed_state_when_llm_raises(monkeypatch: pyte
         assert job.finished_at is not None
         assert job.error_message == "llm exploded"
         assert assistant.delivery_status == MessageAsyncTaskStatus.failed
+
+
+def test_handle_chat_job_normalizes_error_code_enum_value(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        seeded = _seed_chat_job_rows()
+
+        class _RateLimitedError(RuntimeError):
+            def __init__(self) -> None:
+                super().__init__("provider limited")
+                self.error_code = ErrorCode.LLM_RATE_LIMITED
+
+        def _boom(_messages: list[dict[str, str]], **_kwargs: Any) -> dict[str, Any]:
+            raise _RateLimitedError()
+
+        monkeypatch.setattr("app.adapter.llm.complete", _boom)
+
+        with pytest.raises(_RateLimitedError, match="provider limited"):
+            handle_chat_job(
+                _payload(
+                    job_id=seeded["job_id"],
+                    conversation_id=seeded["conversation_id"],
+                    user_message_id=seeded["user_message_id"],
+                    assistant_message_id=seeded["assistant_message_id"],
+                    term_id=seeded["term_id"],
+                    user_id=seeded["user_id"],
+                )
+            )
+
+        db.session.expire_all()
+        job = db.session.get(ChatJob, seeded["job_id"])
+        assert job is not None
+        assert job.error_code == ErrorCode.LLM_RATE_LIMITED.value
 
 
 def test_handle_chat_job_skips_llm_for_terminal_job(monkeypatch: pytest.MonkeyPatch) -> None:
