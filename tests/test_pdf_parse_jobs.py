@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 from app import create_app
-from app.document.model import DocumentArtifact, DocumentArtifactType, DocumentTask
+from app.document.model import DocumentArtifact, DocumentArtifactType, DocumentTask, DocumentTaskStatus
 from app.extensions import db
 from app.identity.model import User, UserRole
 from app.terms.model import Term
@@ -362,6 +362,52 @@ def test_run_writes_failed_status_when_pdf_parse_raises(
     assert writes[1][1]["status"] == "failed"
     assert writes[1][1]["error_code"] == "DOMAIN_ERROR"
     assert "pdf parse timeout" in str(writes[1][1]["error_message"])
+
+
+def test_run_skips_failed_pdf_parse_task(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="pdf-skip-failed", role=UserRole.student, display_name="PDF Skip")
+        term = Term(name="Task4 PDF Skip Failed")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="skip.pdf",
+            storage_path="/tmp/skip.pdf",
+            status=DocumentTaskStatus.failed,
+            current_stage="pdf_extract",
+            error_code="QUEUE_UNAVAILABLE",
+            error_message="broker down",
+        )
+        db.session.add(task)
+        db.session.commit()
+
+        called = {"count": 0}
+
+        def should_not_run(*_args: object, **_kwargs: object) -> tuple[dict[str, object], ...]:
+            called["count"] += 1
+            return ()
+
+        monkeypatch.setattr("app.task.pdf_parse_jobs.handle_pdf_parse_job", should_not_run)
+
+        run(
+            {
+                "document_task_id": task.id,
+                "user_id": user.id,
+                "storage_path": "/tmp/skip.pdf",
+                "term_id": term.id,
+                "stage": "pdf_extract",
+            }
+        )
+
+        task = db.session.get(DocumentTask, task.id)
+        assert task is not None
+        assert called["count"] == 0
+        assert task.status == DocumentTaskStatus.failed
+        assert task.error_code == "QUEUE_UNAVAILABLE"
 
 
 def test_run_writes_queue_unavailable_when_document_job_enqueue_fails(

@@ -185,6 +185,96 @@ def test_run_writes_failed_when_handler_raises(monkeypatch: pytest.MonkeyPatch) 
     assert len(writes) == 2
 
 
+def test_run_skips_failed_document_task(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="doc-job-skip-failed", role=UserRole.student, display_name="Skip Failed")
+        term = Term(name="Task4 Jobs Skip Failed")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="skip.pdf",
+            storage_path="/tmp/skip.pdf",
+            status=DocumentTaskStatus.failed,
+            current_stage="summarize_chunks",
+            error_code="QUEUE_UNAVAILABLE",
+            error_message="broker down",
+        )
+        db.session.add(task)
+        db.session.commit()
+
+        called = {"count": 0}
+
+        def should_not_run(*_args: object, **_kwargs: object) -> dict[str, object]:
+            called["count"] += 1
+            return {"status": "running"}
+
+        monkeypatch.setattr("app.task.document_jobs.handle_document_job", should_not_run)
+
+        run(
+            {
+                "document_task_id": task.id,
+                "user_id": user.id,
+                "storage_path": "/tmp/skip.pdf",
+                "term_id": term.id,
+                "stage": "summarize_chunk",
+                "chunk_index": 0,
+                "max_chunks": 1,
+            }
+        )
+
+        task = db.session.get(DocumentTask, task.id)
+        assert task is not None
+        assert called["count"] == 0
+        assert task.status == DocumentTaskStatus.failed
+        assert task.error_code == "QUEUE_UNAVAILABLE"
+
+
+def test_document_job_writeback_keeps_terminal_status_immutable() -> None:
+    from app.task.document_jobs import _default_writeback
+
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="doc-job-terminal", role=UserRole.student, display_name="Terminal")
+        term = Term(name="Task4 Jobs Terminal")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="terminal.pdf",
+            storage_path="/tmp/terminal.pdf",
+            status=DocumentTaskStatus.failed,
+            current_stage="summarize_chunks",
+            progress_json={"completed_chunks": 0, "total_chunks": 2},
+            error_code="QUEUE_UNAVAILABLE",
+            error_message="broker down",
+        )
+        db.session.add(task)
+        db.session.commit()
+
+        _default_writeback(
+            task.id,
+            {
+                "status": "running",
+                "current_stage": "aggregate",
+                "progress_patch": {"completed_chunks": 2, "total_chunks": 2},
+                "last_completed_chunk": 1,
+            },
+        )
+
+        task = db.session.get(DocumentTask, task.id)
+        assert task is not None
+        assert task.status == DocumentTaskStatus.failed
+        assert task.current_stage == "summarize_chunks"
+        assert task.progress_json == {"completed_chunks": 0, "total_chunks": 2}
+        assert task.last_completed_chunk is None
+
+
 def test_document_job_writeback_persists_chunk_summaries_independently(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

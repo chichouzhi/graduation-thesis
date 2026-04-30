@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from flask import has_app_context
+
 from app.common.error_envelope import ErrorCode
 from app.task import queue as queue_mod
 from app.use_cases.document_pdf_parse import PdfJobPayload, parse_pdf_and_plan_document_jobs
@@ -12,6 +14,19 @@ from app.use_cases.document_pdf_parse import PdfJobPayload, parse_pdf_and_plan_d
 
 class DocumentJobEnqueueError(RuntimeError):
     error_code = ErrorCode.QUEUE_UNAVAILABLE.value
+
+
+def _task_is_terminal(document_task_id: str) -> bool:
+    if not has_app_context():
+        return False
+
+    from app.document.model import DocumentTask, DocumentTaskStatus
+    from app.extensions import db
+
+    task = db.session.get(DocumentTask, document_task_id)
+    if task is None:
+        return False
+    return task.status in (DocumentTaskStatus.done, DocumentTaskStatus.failed)
 
 
 def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
@@ -23,6 +38,8 @@ def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
         task = db.session.get(DocumentTask, document_task_id)
         if task is None:
             raise ValueError(f"document task not found: {document_task_id}")
+        if task.status in (DocumentTaskStatus.done, DocumentTaskStatus.failed):
+            return
 
         status_raw = patch.get("status")
         if status_raw is not None:
@@ -131,6 +148,8 @@ def handle_pdf_parse_job(payload: dict[str, Any]) -> tuple[dict[str, Any], ...]:
 
 def run(payload: dict[str, Any]) -> None:
     typed = PdfJobPayload.from_mapping(payload)
+    if _task_is_terminal(typed.document_task_id):
+        return
     _default_writeback(typed.document_task_id, {"status": "running", "current_stage": "pdf_extract"})
     try:
         handle_pdf_parse_job(payload)

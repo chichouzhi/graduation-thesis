@@ -64,6 +64,19 @@ def _noop_writeback(_: str, __: dict[str, Any]) -> None:
     return None
 
 
+def _task_is_terminal(document_task_id: str) -> bool:
+    if not has_app_context():
+        return False
+
+    from app.document.model import DocumentTask, DocumentTaskStatus
+    from app.extensions import db
+
+    task = db.session.get(DocumentTask, document_task_id)
+    if task is None:
+        return False
+    return task.status in (DocumentTaskStatus.done, DocumentTaskStatus.failed)
+
+
 def _enqueue_followup_stage(
     *,
     document_task_id: str,
@@ -96,7 +109,7 @@ def _maybe_enqueue_followup_stage(
     if not has_app_context():
         return
 
-    from app.document.model import DocumentTask
+    from app.document.model import DocumentTask, DocumentTaskStatus
     from app.extensions import db
 
     if patch.get("status") in ("done", "failed"):
@@ -105,6 +118,8 @@ def _maybe_enqueue_followup_stage(
     task = db.session.get(DocumentTask, typed.document_task_id)
     if task is None:
         raise ValueError(f"document task not found: {typed.document_task_id}")
+    if task.status in (DocumentTaskStatus.done, DocumentTaskStatus.failed):
+        return
 
     progress = task.progress_json if isinstance(task.progress_json, dict) else {}
     total_chunks_raw = progress.get("total_chunks", typed.max_chunks)
@@ -155,6 +170,8 @@ def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
         task = db.session.get(DocumentTask, document_task_id)
         if task is None:
             raise ValueError(f"document task not found: {document_task_id}")
+        if task.status in (DocumentTaskStatus.done, DocumentTaskStatus.failed):
+            return
 
         status_raw = patch.get("status")
         if status_raw is not None:
@@ -283,6 +300,8 @@ def handle_document_job(
 
 def run(payload: dict[str, Any]) -> None:
     typed = DocumentJobPayload.from_mapping(payload)
+    if _task_is_terminal(typed.document_task_id):
+        return
     _default_writeback(typed.document_task_id, {"status": "running"})
     try:
         patch = handle_document_job(payload, writeback=_default_writeback)
@@ -299,6 +318,8 @@ def run(payload: dict[str, Any]) -> None:
 
     final_status = patch.get("status")
     if final_status in ("done", "failed"):
+        return
+    if _task_is_terminal(typed.document_task_id):
         return
     try:
         _maybe_enqueue_followup_stage(typed, patch)
