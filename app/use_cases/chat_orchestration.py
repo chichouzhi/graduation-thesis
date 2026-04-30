@@ -282,6 +282,14 @@ def run_turn(conversation_id: str, messages: list, term_id: str, **kwargs: Any) 
     job_id = str(kwargs.get("job_id", "")).strip()
     assistant_message_id = str(kwargs.get("assistant_message_id", "")).strip()
     user_message_id = str(kwargs.get("user_message_id", "")).strip()
+    if not job_id and not assistant_message_id and not user_message_id:
+        llm_mod.complete(
+            messages,
+            term_id=term_id,
+            user_id=kwargs.get("user_id"),
+            request_id=kwargs.get("request_id"),
+        )
+        return
 
     job = db.session.get(ChatJob, job_id)
     if job is None:

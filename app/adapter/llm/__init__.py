@@ -117,8 +117,14 @@ def call(
     term_id: str,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    """统一高层调用；默认委托 ``MockLlmClient.call``。"""
-    return get_llm_client().call(
+    """统一高层调用；无上下文且未显式配置默认客户端时退回临时 mock。"""
+    if has_app_context():
+        client = get_llm_client()
+    elif _default_client is not None:
+        client = _default_client
+    else:
+        client = MockLlmClient()
+    return client.call(
         messages=messages,
         conversation_id=conversation_id,
         term_id=term_id,
@@ -129,11 +135,7 @@ def call(
 __all__ = (
     "LlmClient",
     "LlmClientProtocol",
-    "LlmConfigurationError",
     "complete",
-    "configure_llm_client_from_environment",
     "invoke_chat",
     "call",
-    "get_llm_client",
-    "set_llm_client",
 )
