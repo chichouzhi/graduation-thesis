@@ -639,6 +639,36 @@ def test_chat_job_schema_declares_terminal_runtime_metadata(contract: dict[str, 
     assert errors == [], f"ChatJob terminal metadata shape must validate; errors: {errors}"
 
 
+def test_document_task_schema_declares_progress_and_artifacts(contract: dict[str, Any]) -> None:
+    schema = schema_by_name(contract, "DocumentTask")
+    properties = schema.get("properties", {})
+    for field in ("current_stage", "progress", "artifacts"):
+        assert field in properties, f"DocumentTask schema must declare {field}"
+
+    instance = {
+        "id": "dt-1",
+        "term_id": "term-1",
+        "status": "running",
+        "filename": "paper.pdf",
+        "task_type": "summary",
+        "language": "zh",
+        "retry_count": 0,
+        "created_at": "2026-04-26T08:00:00Z",
+        "updated_at": "2026-04-26T08:00:01Z",
+        "current_stage": "summarize_chunks",
+        "progress": {"completed_chunks": 1, "total_chunks": 3},
+        "artifacts": [
+            {
+                "artifact_type": "final_result",
+                "stage": "finalize",
+                "storage_uri": "s3://bucket/final.json",
+            }
+        ],
+    }
+    errors = validate_instance(instance, schema, contract)
+    assert errors == [], f"DocumentTask progress/artifact shape must validate; errors: {errors}"
+
+
 @pytest.mark.parametrize(
     ("schema_name", "instance", "expect_valid", "error_substrings"),
     [

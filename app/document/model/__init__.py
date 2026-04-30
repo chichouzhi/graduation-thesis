@@ -83,6 +83,8 @@ class DocumentTask(db.Model):
         nullable=False,
         default=DocumentTaskStatus.pending,
     )
+    current_stage = db.Column(db.String(64), nullable=True)
+    progress_json = db.Column(db.JSON, nullable=True)
     locked_at = db.Column(db.DateTime, nullable=True)
     last_completed_chunk = db.Column(db.Integer, nullable=True)
     result_json = db.Column(db.JSON, nullable=True)
@@ -102,6 +104,17 @@ class DocumentTask(db.Model):
 
     user = db.relationship("User", backref=db.backref("document_tasks", lazy=True))
     term = db.relationship("Term", backref=db.backref("document_tasks", lazy=True))
+    artifacts = db.relationship(
+        "DocumentArtifact",
+        back_populates="document_task",
+        cascade="all, delete-orphan",
+        lazy=True,
+    )
+
+    def _artifact_refs(self) -> list[dict[str, Any]]:
+        refs = [artifact.to_reference() for artifact in self.artifacts]
+        refs.sort(key=lambda item: (str(item.get("stage") or ""), item.get("chunk_index") is None, item.get("chunk_index") or -1, str(item.get("id") or "")))
+        return refs
 
     def to_document_task(self) -> dict[str, Any]:
         """``DocumentTask`` OpenAPI 组件（``result`` 来自 ``result_json``；``date-time`` 为 UTC、``Z`` 后缀）。"""
@@ -119,6 +132,9 @@ class DocumentTask(db.Model):
             "filename": self.filename,
             "task_type": self.task_type.value,
             "language": self.language.value,
+            "current_stage": self.current_stage,
+            "progress": dict(self.progress_json or {}),
+            "artifacts": self._artifact_refs(),
             "locked_at": _dt_to_contract_iso(self.locked_at),
             "last_completed_chunk": self.last_completed_chunk,
             "created_at": _dt_to_contract_iso(self.created_at) or "",
@@ -134,7 +150,12 @@ class DocumentTask(db.Model):
         return body
 
 
+from app.document.model.artifacts import DocumentArtifact, DocumentArtifactType
+
+
 __all__ = [
+    "DocumentArtifact",
+    "DocumentArtifactType",
     "DocumentLanguage",
     "DocumentTask",
     "DocumentTaskStatus",

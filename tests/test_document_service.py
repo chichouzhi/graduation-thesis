@@ -9,7 +9,7 @@ from app import create_app
 from app.adapter import storage as storage_mod
 from app.common.error_envelope import ErrorCode
 from app.common.policy import PolicyDenied
-from app.document.model import DocumentTask, DocumentTaskStatus
+from app.document.model import DocumentArtifact, DocumentArtifactType, DocumentTask, DocumentTaskStatus
 from app.document.service.document_service import DocumentService
 from app.extensions import db
 from app.identity.model import User, UserRole
@@ -256,3 +256,41 @@ def test_create_document_task_marks_failed_when_enqueue_fails(monkeypatch: pytes
         assert row.status == DocumentTaskStatus.failed
         assert row.error_code == ErrorCode.QUEUE_UNAVAILABLE.value
         assert row.error_message is not None and "broker down" in row.error_message
+
+
+def test_get_document_task_for_user_exposes_progress_and_artifacts() -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="doc-svc-read", role=UserRole.student, display_name="read")
+        term = Term(name="2034")
+        db.session.add_all([user, term])
+        db.session.commit()
+
+        row = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="read.pdf",
+            storage_path="/tmp/read.pdf",
+            status=DocumentTaskStatus.running,
+            current_stage="aggregate",
+            progress_json={"completed_chunks": 2, "total_chunks": 4},
+        )
+        db.session.add(row)
+        db.session.commit()
+        db.session.add(
+            DocumentArtifact(
+                document_task_id=row.id,
+                artifact_type=DocumentArtifactType.final_result,
+                stage="finalize",
+                storage_uri="s3://bucket/read.json",
+                payload_json={"summary": "ready"},
+            )
+        )
+        db.session.commit()
+
+        body = DocumentService().get_document_task_for_user(user.id, row.id)
+        assert body is not None
+        assert body["current_stage"] == "aggregate"
+        assert body["progress"] == {"completed_chunks": 2, "total_chunks": 4}
+        assert body["artifacts"][0]["artifact_type"] == "final_result"

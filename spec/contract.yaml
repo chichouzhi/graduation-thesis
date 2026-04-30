@@ -228,6 +228,21 @@ components:
         updated_at: { type: string, format: date-time }
 
     # --- Document ---
+    DocumentArtifactRef:
+      type: object
+      properties:
+        id: { type: string }
+        artifact_type:
+          type: string
+          enum: [pdf_pages_text, chunk_summary, aggregate_summary, final_result]
+        stage: { type: string }
+        chunk_index: { type: integer, nullable: true, minimum: 0 }
+        storage_uri: { type: string, nullable: true }
+        payload:
+          type: object
+          nullable: true
+          additionalProperties: true
+
     DocumentTask:
       type: object
       required: [id, term_id, status, filename, task_type, language, created_at, updated_at, retry_count]
@@ -246,6 +261,13 @@ components:
           type: string
           enum: [zh, en]
           description: POST 未传时服务端默认 zh
+        current_stage: { type: string, nullable: true }
+        progress:
+          type: object
+          additionalProperties: true
+        artifacts:
+          type: array
+          items: { $ref: "#/components/schemas/DocumentArtifactRef" }
         locked_at: { type: string, format: date-time, nullable: true }
         last_completed_chunk: { type: integer, nullable: true, minimum: 0 }
         created_at: { type: string, format: date-time }
@@ -283,6 +305,10 @@ components:
         term_id: { type: string, description: 与 DocumentTask.term_id 一致 }
         status: { $ref: "#/components/schemas/AsyncTaskStatus" }
         filename: { type: string }
+        current_stage: { type: string, nullable: true }
+        progress:
+          type: object
+          additionalProperties: true
         task_type:
           type: string
           enum: [summary, conclusions, compare]

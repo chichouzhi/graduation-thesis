@@ -8,6 +8,8 @@ from sqlalchemy.exc import IntegrityError
 
 from app import create_app
 from app.document.model import (
+    DocumentArtifact,
+    DocumentArtifactType,
     DocumentLanguage,
     DocumentTask,
     DocumentTaskStatus,
@@ -121,6 +123,44 @@ def test_document_task_defaults_and_errors() -> None:
         assert body["result"] is None
         assert body["error_code"] == "QUEUE_UNAVAILABLE"
         assert body["error_message"] == "broker down"
+
+
+def test_document_task_to_document_task_exposes_stage_progress_and_artifacts() -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        u = User(username="doc-u-stage", role=UserRole.student, display_name="Stage")
+        t = Term(name="进度学期")
+        db.session.add_all([u, t])
+        db.session.commit()
+
+        dt = DocumentTask(
+            user_id=u.id,
+            term_id=t.id,
+            filename="stage.pdf",
+            storage_path="/tmp/stage.pdf",
+            status=DocumentTaskStatus.running,
+            current_stage="summarize_chunks",
+            progress_json={"completed_chunks": 1, "total_chunks": 3},
+        )
+        db.session.add(dt)
+        db.session.commit()
+
+        artifact = DocumentArtifact(
+            document_task_id=dt.id,
+            artifact_type=DocumentArtifactType.final_result,
+            stage="finalize",
+            storage_uri="s3://bucket/final.json",
+            payload_json={"summary": "done"},
+        )
+        db.session.add(artifact)
+        db.session.commit()
+
+        body = db.session.get(DocumentTask, dt.id).to_document_task()
+        assert body["current_stage"] == "summarize_chunks"
+        assert body["progress"] == {"completed_chunks": 1, "total_chunks": 3}
+        assert body["artifacts"][0]["artifact_type"] == "final_result"
+        assert body["artifacts"][0]["storage_uri"] == "s3://bucket/final.json"
 
 
 def test_document_task_term_restrict_on_delete() -> None:

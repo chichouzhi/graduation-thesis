@@ -5,6 +5,7 @@ import io
 from werkzeug.security import generate_password_hash
 
 from app import create_app
+from app.document.model import DocumentArtifact, DocumentArtifactType, DocumentTask, DocumentTaskStatus
 from app.extensions import db
 from app.identity.model import User, UserRole
 from app.terms.model import Term
@@ -264,3 +265,43 @@ def test_get_document_task_by_id_requires_access_token() -> None:
     client = app.test_client()
     resp = client.get("/api/v1/document-tasks/some-task-id")
     assert resp.status_code == 401
+
+
+def test_get_document_task_by_id_returns_progress_and_artifacts() -> None:
+    app = create_app()
+    app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False
+    with app.app_context():
+        db.create_all()
+        user = _create_user(username="document-api-progress", role=UserRole.student)
+        term = _create_term("2050 春")
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="progress.pdf",
+            storage_path="/tmp/progress.pdf",
+            status=DocumentTaskStatus.running,
+            current_stage="summarize_chunks",
+            progress_json={"completed_chunks": 1, "total_chunks": 3},
+        )
+        db.session.add(task)
+        db.session.commit()
+        db.session.add(
+            DocumentArtifact(
+                document_task_id=task.id,
+                artifact_type=DocumentArtifactType.final_result,
+                stage="finalize",
+                storage_uri="s3://bucket/progress.json",
+                payload_json={"summary": "done"},
+            )
+        )
+        db.session.commit()
+        task_id = task.id
+
+    client = app.test_client()
+    token = _login_and_get_token(client, "document-api-progress", "pass-123")
+    resp = client.get(f"/api/v1/document-tasks/{task_id}", headers={"Authorization": f"Bearer {token}"})
+    assert resp.status_code == 200
+    body = resp.get_json()
+    assert body["current_stage"] == "summarize_chunks"
+    assert body["progress"] == {"completed_chunks": 1, "total_chunks": 3}
+    assert body["artifacts"][0]["artifact_type"] == "final_result"
