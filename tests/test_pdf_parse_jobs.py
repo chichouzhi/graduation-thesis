@@ -56,10 +56,10 @@ def test_parse_pdf_and_plan_document_jobs_hooks_adapter_and_pipeline(
     jobs = plan.document_job_payloads
 
     assert called_paths == ["/tmp/demo.pdf"]
-    assert len(jobs) == 5  # extract + 2 summarize_chunk + aggregate + finalize
+    assert len(jobs) == 3  # extract + 2 summarize_chunk; aggregate/finalize 由 document_jobs 级联触发
     assert jobs[0]["stage"] == "extract"
     assert jobs[1]["stage"] == "summarize_chunk"
-    assert jobs[-1]["stage"] == "finalize"
+    assert jobs[-1]["stage"] == "summarize_chunk"
     assert all(job["request_id"] == "req-1" for job in jobs)
     assert plan.parsed_meta_for_result_json["pdf_parse_outline"]["max_chunks"] == 2
     assert plan.parsed_meta_for_result_json["pdf_parse_outline"]["page_text_char_counts"] == [1, 1]
@@ -83,15 +83,6 @@ def test_handle_pdf_parse_job_enqueues_document_jobs(
                 "storage_path": "/tmp/demo.pdf",
                 "term_id": "term-1",
                 "stage": "extract",
-                "chunk_index": None,
-                "max_chunks": 1,
-            },
-            {
-                "document_task_id": "dt-1",
-                "user_id": "u-1",
-                "storage_path": "/tmp/demo.pdf",
-                "term_id": "term-1",
-                "stage": "finalize",
                 "chunk_index": None,
                 "max_chunks": 1,
             },
@@ -123,7 +114,7 @@ def test_handle_pdf_parse_job_enqueues_document_jobs(
     monkeypatch.setattr("app.task.pdf_parse_jobs._default_writeback", capture_writeback)
 
     jobs = handle_pdf_parse_job(_valid_pdf_payload())
-    assert len(jobs) == 2
+    assert len(jobs) == 1
     assert enqueued == list(jobs)
     assert writebacks == [
         (
@@ -144,7 +135,7 @@ def test_handle_pdf_parse_job_enqueues_document_jobs(
             },
         )
     ]
-    assert events == ["writeback_meta", "enqueue", "enqueue"]
+    assert events == ["writeback_meta", "enqueue"]
 
 
 def test_pdf_parse_writeback_persists_extracted_text_artifact(

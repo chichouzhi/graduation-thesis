@@ -6,6 +6,9 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Callable
 
+from flask import has_app_context
+
+from app.task import queue as queue_mod
 from app.use_cases.document_pipeline import DocumentJobStage, run_document_job_stage
 
 WritebackFn = Callable[[str, dict[str, Any]], None]
@@ -58,6 +61,88 @@ class DocumentJobPayload:
 
 def _noop_writeback(_: str, __: dict[str, Any]) -> None:
     return None
+
+
+def _enqueue_followup_stage(
+    *,
+    document_task_id: str,
+    user_id: str,
+    storage_path: str,
+    term_id: str,
+    stage: DocumentJobStage,
+    max_chunks: int | None,
+    request_id: str | None,
+) -> None:
+    payload: dict[str, Any] = {
+        "document_task_id": document_task_id,
+        "user_id": user_id,
+        "storage_path": storage_path,
+        "term_id": term_id,
+        "stage": stage.value,
+        "chunk_index": None,
+    }
+    if max_chunks is not None:
+        payload["max_chunks"] = int(max_chunks)
+    if request_id is not None:
+        payload["request_id"] = request_id
+    queue_mod.enqueue_document_jobs(payload)
+
+
+def _maybe_enqueue_followup_stage(
+    typed: DocumentJobPayload,
+    patch: dict[str, Any],
+) -> None:
+    if not has_app_context():
+        return
+
+    from app.document.model import DocumentTask
+    from app.extensions import db
+
+    if patch.get("status") in ("done", "failed"):
+        return
+
+    task = db.session.get(DocumentTask, typed.document_task_id)
+    if task is None:
+        raise ValueError(f"document task not found: {typed.document_task_id}")
+
+    progress = task.progress_json if isinstance(task.progress_json, dict) else {}
+    total_chunks_raw = progress.get("total_chunks", typed.max_chunks)
+    total_chunks = None if total_chunks_raw is None else int(total_chunks_raw)
+
+    if typed.stage == DocumentJobStage.SUMMARIZE_CHUNK:
+        completed_chunks_raw = progress.get("completed_chunks")
+        completed_chunks = None if completed_chunks_raw is None else int(completed_chunks_raw)
+        if total_chunks is None or completed_chunks is None or completed_chunks < total_chunks:
+            return
+        if task.current_stage != "summarize_chunks":
+            return
+        task.current_stage = "aggregate"
+        db.session.commit()
+        _enqueue_followup_stage(
+            document_task_id=typed.document_task_id,
+            user_id=typed.user_id,
+            storage_path=typed.storage_path,
+            term_id=typed.term_id,
+            stage=DocumentJobStage.AGGREGATE,
+            max_chunks=total_chunks,
+            request_id=typed.request_id,
+        )
+        return
+
+    if typed.stage == DocumentJobStage.AGGREGATE:
+        if task.current_stage != "aggregate":
+            return
+        task.current_stage = "finalize"
+        db.session.commit()
+        _enqueue_followup_stage(
+            document_task_id=typed.document_task_id,
+            user_id=typed.user_id,
+            storage_path=typed.storage_path,
+            term_id=typed.term_id,
+            stage=DocumentJobStage.FINALIZE,
+            max_chunks=total_chunks,
+            request_id=typed.request_id,
+        )
 
 
 def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
@@ -214,4 +299,5 @@ def run(payload: dict[str, Any]) -> None:
     final_status = patch.get("status")
     if final_status in ("done", "failed"):
         return
+    _maybe_enqueue_followup_stage(typed, patch)
     return

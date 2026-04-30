@@ -109,6 +109,8 @@ def build_document_job_payloads_for_plan(
 
     jobs: list[dict[str, Any]] = []
     for item in expand_default_document_job_plan(plan):
+        if item.stage in (DocumentJobStage.AGGREGATE, DocumentJobStage.FINALIZE):
+            continue
         body: dict[str, Any] = {
             "document_task_id": tid,
             "user_id": uid,

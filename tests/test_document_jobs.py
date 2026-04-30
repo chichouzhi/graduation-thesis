@@ -503,3 +503,171 @@ def test_document_job_writeback_counts_completed_chunks_from_saved_artifacts() -
         task = db.session.get(DocumentTask, task.id)
         assert task is not None
         assert task.progress_json == {"completed_chunks": 1, "total_chunks": 3}
+
+
+def test_run_enqueues_aggregate_after_last_chunk_finishes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    enqueued: list[dict[str, object]] = []
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="doc-job-chain", role=UserRole.student, display_name="Chain")
+        term = Term(name="Task4 Jobs Chain")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="chain.pdf",
+            storage_path="/tmp/chain.pdf",
+            status=DocumentTaskStatus.running,
+            current_stage="summarize_chunks",
+            progress_json={"completed_chunks": 1, "total_chunks": 2},
+        )
+        db.session.add(task)
+        db.session.commit()
+        db.session.add_all(
+            [
+                DocumentArtifact(
+                    document_task_id=task.id,
+                    artifact_type=DocumentArtifactType.pdf_pages_text,
+                    stage="pdf_extract",
+                    content_text="page zero\n\npage one",
+                    payload_json={
+                        "pages": [
+                            {"page_index": 0, "text": "page zero"},
+                            {"page_index": 1, "text": "page one"},
+                        ]
+                    },
+                ),
+                DocumentArtifact(
+                    document_task_id=task.id,
+                    artifact_type=DocumentArtifactType.chunk_summary,
+                    stage="summarize_chunk",
+                    chunk_index=0,
+                    content_text="summary zero",
+                    payload_json={"chunk_text": "page zero", "max_chunks": 2},
+                ),
+            ]
+        )
+        db.session.commit()
+
+        monkeypatch.setattr(
+            "app.adapter.llm.complete",
+            lambda _messages, **_kwargs: {"content": "summary one"},
+        )
+        monkeypatch.setattr(
+            "app.task.document_jobs.queue_mod.enqueue_document_jobs",
+            lambda payload=None, **_kwargs: enqueued.append(dict(payload or {})) or {"job_id": "doc-job"},
+        )
+
+        run(
+            {
+                "document_task_id": task.id,
+                "user_id": user.id,
+                "storage_path": "/tmp/chain.pdf",
+                "term_id": term.id,
+                "stage": "summarize_chunk",
+                "chunk_index": 1,
+                "max_chunks": 2,
+            }
+        )
+
+        task = db.session.get(DocumentTask, task.id)
+        assert task is not None
+        assert task.status == DocumentTaskStatus.running
+        assert task.current_stage == "aggregate"
+        assert enqueued == [
+            {
+                "document_task_id": task.id,
+                "user_id": user.id,
+                "storage_path": "/tmp/chain.pdf",
+                "term_id": term.id,
+                "stage": "aggregate",
+                "chunk_index": None,
+                "max_chunks": 2,
+            }
+        ]
+
+
+def test_run_enqueues_finalize_after_aggregate_stage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    enqueued: list[dict[str, object]] = []
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="doc-job-finalize-chain", role=UserRole.student, display_name="Final Chain")
+        term = Term(name="Task4 Jobs Finalize Chain")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="aggregate.pdf",
+            storage_path="/tmp/aggregate.pdf",
+            status=DocumentTaskStatus.running,
+            current_stage="aggregate",
+            progress_json={"completed_chunks": 2, "total_chunks": 2},
+        )
+        db.session.add(task)
+        db.session.commit()
+        db.session.add_all(
+            [
+                DocumentArtifact(
+                    document_task_id=task.id,
+                    artifact_type=DocumentArtifactType.chunk_summary,
+                    stage="summarize_chunk",
+                    chunk_index=0,
+                    content_text="summary zero",
+                    payload_json={"chunk_text": "page zero", "max_chunks": 2},
+                ),
+                DocumentArtifact(
+                    document_task_id=task.id,
+                    artifact_type=DocumentArtifactType.chunk_summary,
+                    stage="summarize_chunk",
+                    chunk_index=1,
+                    content_text="summary one",
+                    payload_json={"chunk_text": "page one", "max_chunks": 2},
+                ),
+            ]
+        )
+        db.session.commit()
+
+        monkeypatch.setattr(
+            "app.adapter.llm.complete",
+            lambda _messages, **_kwargs: {"content": "overall summary\n- point a"},
+        )
+        monkeypatch.setattr(
+            "app.task.document_jobs.queue_mod.enqueue_document_jobs",
+            lambda payload=None, **_kwargs: enqueued.append(dict(payload or {})) or {"job_id": "doc-job"},
+        )
+
+        run(
+            {
+                "document_task_id": task.id,
+                "user_id": user.id,
+                "storage_path": "/tmp/aggregate.pdf",
+                "term_id": term.id,
+                "stage": "aggregate",
+                "chunk_index": None,
+                "max_chunks": 2,
+            }
+        )
+
+        task = db.session.get(DocumentTask, task.id)
+        assert task is not None
+        assert task.status == DocumentTaskStatus.running
+        assert task.current_stage == "finalize"
+        assert enqueued == [
+            {
+                "document_task_id": task.id,
+                "user_id": user.id,
+                "storage_path": "/tmp/aggregate.pdf",
+                "term_id": term.id,
+                "stage": "finalize",
+                "chunk_index": None,
+                "max_chunks": 2,
+            }
+        ]

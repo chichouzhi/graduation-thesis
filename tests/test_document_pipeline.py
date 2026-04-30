@@ -77,8 +77,7 @@ def test_build_document_job_payloads_for_plan_matches_default_plan() -> None:
         term_id="t1",
         request_id="r1",
     )
-    planned = expand_default_document_job_plan(plan)
-    assert len(payloads) == len(planned)
+    assert len(payloads) == 3
     assert payloads[0]["stage"] == "extract" and payloads[0]["chunk_index"] is None
     assert payloads[1] == {
         "document_task_id": "d1",
@@ -90,6 +89,8 @@ def test_build_document_job_payloads_for_plan_matches_default_plan() -> None:
         "max_chunks": 2,
         "request_id": "r1",
     }
+    assert payloads[2]["stage"] == "summarize_chunk"
+    assert payloads[2]["chunk_index"] == 1
 
 
 def test_expand_default_plan_three_chunks() -> None:
