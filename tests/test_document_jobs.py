@@ -117,7 +117,7 @@ def test_run_document_job_stage_summarize_calls_llm(monkeypatch: pytest.MonkeyPa
         assert patch["artifacts"][0]["content_text"] == "summary text"
 
 
-def test_run_writes_default_statuses_and_last_completed_chunk(
+def test_run_keeps_non_terminal_document_stage_running(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     writes: list[tuple[str, dict[str, object]]] = []
@@ -136,7 +136,34 @@ def test_run_writes_default_statuses_and_last_completed_chunk(
     assert writes[0] == ("dt-1", {"status": "pending"})
     assert writes[1] == ("dt-1", {"status": "running"})
     assert writes[2] == ("dt-1", {"status": "running", "last_completed_chunk": 1})
-    assert writes[3] == ("dt-1", {"status": "done"})
+    assert len(writes) == 3
+
+
+def test_run_preserves_finalize_terminal_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    writes: list[tuple[str, dict[str, object]]] = []
+
+    def fake_writeback(document_task_id: str, patch: dict[str, object]) -> None:
+        writes.append((document_task_id, patch))
+
+    monkeypatch.setattr("app.task.document_jobs._default_writeback", fake_writeback)
+    monkeypatch.setattr(
+        "app.task.document_jobs.handle_document_job",
+        lambda payload, writeback: (
+            writeback(payload["document_task_id"], {"status": "done", "current_stage": "finalize"}) or {"status": "done", "current_stage": "finalize"}
+        ),
+    )
+
+    payload = dict(_base_payload())
+    payload["stage"] = "finalize"
+    payload["chunk_index"] = None
+
+    run(payload)
+    assert writes[0] == ("dt-1", {"status": "pending"})
+    assert writes[1] == ("dt-1", {"status": "running"})
+    assert writes[2] == ("dt-1", {"status": "done", "current_stage": "finalize"})
+    assert len(writes) == 3
 
 
 def test_run_writes_failed_when_handler_raises(monkeypatch: pytest.MonkeyPatch) -> None:

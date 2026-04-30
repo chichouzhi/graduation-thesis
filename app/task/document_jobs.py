@@ -215,4 +215,4 @@ def run(payload: dict[str, Any]) -> None:
     final_status = patch.get("status")
     if final_status in ("done", "failed"):
         return
-    _default_writeback(typed.document_task_id, {"status": "done"})
+    return
