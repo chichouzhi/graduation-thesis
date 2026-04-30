@@ -26,15 +26,17 @@ def upgrade():
         batch.add_column(sa.Column("artifact_key", sa.String(length=160), nullable=True))
 
     conn = op.get_bind()
-    rows = conn.execute(
-        sa.text(
-            """
-            SELECT id, document_task_id, artifact_type, stage, chunk_index
-            FROM document_artifacts
-            ORDER BY updated_at DESC, created_at DESC, id DESC
-            """
-        )
-    ).mappings()
+    rows = list(
+        conn.execute(
+            sa.text(
+                """
+                SELECT id, document_task_id, artifact_type, stage, chunk_index
+                FROM document_artifacts
+                ORDER BY updated_at DESC, created_at DESC, id DESC
+                """
+            )
+        ).mappings()
+    )
 
     seen: set[tuple[str, str]] = set()
     for row in rows:

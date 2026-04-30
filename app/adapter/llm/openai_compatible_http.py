@@ -179,7 +179,7 @@ def _env_or_value(
 def openai_compatible_client_from_environ(
     values: Mapping[str, object] | None = None,
 ) -> OpenAiCompatibleHttpClient | None:
-    """若存在 HTTP LLM 配置则构造客户端；若配置不完整则抛错。"""
+    """仅在存在 API key 时构造客户端；其它零散兼容配置一律忽略。"""
     key = _env_or_value(values, "LLM_HTTP_API_KEY", aliases=("OPENAI_API_KEY",))
     base = _env_or_value(values, "LLM_HTTP_BASE_URL", aliases=("OPENAI_BASE_URL",))
     model = _env_or_value(values, "LLM_HTTP_MODEL", aliases=("OPENAI_MODEL",))

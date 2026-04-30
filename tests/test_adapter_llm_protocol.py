@@ -61,6 +61,25 @@ def test_configure_llm_client_from_environment_returns_http_client(monkeypatch: 
     assert get_llm_client() is client
 
 
+def test_configure_llm_client_from_environment_accepts_openai_alias_env_names(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "openai_compatible")
+    monkeypatch.delenv("LLM_HTTP_API_KEY", raising=False)
+    monkeypatch.delenv("LLM_HTTP_BASE_URL", raising=False)
+    monkeypatch.delenv("LLM_HTTP_MODEL", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "alias-key")
+    monkeypatch.setenv("OPENAI_BASE_URL", "https://alias.example.invalid/v1")
+    monkeypatch.setenv("OPENAI_MODEL", "alias-model")
+
+    client = configure_llm_client_from_environment(default_to_mock=False)
+
+    assert isinstance(client, OpenAiCompatibleHttpClient)
+    assert client._base == "https://alias.example.invalid/v1/"  # noqa: SLF001 — 引导兼容面回归保护
+    assert client._model == "alias-model"  # noqa: SLF001 — 引导兼容面回归保护
+    assert get_llm_client() is client
+
+
 def test_configure_llm_client_from_environment_requires_explicit_provider(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
