@@ -163,6 +163,49 @@ def test_document_task_to_document_task_exposes_stage_progress_and_artifacts() -
         assert body["artifacts"][0]["storage_uri"] == "s3://bucket/final.json"
 
 
+def test_document_artifact_rejects_duplicate_identity_even_with_null_chunk_index() -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        u = User(username="doc-u-art-dup", role=UserRole.student, display_name="Dup")
+        t = Term(name="artifact-dup")
+        db.session.add_all([u, t])
+        db.session.commit()
+
+        dt = DocumentTask(
+            user_id=u.id,
+            term_id=t.id,
+            filename="dup.pdf",
+            storage_path="/tmp/dup.pdf",
+        )
+        db.session.add(dt)
+        db.session.commit()
+
+        db.session.add(
+            DocumentArtifact(
+                document_task_id=dt.id,
+                artifact_type=DocumentArtifactType.pdf_pages_text,
+                stage="pdf_extract",
+                chunk_index=None,
+                content_text="first",
+            )
+        )
+        db.session.commit()
+
+        with pytest.raises(IntegrityError):
+            db.session.add(
+                DocumentArtifact(
+                    document_task_id=dt.id,
+                    artifact_type=DocumentArtifactType.pdf_pages_text,
+                    stage="pdf_extract",
+                    chunk_index=None,
+                    content_text="second",
+                )
+            )
+            db.session.commit()
+        db.session.rollback()
+
+
 def test_document_task_term_restrict_on_delete() -> None:
     app = create_app()
     with app.app_context():

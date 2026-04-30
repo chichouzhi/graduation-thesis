@@ -94,7 +94,7 @@ def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
             chunk_index = None if item.get("chunk_index") is None else int(item["chunk_index"])
             artifact_type = DocumentArtifactType(str(item["artifact_type"]))
             stage = str(item["stage"])
-            artifact = (
+            artifacts_found = (
                 db.session.query(DocumentArtifact)
                 .filter_by(
                     document_task_id=document_task_id,
@@ -102,8 +102,16 @@ def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
                     stage=stage,
                     chunk_index=chunk_index,
                 )
-                .one_or_none()
+                .order_by(
+                    DocumentArtifact.updated_at.desc(),
+                    DocumentArtifact.created_at.desc(),
+                    DocumentArtifact.id.desc(),
+                )
+                .all()
             )
+            artifact = artifacts_found[0] if artifacts_found else None
+            for duplicate in artifacts_found[1:]:
+                db.session.delete(duplicate)
             if artifact is None:
                 artifact = DocumentArtifact(
                     document_task_id=document_task_id,

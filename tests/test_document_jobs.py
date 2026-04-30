@@ -237,3 +237,64 @@ def test_document_job_writeback_persists_chunk_summaries_independently(
         assert len(artifacts) == 2
         assert [artifact.chunk_index for artifact in artifacts] == [0, 1]
         assert [artifact.content_text for artifact in artifacts] == ["summary first", "summary second"]
+
+
+def test_document_job_writeback_updates_existing_artifact_in_place() -> None:
+    from app.task.document_jobs import _default_writeback
+
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="doc-job-dup", role=UserRole.student, display_name="Dup")
+        term = Term(name="Task4 Jobs Duplicate")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="dup.pdf",
+            storage_path="/tmp/dup.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+        db.session.add_all(
+            [
+                DocumentArtifact(
+                    document_task_id=task.id,
+                    artifact_type=DocumentArtifactType.chunk_summary,
+                    stage="summarize_chunk",
+                    chunk_index=0,
+                    content_text="old-1",
+                ),
+            ]
+        )
+        db.session.commit()
+
+        _default_writeback(
+            task.id,
+            {
+                "artifacts": [
+                    {
+                        "artifact_type": "chunk_summary",
+                        "stage": "summarize_chunk",
+                        "chunk_index": 0,
+                        "content_text": "newest",
+                        "payload": {"chunk_text": "page"},
+                    }
+                ]
+            },
+        )
+
+        artifacts = (
+            db.session.query(DocumentArtifact)
+            .filter_by(
+                document_task_id=task.id,
+                artifact_type=DocumentArtifactType.chunk_summary,
+                stage="summarize_chunk",
+                chunk_index=0,
+            )
+            .order_by(DocumentArtifact.created_at.asc(), DocumentArtifact.id.asc())
+            .all()
+        )
+        assert len(artifacts) == 1
+        assert artifacts[0].content_text == "newest"

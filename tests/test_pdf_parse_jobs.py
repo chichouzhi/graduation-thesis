@@ -223,6 +223,67 @@ def test_pdf_parse_writeback_persists_extracted_text_artifact(
         }
 
 
+def test_pdf_parse_writeback_updates_existing_artifact_in_place() -> None:
+    from app.task.pdf_parse_jobs import _default_writeback
+
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="pdf-task-dup", role=UserRole.student, display_name="PDF Dup")
+        term = Term(name="Task4 PDF Duplicate")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="dup.pdf",
+            storage_path="/tmp/dup.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+        db.session.add_all(
+            [
+                DocumentArtifact(
+                    document_task_id=task.id,
+                    artifact_type=DocumentArtifactType.pdf_pages_text,
+                    stage="pdf_extract",
+                    chunk_index=None,
+                    content_text="old-1",
+                ),
+            ]
+        )
+        db.session.commit()
+
+        _default_writeback(
+            task.id,
+            {
+                "artifacts": [
+                    {
+                        "artifact_type": "pdf_pages_text",
+                        "stage": "pdf_extract",
+                        "chunk_index": None,
+                        "content_text": "newest",
+                        "payload": {"pages": [{"page_index": 0, "text": "newest"}]},
+                    }
+                ]
+            },
+        )
+
+        artifacts = (
+            db.session.query(DocumentArtifact)
+            .filter_by(
+                document_task_id=task.id,
+                artifact_type=DocumentArtifactType.pdf_pages_text,
+                stage="pdf_extract",
+                chunk_index=None,
+            )
+            .order_by(DocumentArtifact.created_at.asc(), DocumentArtifact.id.asc())
+            .all()
+        )
+        assert len(artifacts) == 1
+        assert artifacts[0].content_text == "newest"
+
+
 def test_run_writes_failed_status_when_pdf_parse_raises(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
