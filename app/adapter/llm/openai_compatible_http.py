@@ -23,6 +23,8 @@ K_RETRIES: Final[int] = 3
 _BACKOFF_BASE_S: Final[float] = 0.5
 _BACKOFF_CAP_S: Final[float] = 8.0
 _DEFAULT_TIMEOUT_S: Final[float] = 60.0
+_DEFAULT_BASE_URL: Final[str] = "https://api.openai.com/v1"
+_DEFAULT_MODEL: Final[str] = "gpt-4o-mini"
 
 # 非消息体字段，不写入 OpenAI 兼容 JSON body
 _SKIP_PAYLOAD_KEYS: Final[frozenset[str]] = frozenset(
@@ -187,10 +189,6 @@ def openai_compatible_client_from_environ(
         return None
     if not key:
         raise RuntimeError("LLM_HTTP_API_KEY is required for the OpenAI-compatible HTTP client")
-    if not base:
-        raise RuntimeError("LLM_HTTP_BASE_URL is required for the OpenAI-compatible HTTP client")
-    if not model:
-        raise RuntimeError("LLM_HTTP_MODEL is required for the OpenAI-compatible HTTP client")
 
     timeout_s = _DEFAULT_TIMEOUT_S
     if timeout_raw and timeout_raw.strip():
@@ -199,9 +197,9 @@ def openai_compatible_client_from_environ(
         except ValueError:
             pass
     return OpenAiCompatibleHttpClient(
-        base_url=base,
+        base_url=base or _DEFAULT_BASE_URL,
         api_key=key,
-        model=model,
+        model=model or _DEFAULT_MODEL,
         timeout_s=timeout_s,
     )
 

@@ -397,6 +397,28 @@ def test_post_conversation_messages_validation_error_400() -> None:
     assert resp.get_json()["error"]["code"] == "VALIDATION_ERROR"
 
 
+def test_post_conversation_messages_rejects_non_integer_seq_400() -> None:
+    app = create_app()
+    app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False
+    with app.app_context():
+        db.create_all()
+        user = _create_user(username="chat-api-post-msg-seq", role=UserRole.student)
+        term = _create_term("2045 冬")
+        conv = _create_conversation(user_id=user.id, term_id=term.id, title="post-msg-seq-conv")
+        conv_id = conv.id
+
+    client = app.test_client()
+    token = _login_and_get_token(client, "chat-api-post-msg-seq", "pass-123")
+    resp = client.post(
+        f"/api/v1/conversations/{conv_id}/messages",
+        json={"content": "hello", "seq": 1.5},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 400
+    assert resp.get_json()["error"]["code"] == "VALIDATION_ERROR"
+    assert "seq" in resp.get_json()["error"]["message"]
+
+
 def test_post_conversation_messages_requires_access_token() -> None:
     app = create_app()
     client = app.test_client()

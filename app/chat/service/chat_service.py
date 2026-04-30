@@ -29,6 +29,14 @@ def _utc_iso_z() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _normalize_optional_int(value: object, *, name: str) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{name} must be an integer when provided")
+    return value
+
+
 def create_chat(
     conversation_id: str,
     term_id: str,
@@ -43,7 +51,7 @@ def create_chat(
     created_at = _utc_iso_z()
 
     client_request_id = kwargs.pop("client_request_id", None)
-    seq = kwargs.pop("seq", None)
+    seq = _normalize_optional_int(kwargs.pop("seq", None), name="seq")
 
     queue_payload: dict[str, Any] = {
         "job_id": job_id,
@@ -258,6 +266,7 @@ class ChatService:
     ) -> dict[str, Any]:
         from app.use_cases import chat_orchestration as uc
 
+        kwargs["seq"] = _normalize_optional_int(kwargs.get("seq"), name="seq")
         job_id = str(uuid.uuid4())
         user_message_id = str(uuid.uuid4())
         assistant_message_id = str(uuid.uuid4())

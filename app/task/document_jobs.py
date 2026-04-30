@@ -61,7 +61,7 @@ def _noop_writeback(_: str, __: dict[str, Any]) -> None:
 
 
 def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
-    from app.document.model import DocumentTask, DocumentTaskStatus
+    from app.document.model import DocumentArtifact, DocumentArtifactType, DocumentTask, DocumentTaskStatus
     from app.extensions import db
 
     task = db.session.get(DocumentTask, document_task_id)
@@ -85,6 +85,36 @@ def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
         base = dict(task.result_json or {})
         base.update(result_patch)
         task.result_json = base
+
+    artifacts = patch.get("artifacts")
+    if isinstance(artifacts, list):
+        for item in artifacts:
+            if not isinstance(item, dict):
+                continue
+            chunk_index = None if item.get("chunk_index") is None else int(item["chunk_index"])
+            artifact_type = DocumentArtifactType(str(item["artifact_type"]))
+            stage = str(item["stage"])
+            artifact = (
+                db.session.query(DocumentArtifact)
+                .filter_by(
+                    document_task_id=document_task_id,
+                    artifact_type=artifact_type,
+                    stage=stage,
+                    chunk_index=chunk_index,
+                )
+                .one_or_none()
+            )
+            if artifact is None:
+                artifact = DocumentArtifact(
+                    document_task_id=document_task_id,
+                    artifact_type=artifact_type,
+                    stage=stage,
+                    chunk_index=chunk_index,
+                )
+            artifact.storage_uri = None if item.get("storage_uri") is None else str(item.get("storage_uri"))
+            artifact.payload_json = item.get("payload")
+            artifact.content_text = None if item.get("content_text") is None else str(item.get("content_text"))
+            db.session.add(artifact)
 
     if "error_code" in patch:
         code_raw = patch.get("error_code")

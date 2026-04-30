@@ -1,6 +1,11 @@
 from __future__ import annotations
 
 import pytest
+from app import create_app
+from app.document.model import DocumentArtifact, DocumentArtifactType, DocumentTask
+from app.extensions import db
+from app.identity.model import User, UserRole
+from app.terms.model import Term
 
 from app.task.pdf_parse_jobs import handle_pdf_parse_job, run
 from app.use_cases.document_pdf_parse import PdfJobPayload, PdfParseSuccessPlan, parse_pdf_and_plan_document_jobs
@@ -57,6 +62,9 @@ def test_parse_pdf_and_plan_document_jobs_hooks_adapter_and_pipeline(
     assert all(job["request_id"] == "req-1" for job in jobs)
     assert plan.parsed_meta_for_result_json["pdf_parse_outline"]["max_chunks"] == 2
     assert plan.parsed_meta_for_result_json["pdf_parse_outline"]["page_text_char_counts"] == [1, 1]
+    assert plan.extracted_text_artifact_payload["artifact_type"] == "pdf_pages_text"
+    assert plan.extracted_text_artifact_payload["payload"]["pages"][1]["text"] == "b"
+    assert plan.extracted_text_artifact_payload["content_text"] == "a\n\nb"
 
 
 def test_handle_pdf_parse_job_enqueues_document_jobs(
@@ -90,6 +98,13 @@ def test_handle_pdf_parse_job_enqueues_document_jobs(
         return PdfParseSuccessPlan(
             document_job_payloads=payloads,
             parsed_meta_for_result_json={"pdf_parse_outline": {"page_count": 1, "max_chunks": 1, "page_text_char_counts": [9]}},
+            extracted_text_artifact_payload={
+                "artifact_type": "pdf_pages_text",
+                "stage": "pdf_extract",
+                "chunk_index": None,
+                "content_text": "page text",
+                "payload": {"pages": [{"page_index": 0, "text": "page text"}]},
+            },
         )
 
     def fake_enqueue(payload: dict[str, object] | None = None, **_: object) -> dict[str, str]:
@@ -112,10 +127,100 @@ def test_handle_pdf_parse_job_enqueues_document_jobs(
     assert writebacks == [
         (
             "dt-1",
-            {"result_patch": {"pdf_parse_outline": {"page_count": 1, "max_chunks": 1, "page_text_char_counts": [9]}}},
+            {
+                "result_patch": {"pdf_parse_outline": {"page_count": 1, "max_chunks": 1, "page_text_char_counts": [9]}},
+                "artifacts": [
+                    {
+                        "artifact_type": "pdf_pages_text",
+                        "stage": "pdf_extract",
+                        "chunk_index": None,
+                        "content_text": "page text",
+                        "payload": {"pages": [{"page_index": 0, "text": "page text"}]},
+                    }
+                ],
+            },
         )
     ]
     assert events == ["writeback_meta", "enqueue", "enqueue"]
+
+
+def test_pdf_parse_writeback_persists_extracted_text_artifact(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="pdf-task-user", role=UserRole.student, display_name="PDF")
+        term = Term(name="Task4 PDF")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="paper.pdf",
+            storage_path="/tmp/paper.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+
+        def fake_enqueue(payload: dict[str, object] | None = None, **_: object) -> dict[str, str]:
+            assert payload is not None
+            return {"job_id": "doc-job"}
+
+        def fake_planner(_: PdfJobPayload) -> PdfParseSuccessPlan:
+            return PdfParseSuccessPlan(
+                document_job_payloads=(
+                    {
+                        "document_task_id": task.id,
+                        "user_id": user.id,
+                        "storage_path": "/tmp/paper.pdf",
+                        "term_id": term.id,
+                        "stage": "extract",
+                        "chunk_index": None,
+                        "max_chunks": 2,
+                    },
+                ),
+                parsed_meta_for_result_json={
+                    "pdf_parse_outline": {"page_count": 2, "max_chunks": 2, "page_text_char_counts": [5, 4]}
+                },
+                extracted_text_artifact_payload={
+                    "artifact_type": "pdf_pages_text",
+                    "stage": "pdf_extract",
+                    "chunk_index": None,
+                    "content_text": "alpha\n\nbeta",
+                    "payload": {
+                        "pages": [
+                            {"page_index": 0, "text": "alpha"},
+                            {"page_index": 1, "text": "beta"},
+                        ]
+                    },
+                },
+            )
+
+        monkeypatch.setattr("app.task.pdf_parse_jobs.parse_pdf_and_plan_document_jobs", fake_planner)
+        monkeypatch.setattr("app.task.pdf_parse_jobs.queue_mod.enqueue_document_jobs", fake_enqueue)
+
+        handle_pdf_parse_job(
+            {
+                "document_task_id": task.id,
+                "user_id": user.id,
+                "storage_path": "/tmp/paper.pdf",
+                "term_id": term.id,
+                "stage": "pdf_extract",
+            }
+        )
+
+        artifact = db.session.query(DocumentArtifact).filter_by(document_task_id=task.id).one()
+        assert artifact.artifact_type == DocumentArtifactType.pdf_pages_text
+        assert artifact.stage == "pdf_extract"
+        assert artifact.chunk_index is None
+        assert artifact.content_text == "alpha\n\nbeta"
+        assert artifact.payload_json == {
+            "pages": [
+                {"page_index": 0, "text": "alpha"},
+                {"page_index": 1, "text": "beta"},
+            ]
+        }
 
 
 def test_run_writes_failed_status_when_pdf_parse_raises(

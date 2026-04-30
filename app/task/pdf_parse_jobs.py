@@ -10,7 +10,7 @@ from app.use_cases.document_pdf_parse import PdfJobPayload, parse_pdf_and_plan_d
 
 
 def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
-    from app.document.model import DocumentTask, DocumentTaskStatus
+    from app.document.model import DocumentArtifact, DocumentArtifactType, DocumentTask, DocumentTaskStatus
     from app.extensions import db
 
     task = db.session.get(DocumentTask, document_task_id)
@@ -38,6 +38,36 @@ def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
         base.update(result_patch)
         task.result_json = base
 
+    artifacts = patch.get("artifacts")
+    if isinstance(artifacts, list):
+        for item in artifacts:
+            if not isinstance(item, dict):
+                continue
+            chunk_index = None if item.get("chunk_index") is None else int(item["chunk_index"])
+            artifact_type = DocumentArtifactType(str(item["artifact_type"]))
+            stage = str(item["stage"])
+            artifact = (
+                db.session.query(DocumentArtifact)
+                .filter_by(
+                    document_task_id=document_task_id,
+                    artifact_type=artifact_type,
+                    stage=stage,
+                    chunk_index=chunk_index,
+                )
+                .one_or_none()
+            )
+            if artifact is None:
+                artifact = DocumentArtifact(
+                    document_task_id=document_task_id,
+                    artifact_type=artifact_type,
+                    stage=stage,
+                    chunk_index=chunk_index,
+                )
+            artifact.storage_uri = None if item.get("storage_uri") is None else str(item.get("storage_uri"))
+            artifact.payload_json = item.get("payload")
+            artifact.content_text = None if item.get("content_text") is None else str(item.get("content_text"))
+            db.session.add(artifact)
+
     db.session.commit()
 
 
@@ -45,7 +75,13 @@ def handle_pdf_parse_job(payload: dict[str, Any]) -> tuple[dict[str, Any], ...]:
     typed = PdfJobPayload.from_mapping(payload)
     plan = parse_pdf_and_plan_document_jobs(typed)
     # ADR：先持久化最小「可分块中间态」元数据，再按 document_pipeline 计划入队 document_jobs。
-    _default_writeback(typed.document_task_id, {"result_patch": plan.parsed_meta_for_result_json})
+    _default_writeback(
+        typed.document_task_id,
+        {
+            "result_patch": plan.parsed_meta_for_result_json,
+            "artifacts": [plan.extracted_text_artifact_payload],
+        },
+    )
     for job in plan.document_job_payloads:
         queue_mod.enqueue_document_jobs(job)
     return plan.document_job_payloads

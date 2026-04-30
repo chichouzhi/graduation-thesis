@@ -2,6 +2,11 @@
 from __future__ import annotations
 
 import pytest
+from app import create_app
+from app.document.model import DocumentArtifact, DocumentArtifactType, DocumentTask
+from app.extensions import db
+from app.identity.model import User, UserRole
+from app.terms.model import Term
 
 from app.use_cases.document_pipeline import (
     DocumentChunkingPlan,
@@ -14,6 +19,7 @@ from app.use_cases.document_pipeline import (
     format_document_job_idempotency_key,
     parse_document_job_idempotency_key,
     planned_job_count,
+    run_document_job_stage,
     resolve_document_chunk_max_parallel,
     validate_chunk_parallel_limit,
 )
@@ -131,3 +137,68 @@ def test_chunk_summarize_waves_five_by_two() -> None:
 
 def test_chunk_summarize_waves_single_wave_when_under_cap() -> None:
     assert chunk_summarize_waves(3, max_parallel=10) == ((0, 1, 2),)
+
+
+def test_run_document_job_stage_summarize_uses_extracted_chunk_text(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="pipeline-user", role=UserRole.student, display_name="Pipe")
+        term = Term(name="Task4 Pipeline")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="pipeline.pdf",
+            storage_path="/tmp/pipeline.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+        db.session.add(
+            DocumentArtifact(
+                document_task_id=task.id,
+                artifact_type=DocumentArtifactType.pdf_pages_text,
+                stage="pdf_extract",
+                content_text="page zero\n\npage one",
+                payload_json={
+                    "pages": [
+                        {"page_index": 0, "text": "page zero"},
+                        {"page_index": 1, "text": "page one"},
+                    ]
+                },
+            )
+        )
+        db.session.commit()
+
+        captured_messages: list[list[dict[str, str]]] = []
+
+        def fake_complete(messages: list[dict[str, str]], **_: object) -> dict[str, str]:
+            captured_messages.append(messages)
+            return {"content": "summary for page one"}
+
+        monkeypatch.setattr("app.adapter.llm.complete", fake_complete)
+        patch = run_document_job_stage(
+            stage="summarize_chunk",
+            chunk_index=1,
+            document_task_id=task.id,
+            storage_path="/tmp/pipeline.pdf",
+            term_id=term.id,
+            user_id=user.id,
+            max_chunks=2,
+        )
+
+        assert captured_messages
+        assert "page one" in captured_messages[0][0]["content"]
+        assert "chunk 1" in captured_messages[0][0]["content"]
+        assert patch["artifacts"] == [
+            {
+                "artifact_type": "chunk_summary",
+                "stage": "summarize_chunk",
+                "chunk_index": 1,
+                "content_text": "summary for page one",
+                "payload": {"chunk_text": "page one", "max_chunks": 2},
+            }
+        ]

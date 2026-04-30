@@ -82,8 +82,8 @@ def configure_llm_client_from_environment(
         client = openai_compatible_client_from_environ(values)
         if client is None:
             raise LlmConfigurationError(
-                "LLM_PROVIDER=openai_compatible requires LLM_HTTP_API_KEY, "
-                "LLM_HTTP_BASE_URL, and LLM_HTTP_MODEL"
+                "LLM_PROVIDER=openai_compatible requires LLM_HTTP_API_KEY "
+                "(or OPENAI_API_KEY)"
             )
         if set_as_default:
             set_llm_client(client)

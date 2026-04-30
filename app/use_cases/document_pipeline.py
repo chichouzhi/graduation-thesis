@@ -194,6 +194,35 @@ def chunk_summarize_waves(
     return tuple(waves)
 
 
+def _load_chunk_text(document_task_id: str, chunk_index: int) -> str:
+    from app.document.model import DocumentArtifact, DocumentArtifactType
+    from app.extensions import db
+
+    artifact = (
+        db.session.query(DocumentArtifact)
+        .filter_by(
+            document_task_id=document_task_id,
+            artifact_type=DocumentArtifactType.pdf_pages_text,
+        )
+        .order_by(DocumentArtifact.created_at.desc())
+        .first()
+    )
+    if artifact is None:
+        raise ValueError(f"missing pdf_pages_text artifact for document_task_id={document_task_id}")
+
+    payload = artifact.payload_json if isinstance(artifact.payload_json, dict) else {}
+    pages = payload.get("pages")
+    if isinstance(pages, list):
+        for idx, page in enumerate(pages):
+            if not isinstance(page, dict):
+                continue
+            page_index = int(page.get("page_index", idx))
+            if page_index == chunk_index:
+                return str(page.get("text", ""))
+
+    raise ValueError(f"missing chunk text for chunk_index={chunk_index}")
+
+
 def run_document_job_stage(
     *,
     stage: DocumentJobStage | str,
@@ -226,9 +255,11 @@ def run_document_job_stage(
     # summarize_chunk: UC 统一触达 LLM，task 层不直接 import adapter
     from app.adapter import llm as llm_mod
 
+    chunk_id = int(chunk_index) if chunk_index is not None else 0
+    chunk_text = _load_chunk_text(document_task_id, chunk_id)
     prompt = (
         f"Summarize chunk {chunk_index} for document_task_id={document_task_id}. "
-        f"Use concise bullet points."
+        f"Use concise bullet points.\n\nChunk text:\n{chunk_text}"
     )
     llm_resp = llm_mod.complete(
         [{"role": "user", "content": prompt}],
@@ -241,14 +272,19 @@ def run_document_job_stage(
     else:
         summary_text = str(llm_resp)
 
-    result_patch: dict[str, Any] = {
-        "chunk_index": chunk_index,
-        "summary": summary_text,
-    }
-    if max_chunks is not None:
-        result_patch["max_chunks"] = int(max_chunks)
     return {
         "status": "running",
-        "last_completed_chunk": chunk_index,
-        "result_patch": result_patch,
+        "last_completed_chunk": chunk_id,
+        "artifacts": [
+            {
+                "artifact_type": "chunk_summary",
+                "stage": DocumentJobStage.SUMMARIZE_CHUNK.value,
+                "chunk_index": chunk_id,
+                "content_text": summary_text,
+                "payload": {
+                    "chunk_text": chunk_text,
+                    "max_chunks": None if max_chunks is None else int(max_chunks),
+                },
+            }
+        ],
     }

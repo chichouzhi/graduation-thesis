@@ -12,7 +12,7 @@ from app.chat.model import (
     MessageRole,
 )
 from app.common.policy import PolicyDenied
-from app.chat.service import ChatService
+from app.chat.service import ChatService, create_chat
 from app.extensions import db
 from app.identity.model import User, UserRole
 from app.terms.model import Term
@@ -324,6 +324,17 @@ def test_send_user_message_calls_chat_orchestration_build_only(monkeypatch: pyte
         ma = db.session.get(Message, seen_payload["assistant_message_id"])
         assert mu is not None and mu.content == "new" and mu.delivery_status is None
         assert ma is not None and ma.content == "" and ma.delivery_status == MessageAsyncTaskStatus.pending
+
+
+def test_create_chat_rejects_non_integer_seq() -> None:
+    with pytest.raises(ValueError, match="seq"):
+        create_chat(
+            conversation_id="conv-seq",
+            term_id="term-seq",
+            user_id="user-seq",
+            content="hello",
+            seq=1.5,
+        )
 
 
 def test_send_user_message_commits_before_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:

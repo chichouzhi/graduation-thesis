@@ -1,6 +1,11 @@
 from __future__ import annotations
 
 import pytest
+from app import create_app
+from app.document.model import DocumentArtifact, DocumentArtifactType, DocumentTask, DocumentTaskStatus
+from app.extensions import db
+from app.identity.model import User, UserRole
+from app.terms.model import Term
 
 from app.task.document_jobs import DocumentJobPayload, handle_document_job, run
 
@@ -58,25 +63,57 @@ def test_handle_document_job_dispatches_stage_to_use_case(
 def test_run_document_job_stage_summarize_calls_llm(monkeypatch: pytest.MonkeyPatch) -> None:
     from app.use_cases.document_pipeline import run_document_job_stage
 
-    captured_messages: list[list[dict[str, str]]] = []
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="doc-jobs-llm", role=UserRole.student, display_name="LLM")
+        term = Term(name="Task4 Jobs LLM")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="doc.pdf",
+            storage_path="/tmp/doc.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+        db.session.add(
+            DocumentArtifact(
+                document_task_id=task.id,
+                artifact_type=DocumentArtifactType.pdf_pages_text,
+                stage="pdf_extract",
+                content_text="first page\n\nsecond page",
+                payload_json={
+                    "pages": [
+                        {"page_index": 0, "text": "first page"},
+                        {"page_index": 1, "text": "second page"},
+                    ]
+                },
+            )
+        )
+        db.session.commit()
 
-    def fake_complete(messages: list[dict[str, str]], **_: object) -> dict[str, str]:
-        captured_messages.append(messages)
-        return {"content": "summary text"}
+        captured_messages: list[list[dict[str, str]]] = []
 
-    monkeypatch.setattr("app.adapter.llm.complete", fake_complete)
-    patch = run_document_job_stage(
-        stage="summarize_chunk",
-        chunk_index=1,
-        document_task_id="dt-2",
-        storage_path="/tmp/doc.pdf",
-        term_id="term-2",
-        user_id="u-2",
-        max_chunks=4,
-    )
-    assert captured_messages
-    assert patch["last_completed_chunk"] == 1
-    assert patch["result_patch"]["summary"] == "summary text"
+        def fake_complete(messages: list[dict[str, str]], **_: object) -> dict[str, str]:
+            captured_messages.append(messages)
+            return {"content": "summary text"}
+
+        monkeypatch.setattr("app.adapter.llm.complete", fake_complete)
+        patch = run_document_job_stage(
+            stage="summarize_chunk",
+            chunk_index=1,
+            document_task_id=task.id,
+            storage_path="/tmp/doc.pdf",
+            term_id=term.id,
+            user_id=user.id,
+            max_chunks=4,
+        )
+        assert captured_messages
+        assert "second page" in captured_messages[0][0]["content"]
+        assert patch["last_completed_chunk"] == 1
+        assert patch["artifacts"][0]["content_text"] == "summary text"
 
 
 def test_run_writes_default_statuses_and_last_completed_chunk(
@@ -120,3 +157,83 @@ def test_run_writes_failed_when_handler_raises(monkeypatch: pytest.MonkeyPatch) 
     assert writes[2][0] == "dt-1"
     assert writes[2][1]["status"] == "failed"
     assert writes[2][1]["error_code"] == "DOMAIN_ERROR"
+
+
+def test_document_job_writeback_persists_chunk_summaries_independently(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="doc-job-user", role=UserRole.student, display_name="Doc")
+        term = Term(name="Task4 Jobs")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="job.pdf",
+            storage_path="/tmp/job.pdf",
+            status=DocumentTaskStatus.pending,
+        )
+        db.session.add(task)
+        db.session.commit()
+        db.session.add(
+            DocumentArtifact(
+                document_task_id=task.id,
+                artifact_type=DocumentArtifactType.pdf_pages_text,
+                stage="pdf_extract",
+                content_text="first page\n\nsecond page",
+                payload_json={
+                    "pages": [
+                        {"page_index": 0, "text": "first page"},
+                        {"page_index": 1, "text": "second page"},
+                    ]
+                },
+            )
+        )
+        db.session.commit()
+
+        def fake_complete(messages: list[dict[str, str]], **_: object) -> dict[str, str]:
+            text = messages[0]["content"]
+            if "first page" in text:
+                return {"content": "summary first"}
+            return {"content": "summary second"}
+
+        monkeypatch.setattr("app.adapter.llm.complete", fake_complete)
+
+        run(
+            {
+                "document_task_id": task.id,
+                "user_id": user.id,
+                "storage_path": "/tmp/job.pdf",
+                "term_id": term.id,
+                "stage": "summarize_chunk",
+                "chunk_index": 0,
+                "max_chunks": 2,
+            }
+        )
+        run(
+            {
+                "document_task_id": task.id,
+                "user_id": user.id,
+                "storage_path": "/tmp/job.pdf",
+                "term_id": term.id,
+                "stage": "summarize_chunk",
+                "chunk_index": 1,
+                "max_chunks": 2,
+            }
+        )
+
+        task = db.session.get(DocumentTask, task.id)
+        artifacts = (
+            db.session.query(DocumentArtifact)
+            .filter_by(document_task_id=task.id, artifact_type=DocumentArtifactType.chunk_summary)
+            .order_by(DocumentArtifact.chunk_index.asc())
+            .all()
+        )
+        assert task is not None
+        assert task.last_completed_chunk == 1
+        assert len(artifacts) == 2
+        assert [artifact.chunk_index for artifact in artifacts] == [0, 1]
+        assert [artifact.content_text for artifact in artifacts] == ["summary first", "summary second"]
