@@ -6,6 +6,7 @@ from app.document.model import DocumentArtifact, DocumentArtifactType, DocumentT
 from app.extensions import db
 from app.identity.model import User, UserRole
 from app.terms.model import Term
+from sqlalchemy.exc import IntegrityError
 
 from app.task.document_jobs import DocumentJobPayload, handle_document_job, run
 
@@ -296,5 +297,67 @@ def test_document_job_writeback_updates_existing_artifact_in_place() -> None:
             .order_by(DocumentArtifact.created_at.asc(), DocumentArtifact.id.asc())
             .all()
         )
+        assert len(artifacts) == 1
+        assert artifacts[0].content_text == "newest"
+
+
+def test_document_job_writeback_retries_once_after_integrity_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.task.document_jobs import _default_writeback
+
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="doc-job-retry", role=UserRole.student, display_name="Retry")
+        term = Term(name="Task4 Jobs Retry")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="retry.pdf",
+            storage_path="/tmp/retry.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+
+        orig_commit = db.session.commit
+        seen = {"calls": 0}
+
+        def flaky_commit() -> None:
+            seen["calls"] += 1
+            if seen["calls"] == 1:
+                raise IntegrityError("insert", {}, Exception("duplicate artifact"))
+            orig_commit()
+
+        monkeypatch.setattr(db.session, "commit", flaky_commit)
+
+        _default_writeback(
+            task.id,
+            {
+                "artifacts": [
+                    {
+                        "artifact_type": "chunk_summary",
+                        "stage": "summarize_chunk",
+                        "chunk_index": 0,
+                        "content_text": "newest",
+                        "payload": {"chunk_text": "page"},
+                    }
+                ]
+            },
+        )
+
+        artifacts = (
+            db.session.query(DocumentArtifact)
+            .filter_by(
+                document_task_id=task.id,
+                artifact_type=DocumentArtifactType.chunk_summary,
+                stage="summarize_chunk",
+                chunk_index=0,
+            )
+            .all()
+        )
+        assert seen["calls"] == 2
         assert len(artifacts) == 1
         assert artifacts[0].content_text == "newest"

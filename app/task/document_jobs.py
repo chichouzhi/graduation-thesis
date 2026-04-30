@@ -63,75 +63,86 @@ def _noop_writeback(_: str, __: dict[str, Any]) -> None:
 def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
     from app.document.model import DocumentArtifact, DocumentArtifactType, DocumentTask, DocumentTaskStatus
     from app.extensions import db
+    from sqlalchemy.exc import IntegrityError
 
-    task = db.session.get(DocumentTask, document_task_id)
-    if task is None:
-        raise ValueError(f"document task not found: {document_task_id}")
+    def _apply_once() -> None:
+        task = db.session.get(DocumentTask, document_task_id)
+        if task is None:
+            raise ValueError(f"document task not found: {document_task_id}")
 
-    status_raw = patch.get("status")
-    if status_raw is not None:
-        task.status = DocumentTaskStatus(str(status_raw))
-        if task.status == DocumentTaskStatus.running:
-            task.locked_at = datetime.now(timezone.utc).replace(tzinfo=None)
-        elif task.status in (DocumentTaskStatus.done, DocumentTaskStatus.failed):
-            task.locked_at = None
+        status_raw = patch.get("status")
+        if status_raw is not None:
+            task.status = DocumentTaskStatus(str(status_raw))
+            if task.status == DocumentTaskStatus.running:
+                task.locked_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            elif task.status in (DocumentTaskStatus.done, DocumentTaskStatus.failed):
+                task.locked_at = None
 
-    if "last_completed_chunk" in patch:
-        v = patch.get("last_completed_chunk")
-        task.last_completed_chunk = None if v is None else int(v)
+        if "last_completed_chunk" in patch:
+            v = patch.get("last_completed_chunk")
+            task.last_completed_chunk = None if v is None else int(v)
 
-    result_patch = patch.get("result_patch")
-    if isinstance(result_patch, dict):
-        base = dict(task.result_json or {})
-        base.update(result_patch)
-        task.result_json = base
+        result_patch = patch.get("result_patch")
+        if isinstance(result_patch, dict):
+            base = dict(task.result_json or {})
+            base.update(result_patch)
+            task.result_json = base
 
-    artifacts = patch.get("artifacts")
-    if isinstance(artifacts, list):
-        for item in artifacts:
-            if not isinstance(item, dict):
-                continue
-            chunk_index = None if item.get("chunk_index") is None else int(item["chunk_index"])
-            artifact_type = DocumentArtifactType(str(item["artifact_type"]))
-            stage = str(item["stage"])
-            artifacts_found = (
-                db.session.query(DocumentArtifact)
-                .filter_by(
-                    document_task_id=document_task_id,
-                    artifact_type=artifact_type,
-                    stage=stage,
-                    chunk_index=chunk_index,
+        artifacts = patch.get("artifacts")
+        if isinstance(artifacts, list):
+            for item in artifacts:
+                if not isinstance(item, dict):
+                    continue
+                chunk_index = None if item.get("chunk_index") is None else int(item["chunk_index"])
+                artifact_type = DocumentArtifactType(str(item["artifact_type"]))
+                stage = str(item["stage"])
+                artifacts_found = (
+                    db.session.query(DocumentArtifact)
+                    .filter_by(
+                        document_task_id=document_task_id,
+                        artifact_type=artifact_type,
+                        stage=stage,
+                        chunk_index=chunk_index,
+                    )
+                    .order_by(
+                        DocumentArtifact.updated_at.desc(),
+                        DocumentArtifact.created_at.desc(),
+                        DocumentArtifact.id.desc(),
+                    )
+                    .all()
                 )
-                .order_by(
-                    DocumentArtifact.updated_at.desc(),
-                    DocumentArtifact.created_at.desc(),
-                    DocumentArtifact.id.desc(),
-                )
-                .all()
-            )
-            artifact = artifacts_found[0] if artifacts_found else None
-            for duplicate in artifacts_found[1:]:
-                db.session.delete(duplicate)
-            if artifact is None:
-                artifact = DocumentArtifact(
-                    document_task_id=document_task_id,
-                    artifact_type=artifact_type,
-                    stage=stage,
-                    chunk_index=chunk_index,
-                )
-            artifact.storage_uri = None if item.get("storage_uri") is None else str(item.get("storage_uri"))
-            artifact.payload_json = item.get("payload")
-            artifact.content_text = None if item.get("content_text") is None else str(item.get("content_text"))
-            db.session.add(artifact)
+                artifact = artifacts_found[0] if artifacts_found else None
+                for duplicate in artifacts_found[1:]:
+                    db.session.delete(duplicate)
+                if artifact is None:
+                    artifact = DocumentArtifact(
+                        document_task_id=document_task_id,
+                        artifact_type=artifact_type,
+                        stage=stage,
+                        chunk_index=chunk_index,
+                    )
+                artifact.storage_uri = None if item.get("storage_uri") is None else str(item.get("storage_uri"))
+                artifact.payload_json = item.get("payload")
+                artifact.content_text = None if item.get("content_text") is None else str(item.get("content_text"))
+                db.session.add(artifact)
 
-    if "error_code" in patch:
-        code_raw = patch.get("error_code")
-        task.error_code = None if code_raw is None else str(code_raw)
-    if "error_message" in patch:
-        msg_raw = patch.get("error_message")
-        task.error_message = None if msg_raw is None else str(msg_raw)
+        if "error_code" in patch:
+            code_raw = patch.get("error_code")
+            task.error_code = None if code_raw is None else str(code_raw)
+        if "error_message" in patch:
+            msg_raw = patch.get("error_message")
+            task.error_message = None if msg_raw is None else str(msg_raw)
 
-    db.session.commit()
+        db.session.commit()
+
+    for attempt in range(2):
+        try:
+            _apply_once()
+            return
+        except IntegrityError:
+            db.session.rollback()
+            if attempt == 1:
+                raise
 
 
 def handle_document_job(

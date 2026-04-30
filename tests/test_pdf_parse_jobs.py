@@ -6,6 +6,7 @@ from app.document.model import DocumentArtifact, DocumentArtifactType, DocumentT
 from app.extensions import db
 from app.identity.model import User, UserRole
 from app.terms.model import Term
+from sqlalchemy.exc import IntegrityError
 
 from app.task.pdf_parse_jobs import handle_pdf_parse_job, run
 from app.use_cases.document_pdf_parse import PdfJobPayload, PdfParseSuccessPlan, parse_pdf_and_plan_document_jobs
@@ -280,6 +281,68 @@ def test_pdf_parse_writeback_updates_existing_artifact_in_place() -> None:
             .order_by(DocumentArtifact.created_at.asc(), DocumentArtifact.id.asc())
             .all()
         )
+        assert len(artifacts) == 1
+        assert artifacts[0].content_text == "newest"
+
+
+def test_pdf_parse_writeback_retries_once_after_integrity_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.task.pdf_parse_jobs import _default_writeback
+
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="pdf-task-retry", role=UserRole.student, display_name="PDF Retry")
+        term = Term(name="Task4 PDF Retry")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="retry.pdf",
+            storage_path="/tmp/retry.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+
+        orig_commit = db.session.commit
+        seen = {"calls": 0}
+
+        def flaky_commit() -> None:
+            seen["calls"] += 1
+            if seen["calls"] == 1:
+                raise IntegrityError("insert", {}, Exception("duplicate artifact"))
+            orig_commit()
+
+        monkeypatch.setattr(db.session, "commit", flaky_commit)
+
+        _default_writeback(
+            task.id,
+            {
+                "artifacts": [
+                    {
+                        "artifact_type": "pdf_pages_text",
+                        "stage": "pdf_extract",
+                        "chunk_index": None,
+                        "content_text": "newest",
+                        "payload": {"pages": [{"page_index": 0, "text": "newest"}]},
+                    }
+                ]
+            },
+        )
+
+        artifacts = (
+            db.session.query(DocumentArtifact)
+            .filter_by(
+                document_task_id=task.id,
+                artifact_type=DocumentArtifactType.pdf_pages_text,
+                stage="pdf_extract",
+                chunk_index=None,
+            )
+            .all()
+        )
+        assert seen["calls"] == 2
         assert len(artifacts) == 1
         assert artifacts[0].content_text == "newest"
 
