@@ -223,7 +223,7 @@ def _load_chunk_text(document_task_id: str, chunk_index: int) -> str:
     raise ValueError(f"missing chunk text for chunk_index={chunk_index}")
 
 
-def _load_chunk_summaries(document_task_id: str) -> list[str]:
+def _load_chunk_summaries(document_task_id: str, *, max_chunks: int | None = None) -> list[str]:
     from app.document.model import DocumentArtifact, DocumentArtifactType
     from app.extensions import db
 
@@ -237,9 +237,26 @@ def _load_chunk_summaries(document_task_id: str) -> list[str]:
         .order_by(DocumentArtifact.chunk_index.asc(), DocumentArtifact.created_at.asc(), DocumentArtifact.id.asc())
         .all()
     )
-    summaries = [str(artifact.content_text or "").strip() for artifact in artifacts if str(artifact.content_text or "").strip()]
+    summary_by_index: dict[int, str] = {}
+    for artifact in artifacts:
+        if artifact.chunk_index is None:
+            continue
+        text = str(artifact.content_text or "").strip()
+        if not text:
+            continue
+        summary_by_index[int(artifact.chunk_index)] = text
+
+    summaries = [summary_by_index[idx] for idx in sorted(summary_by_index)]
     if not summaries:
         raise ValueError(f"missing chunk_summary artifacts for document_task_id={document_task_id}")
+    if max_chunks is not None:
+        expected = set(range(int(max_chunks)))
+        actual = set(summary_by_index)
+        if actual != expected:
+            raise ValueError(
+                f"incomplete chunk_summary artifacts for document_task_id={document_task_id}: "
+                f"expected={sorted(expected)} actual={sorted(actual)}"
+            )
     return summaries
 
 
@@ -320,7 +337,7 @@ def run_document_job_stage(
     if st == DocumentJobStage.AGGREGATE:
         from app.adapter import llm as llm_mod
 
-        chunk_summaries = _load_chunk_summaries(document_task_id)
+        chunk_summaries = _load_chunk_summaries(document_task_id, max_chunks=max_chunks)
         total_chunks = int(max_chunks) if max_chunks is not None else len(chunk_summaries)
         prompt = (
             f"Aggregate chunk summaries for document_task_id={document_task_id}. "

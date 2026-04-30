@@ -283,6 +283,46 @@ def test_run_document_job_stage_aggregate_combines_chunk_summaries(
         }
 
 
+def test_run_document_job_stage_aggregate_requires_all_chunk_summaries() -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="pipeline-aggregate-gap-user", role=UserRole.student, display_name="Pipe Gap")
+        term = Term(name="Task4 Pipeline Aggregate Gap")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="aggregate-gap.pdf",
+            storage_path="/tmp/aggregate-gap.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+        db.session.add(
+            DocumentArtifact(
+                document_task_id=task.id,
+                artifact_type=DocumentArtifactType.chunk_summary,
+                stage="summarize_chunk",
+                chunk_index=0,
+                content_text="summary zero",
+                payload_json={"chunk_text": "page zero", "max_chunks": 2},
+            )
+        )
+        db.session.commit()
+
+        with pytest.raises(ValueError, match="incomplete chunk_summary"):
+            run_document_job_stage(
+                stage="aggregate",
+                chunk_index=None,
+                document_task_id=task.id,
+                storage_path="/tmp/aggregate-gap.pdf",
+                term_id=term.id,
+                user_id=user.id,
+                max_chunks=2,
+            )
+
+
 def test_run_document_job_stage_finalize_projects_final_result() -> None:
     app = create_app()
     with app.app_context():
