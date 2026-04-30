@@ -671,3 +671,65 @@ def test_run_enqueues_finalize_after_aggregate_stage(
                 "max_chunks": 2,
             }
         ]
+
+
+def test_run_marks_failed_when_followup_enqueue_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="doc-job-followup-fail", role=UserRole.student, display_name="Followup Fail")
+        term = Term(name="Task4 Jobs Followup Fail")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="followup.pdf",
+            storage_path="/tmp/followup.pdf",
+            status=DocumentTaskStatus.running,
+            current_stage="summarize_chunks",
+            progress_json={"completed_chunks": 0, "total_chunks": 1},
+        )
+        db.session.add(task)
+        db.session.commit()
+        db.session.add(
+            DocumentArtifact(
+                document_task_id=task.id,
+                artifact_type=DocumentArtifactType.pdf_pages_text,
+                stage="pdf_extract",
+                content_text="page zero",
+                payload_json={"pages": [{"page_index": 0, "text": "page zero"}]},
+            )
+        )
+        db.session.commit()
+
+        monkeypatch.setattr(
+            "app.adapter.llm.complete",
+            lambda _messages, **_kwargs: {"content": "summary zero"},
+        )
+
+        def boom_enqueue(*_args: object, **_kwargs: object) -> dict[str, str]:
+            raise RuntimeError("broker down")
+
+        monkeypatch.setattr("app.task.document_jobs.queue_mod.enqueue_document_jobs", boom_enqueue)
+
+        with pytest.raises(RuntimeError, match="broker down"):
+            run(
+                {
+                    "document_task_id": task.id,
+                    "user_id": user.id,
+                    "storage_path": "/tmp/followup.pdf",
+                    "term_id": term.id,
+                    "stage": "summarize_chunk",
+                    "chunk_index": 0,
+                    "max_chunks": 1,
+                }
+            )
+
+        task = db.session.get(DocumentTask, task.id)
+        assert task is not None
+        assert task.status == DocumentTaskStatus.failed
+        assert task.error_code == "QUEUE_UNAVAILABLE"
+        assert task.error_message is not None and "broker down" in task.error_message

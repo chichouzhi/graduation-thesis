@@ -8,6 +8,7 @@ from typing import Any, Callable
 
 from flask import has_app_context
 
+from app.common.error_envelope import ErrorCode
 from app.task import queue as queue_mod
 from app.use_cases.document_pipeline import DocumentJobStage, run_document_job_stage
 
@@ -290,7 +291,7 @@ def run(payload: dict[str, Any]) -> None:
             typed.document_task_id,
             {
                 "status": "failed",
-                "error_code": "DOMAIN_ERROR",
+                "error_code": ErrorCode.DOMAIN_ERROR.value,
                 "error_message": str(exc),
             },
         )
@@ -299,5 +300,16 @@ def run(payload: dict[str, Any]) -> None:
     final_status = patch.get("status")
     if final_status in ("done", "failed"):
         return
-    _maybe_enqueue_followup_stage(typed, patch)
+    try:
+        _maybe_enqueue_followup_stage(typed, patch)
+    except Exception as exc:
+        _default_writeback(
+            typed.document_task_id,
+            {
+                "status": "failed",
+                "error_code": ErrorCode.QUEUE_UNAVAILABLE.value,
+                "error_message": str(exc),
+            },
+        )
+        raise
     return
