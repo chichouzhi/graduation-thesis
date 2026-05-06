@@ -77,6 +77,31 @@ def _task_is_terminal(document_task_id: str) -> bool:
     return task.status in (DocumentTaskStatus.done, DocumentTaskStatus.failed)
 
 
+def _is_expected_active_stage(typed: DocumentJobPayload) -> bool:
+    if not has_app_context():
+        return True
+
+    from app.document.model import DocumentTask
+    from app.extensions import db
+
+    task = db.session.get(DocumentTask, typed.document_task_id)
+    if task is None:
+        return True
+
+    expected_by_stage = {
+        DocumentJobStage.EXTRACT: None,
+        DocumentJobStage.SUMMARIZE_CHUNK: "summarize_chunks",
+        DocumentJobStage.AGGREGATE: "aggregate",
+        DocumentJobStage.FINALIZE: "finalize",
+    }
+    expected_stage = expected_by_stage[typed.stage]
+    if expected_stage is None:
+        return task.current_stage in (None, "pdf_extract")
+    if typed.stage == DocumentJobStage.SUMMARIZE_CHUNK:
+        return task.current_stage in (None, "summarize_chunks")
+    return task.current_stage == expected_stage
+
+
 def _enqueue_followup_stage(
     *,
     document_task_id: str,
@@ -301,6 +326,8 @@ def handle_document_job(
 def run(payload: dict[str, Any]) -> None:
     typed = DocumentJobPayload.from_mapping(payload)
     if _task_is_terminal(typed.document_task_id):
+        return
+    if not _is_expected_active_stage(typed):
         return
     _default_writeback(typed.document_task_id, {"status": "running"})
     try:

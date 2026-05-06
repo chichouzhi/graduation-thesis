@@ -823,3 +823,86 @@ def test_run_marks_failed_when_followup_enqueue_fails(
         assert task.status == DocumentTaskStatus.failed
         assert task.error_code == "QUEUE_UNAVAILABLE"
         assert task.error_message is not None and "broker down" in task.error_message
+
+
+def test_run_skips_stale_summarize_chunk_after_task_advanced(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="doc-job-stale-summarize", role=UserRole.student, display_name="Stale Summarize")
+        term = Term(name="Task4 Jobs Stale Summarize")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="stale.pdf",
+            storage_path="/tmp/stale.pdf",
+            status=DocumentTaskStatus.running,
+            current_stage="aggregate",
+            progress_json={"completed_chunks": 2, "total_chunks": 2},
+        )
+        db.session.add(task)
+        db.session.commit()
+        db.session.add_all(
+            [
+                DocumentArtifact(
+                    document_task_id=task.id,
+                    artifact_type=DocumentArtifactType.pdf_pages_text,
+                    stage="pdf_extract",
+                    content_text="page zero\n\npage one",
+                    payload_json={
+                        "pages": [
+                            {"page_index": 0, "text": "page zero"},
+                            {"page_index": 1, "text": "page one"},
+                        ]
+                    },
+                ),
+                DocumentArtifact(
+                    document_task_id=task.id,
+                    artifact_type=DocumentArtifactType.chunk_summary,
+                    stage="summarize_chunk",
+                    chunk_index=0,
+                    content_text="summary zero",
+                    payload_json={"chunk_text": "page zero", "max_chunks": 2},
+                ),
+                DocumentArtifact(
+                    document_task_id=task.id,
+                    artifact_type=DocumentArtifactType.chunk_summary,
+                    stage="summarize_chunk",
+                    chunk_index=1,
+                    content_text="summary one",
+                    payload_json={"chunk_text": "page one", "max_chunks": 2},
+                ),
+            ]
+        )
+        db.session.commit()
+
+        called = {"count": 0}
+
+        def should_not_run(*_args: object, **_kwargs: object) -> dict[str, object]:
+            called["count"] += 1
+            return {"status": "running"}
+
+        monkeypatch.setattr("app.task.document_jobs.handle_document_job", should_not_run)
+
+        run(
+            {
+                "document_task_id": task.id,
+                "user_id": user.id,
+                "storage_path": "/tmp/stale.pdf",
+                "term_id": term.id,
+                "stage": "summarize_chunk",
+                "chunk_index": 1,
+                "max_chunks": 2,
+            }
+        )
+
+        task = db.session.get(DocumentTask, task.id)
+        assert task is not None
+        assert called["count"] == 0
+        assert task.status == DocumentTaskStatus.running
+        assert task.current_stage == "aggregate"
+        assert task.progress_json == {"completed_chunks": 2, "total_chunks": 2}

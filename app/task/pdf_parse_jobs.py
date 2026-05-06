@@ -29,6 +29,19 @@ def _task_is_terminal(document_task_id: str) -> bool:
     return task.status in (DocumentTaskStatus.done, DocumentTaskStatus.failed)
 
 
+def _is_expected_active_stage(document_task_id: str) -> bool:
+    if not has_app_context():
+        return True
+
+    from app.document.model import DocumentTask
+    from app.extensions import db
+
+    task = db.session.get(DocumentTask, document_task_id)
+    if task is None:
+        return True
+    return task.current_stage in (None, "pdf_extract")
+
+
 def _default_writeback(document_task_id: str, patch: dict[str, Any]) -> None:
     from app.document.model import DocumentArtifact, DocumentArtifactType, DocumentTask, DocumentTaskStatus
     from app.extensions import db
@@ -149,6 +162,8 @@ def handle_pdf_parse_job(payload: dict[str, Any]) -> tuple[dict[str, Any], ...]:
 def run(payload: dict[str, Any]) -> None:
     typed = PdfJobPayload.from_mapping(payload)
     if _task_is_terminal(typed.document_task_id):
+        return
+    if not _is_expected_active_stage(typed.document_task_id):
         return
     _default_writeback(typed.document_task_id, {"status": "running", "current_stage": "pdf_extract"})
     try:

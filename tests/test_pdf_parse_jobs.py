@@ -479,3 +479,51 @@ def test_run_writes_queue_unavailable_when_document_job_enqueue_fails(
     assert writes[2][1]["status"] == "failed"
     assert writes[2][1]["error_code"] == "QUEUE_UNAVAILABLE"
     assert "broker down" in str(writes[2][1]["error_message"])
+
+
+def test_run_skips_stale_pdf_parse_after_task_advanced(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="pdf-stale-parse", role=UserRole.student, display_name="PDF Stale")
+        term = Term(name="Task4 PDF Stale Parse")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="stale.pdf",
+            storage_path="/tmp/stale.pdf",
+            status=DocumentTaskStatus.running,
+            current_stage="summarize_chunks",
+            progress_json={"completed_chunks": 0, "total_chunks": 2},
+        )
+        db.session.add(task)
+        db.session.commit()
+
+        called = {"count": 0}
+
+        def should_not_run(*_args: object, **_kwargs: object) -> tuple[dict[str, object], ...]:
+            called["count"] += 1
+            return ()
+
+        monkeypatch.setattr("app.task.pdf_parse_jobs.handle_pdf_parse_job", should_not_run)
+
+        run(
+            {
+                "document_task_id": task.id,
+                "user_id": user.id,
+                "storage_path": "/tmp/stale.pdf",
+                "term_id": term.id,
+                "stage": "pdf_extract",
+            }
+        )
+
+        task = db.session.get(DocumentTask, task.id)
+        assert task is not None
+        assert called["count"] == 0
+        assert task.status == DocumentTaskStatus.running
+        assert task.current_stage == "summarize_chunks"
+        assert task.progress_json == {"completed_chunks": 0, "total_chunks": 2}
