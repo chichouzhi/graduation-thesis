@@ -765,25 +765,27 @@
     {
       "id": "AG-060",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`MilestoneService`：学生创建/更新/删除里程碑",
       "priority": "P1",
       "max_duration_days": 2,
       "depends_on": [
         "AG-019",
         "AG-051"
-      ]
+      ],
+      "done_at": "2026-04-22T14:18:36.198402"
     },
     {
       "id": "AG-061",
       "layer": "service",
-      "status": "ready",
+      "status": "done",
       "title": "`MilestoneService`：教师列表查询 + `student_id` 指导关系校验",
       "priority": "P1",
       "max_duration_days": 2,
       "depends_on": [
         "AG-060"
-      ]
+      ],
+      "done_at": "2026-04-22T14:18:36.198402"
     },
     {
       "id": "AG-062a",
@@ -1276,74 +1278,80 @@
     {
       "id": "AG-089a",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.taskboard.api`：`GET /milestones`",
       "priority": "P1",
       "max_duration_days": 2,
       "depends_on": [
         "AG-004",
         "AG-060"
-      ]
+      ],
+      "done_at": "2026-04-22T14:18:36.198402"
     },
     {
       "id": "AG-089b",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.taskboard.api`：`POST /milestones`",
       "priority": "P1",
       "max_duration_days": 2,
       "depends_on": [
         "AG-089a",
         "AG-060"
-      ]
+      ],
+      "done_at": "2026-04-22T14:18:36.198402"
     },
     {
       "id": "AG-090a",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.taskboard.api`：`GET /milestones/{milestone_id}`",
       "priority": "P1",
       "max_duration_days": 2,
       "depends_on": [
         "AG-089b",
         "AG-060"
-      ]
+      ],
+      "done_at": "2026-04-22T14:18:36.198402"
     },
     {
       "id": "AG-090b",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.taskboard.api`：`PATCH /milestones/{milestone_id}`",
       "priority": "P1",
       "max_duration_days": 2,
       "depends_on": [
         "AG-090a",
         "AG-060"
-      ]
+      ],
+      "done_at": "2026-04-22T14:18:36.198402"
     },
     {
       "id": "AG-090c",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.taskboard.api`：`DELETE /milestones/{milestone_id}`",
       "priority": "P1",
       "max_duration_days": 2,
       "depends_on": [
         "AG-090a",
         "AG-060"
-      ]
+      ],
+      "done_at": "2026-04-22T14:18:36.198402"
     },
     {
       "id": "AG-091",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.taskboard.api`：`GET /milestones` 教师分支（`student_id`）与 `MilestoneService` 校验",
       "priority": "P1",
       "max_duration_days": 2,
       "depends_on": [
         "AG-089a",
         "AG-061"
-      ]
+      ],
+      "done_at": "2026-04-22T14:18:36.198402"
     },
     {
       "id": "AG-092a",
@@ -1426,14 +1434,15 @@
     {
       "id": "AG-095",
       "layer": "api",
-      "status": "ready",
+      "status": "done",
       "title": "`app.chat.api`：`GET /chat/jobs/{job_id}`（可选）",
       "priority": "P1",
       "max_duration_days": 2,
       "depends_on": [
         "AG-094",
         "AG-013"
-      ]
+      ],
+      "done_at": "2026-04-22T14:18:36.198402"
     },
     {
       "id": "AG-096a",
@@ -1687,14 +1696,15 @@
     {
       "id": "AG-107",
       "layer": "api_optional",
-      "status": "ready",
+      "status": "done",
       "title": "`app.chat.api`：`GET .../stream` SSE 占位（**501/404** JSON `ErrorEnvelope`，未启用默认）",
       "priority": "P2",
       "max_duration_days": 2,
       "depends_on": [
         "AG-094",
         "AG-005"
-      ]
+      ],
+      "done_at": "2026-04-22T14:18:36.198402"
     },
     {
       "id": "AG-108",
@@ -1723,42 +1733,45 @@
     {
       "id": "AG-110",
       "layer": "ci_docs",
-      "status": "running",
+      "status": "done",
       "title": "CI：`check_queue_contract_keys.py` 断言五队列键",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-001"
-      ]
+      ],
+      "done_at": "2026-04-22T14:17:24.784242"
     },
     {
       "id": "AG-111",
       "layer": "ci_docs",
-      "status": "ready",
+      "status": "done",
       "title": "集成测：`it-async-chat`（202、≤800ms、无 LLM HTTP）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-094",
         "AG-003"
-      ]
+      ],
+      "done_at": "2026-04-22T14:17:24.784242"
     },
     {
       "id": "AG-112",
       "layer": "ci_docs",
-      "status": "ready",
+      "status": "done",
       "title": "集成测：`it-async-document`（202、缺 `term_id` 400）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-096a",
         "AG-003"
-      ]
+      ],
+      "done_at": "2026-04-22T14:17:24.784242"
     },
     {
       "id": "AG-113",
       "layer": "ci_docs",
-      "status": "ready",
+      "status": "done",
       "title": "集成测：`it-policy-deny-chat` / `document` / `topic`（429/503 + enqueue 未调用）",
       "priority": "P0",
       "max_duration_days": 2,
@@ -1767,35 +1780,38 @@
         "AG-096a",
         "AG-099b",
         "AG-007"
-      ]
+      ],
+      "done_at": "2026-04-22T14:17:24.784242"
     },
     {
       "id": "AG-114",
       "layer": "ci_docs",
-      "status": "ready",
+      "status": "done",
       "title": "集成测：`it-enqueue-order`（`commit` 先于 `enqueue`；失败补偿）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-065",
         "AG-069"
-      ]
+      ],
+      "done_at": "2026-04-22T14:17:24.784242"
     },
     {
       "id": "AG-115",
       "layer": "ci_docs",
-      "status": "ready",
+      "status": "done",
       "title": "集成测：`it-uc-skip-chain`（mock 消费 `chat_jobs` 断言调用 `use_cases`）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-043"
-      ]
+      ],
+      "done_at": "2026-04-22T14:17:24.784242"
     },
     {
       "id": "AG-116",
       "layer": "ci_docs",
-      "status": "ready",
+      "status": "done",
       "title": "`docs/arch/llm_entrypoints.md` 建立非空入口表（R-UC-ONLY）",
       "priority": "P0",
       "max_duration_days": 2,
@@ -1804,52 +1820,57 @@
         "AG-034",
         "AG-036",
         "AG-037"
-      ]
+      ],
+      "done_at": "2026-04-22T14:17:24.784242"
     },
     {
       "id": "AG-117",
       "layer": "ci_docs",
-      "status": "ready",
+      "status": "done",
       "title": "同会话 `CHAT_JOB_ORDER` 真源三选一落地（md/config/execution_plan 节）",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-043"
-      ]
+      ],
+      "done_at": "2026-04-22T14:17:24.784242"
     },
     {
       "id": "AG-118",
       "layer": "ci_docs",
-      "status": "ready",
+      "status": "done",
       "title": "`docker-compose`（或等价）含 **web + worker + redis** 关键字共现",
       "priority": "P0",
       "max_duration_days": 2,
       "depends_on": [
         "AG-048"
-      ]
+      ],
+      "done_at": "2026-04-22T14:17:24.784242"
     },
     {
       "id": "AG-119",
       "layer": "ci_docs",
-      "status": "ready",
+      "status": "done",
       "title": "集成测：`it-adapter-meter`（P1：计量失败 → failed 或重试≤K）",
       "priority": "P1",
       "max_duration_days": 2,
       "depends_on": [
         "AG-043",
         "AG-028"
-      ]
+      ],
+      "done_at": "2026-04-22T14:17:24.784242"
     },
     {
       "id": "AG-120",
       "layer": "ci_docs",
-      "status": "ready",
+      "status": "done",
       "title": "`openapi-spec-validator` 校验 `contract.yaml` 接入 CI",
       "priority": "P1",
       "max_duration_days": 2,
       "depends_on": [
         "AG-001"
-      ]
+      ],
+      "done_at": "2026-04-22T14:17:24.784242"
     }
   ],
   "edges_redundant_note": "DAG 边可由 tasks[].depends_on 完全推导；无需单独 edges 数组。"
