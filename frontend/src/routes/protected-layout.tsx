@@ -4,10 +4,8 @@ import { useAppStore } from "@/app/store";
 import { AppShell } from "@/components/layout/app-shell";
 
 export function ProtectedLayout() {
-  const { isAuthReady, isAuthenticated } = useAppStore((state) => ({
-    isAuthReady: state.isAuthReady,
-    isAuthenticated: state.isAuthenticated,
-  }));
+  const isAuthReady = useAppStore((state) => state.isAuthReady);
+  const isAuthenticated = useAppStore((state) => state.isAuthenticated);
 
   if (!isAuthReady) {
     return null;
