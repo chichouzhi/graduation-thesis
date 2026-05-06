@@ -5,7 +5,6 @@ import { useAppStore } from "@/app/store";
 import { PageSection } from "@/components/layout/page-section";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SectionHeading } from "@/components/shared/section-heading";
-import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import {
   useDocumentTasksQuery,
@@ -30,6 +29,80 @@ const languageOptions = [
   { value: "en", label: "English" },
 ] as const;
 
+const statusLabels = {
+  pending: "待处理",
+  running: "处理中",
+  done: "已完成",
+  failed: "已失败",
+} as const;
+
+const currentStageLabels: Record<string, string> = {
+  upload_accepted: "上传受理",
+  pdf_extract: "PDF 解析",
+  chunk_summarizing: "分块总结",
+  summarize_chunks: "分块总结",
+  aggregate: "聚合结果",
+  finalize: "生成最终结果",
+  final_result: "最终结果",
+};
+
+const errorCodeLabels: Record<string, string> = {
+  QUEUE_UNAVAILABLE: "队列暂不可用",
+  DOMAIN_ERROR: "处理流程异常",
+  LLM_RATE_LIMITED: "模型调用受限",
+  POLICY_QUEUE_DEPTH: "系统队列繁忙",
+};
+
+function formatStatusLabel(status: keyof typeof statusLabels) {
+  return statusLabels[status];
+}
+
+function formatTaskTypeLabel(taskType?: "summary" | "conclusions" | "compare") {
+  switch (taskType) {
+    case "summary":
+      return "摘要总结";
+    case "conclusions":
+      return "提炼结论";
+    case "compare":
+      return "对比分析";
+    default:
+      return "未知类型";
+  }
+}
+
+function formatLanguageLabel(language?: "zh" | "en") {
+  switch (language) {
+    case "zh":
+      return "中文";
+    case "en":
+      return "英文";
+    default:
+      return "未知语言";
+  }
+}
+
+function formatCurrentStageLabel(stage?: string | null, status?: keyof typeof statusLabels) {
+  if (!stage) {
+    if (status === "done") {
+      return "任务已完成";
+    }
+    if (status === "failed") {
+      return "任务已失败";
+    }
+    return "等待任务开始";
+  }
+
+  return currentStageLabels[stage] ?? "处理中";
+}
+
+function formatErrorCodeLabel(errorCode?: string | null) {
+  if (!errorCode) {
+    return "未知错误";
+  }
+
+  return errorCodeLabels[errorCode] ?? "未知错误";
+}
+
 export function DocumentsPage() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -48,10 +121,25 @@ export function DocumentsPage() {
   const tasks = useMemo(() => tasksQuery.data?.items ?? [], [tasksQuery.data?.items]);
 
   useEffect(() => {
-    if (tasksQuery.data?.items.length && !selectedTaskId) {
-      setSelectedTaskId(tasksQuery.data.items[0].id);
+    if (!tasks.length) {
+      if (selectedTaskId !== null) {
+        setSelectedTaskId(null);
+      }
+      return;
     }
-  }, [tasksQuery.data?.items, selectedTaskId]);
+
+    if (selectedTaskId && tasks.some((task) => task.id === selectedTaskId)) {
+      return;
+    }
+
+    const uploadedTaskId = uploadMutation.data?.id;
+    if (uploadedTaskId && tasks.some((task) => task.id === uploadedTaskId)) {
+      setSelectedTaskId(uploadedTaskId);
+      return;
+    }
+
+    setSelectedTaskId(tasks[0].id);
+  }, [tasks, selectedTaskId, uploadMutation.data?.id]);
 
   useEffect(() => {
     if (uploadMutation.data?.id) {
@@ -59,7 +147,10 @@ export function DocumentsPage() {
     }
   }, [uploadMutation.data?.id]);
 
-  const selectedTask = detailQuery.data ?? null;
+  const selectedTask = detailQuery.data?.id === selectedTaskId ? detailQuery.data : null;
+  const detailErrorMessage = detailQuery.isError
+    ? getErrorMessage(detailQuery.error, "暂时无法获取任务详情。")
+    : "";
   const summary = selectedTask
     ? buildDocumentSummary(selectedTask.result)
     : { summary: "", bulletPoints: [] };
@@ -233,12 +324,13 @@ export function DocumentsPage() {
                       <div>
                         <h3>{task.filename}</h3>
                         <p className="muted small" style={{ marginTop: 10 }}>
-                          {task.currentStage ?? "等待任务开始"}
+                          {formatCurrentStageLabel(task.currentStage, task.status)}
                         </p>
                       </div>
-                      <StatusBadge status={task.status} />
+                      <span className={`badge ${task.status}`}>{formatStatusLabel(task.status)}</span>
                     </div>
                     <p className="muted small" style={{ marginTop: 12 }}>
+                      {formatCurrentStageLabel(task.currentStage, task.status)} ·{" "}
                       {task.resultPreview ?? getDocumentProgressLabel(task.progress)}
                     </p>
                   </button>
@@ -271,11 +363,11 @@ export function DocumentsPage() {
                 description="系统正在获取最新任务状态，请稍候。"
               />
             </div>
-          ) : detailQuery.isError ? (
+          ) : detailQuery.isError && !selectedTask ? (
             <div style={{ marginTop: 22 }}>
               <EmptyState
                 title="任务详情加载失败"
-                description={getErrorMessage(detailQuery.error, "暂时无法获取任务详情。")}
+                description={detailErrorMessage}
                 action={
                   <Button variant="outline" onClick={() => detailQuery.refetch()}>
                     重试
@@ -298,17 +390,20 @@ export function DocumentsPage() {
                 <div>
                   <h3>{selectedTask.filename}</h3>
                   <p className="muted small" style={{ marginTop: 10 }}>
-                    taskType: {selectedTask.taskType} · language: {selectedTask.language}
+                    任务类型：{formatTaskTypeLabel(selectedTask.taskType)} · 输出语言：
+                    {formatLanguageLabel(selectedTask.language)}
                   </p>
                 </div>
-                <StatusBadge status={selectedTask.status} />
+                <span className={`badge ${selectedTask.status}`}>
+                  {formatStatusLabel(selectedTask.status)}
+                </span>
               </div>
 
               <div className="detail-stages">
                 <div className="detail-card">
                   <p style={{ fontWeight: 600 }}>当前阶段</p>
                   <p className="muted small" style={{ marginTop: 12 }}>
-                    {selectedTask.currentStage ?? "等待任务开始"}
+                    {formatCurrentStageLabel(selectedTask.currentStage, selectedTask.status)}
                   </p>
                 </div>
                 <div className="detail-card">
@@ -328,6 +423,27 @@ export function DocumentsPage() {
                   <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
                     当前任务仍在处理中，页面会继续自动同步最新状态。
                   </p>
+                </div>
+              ) : null}
+
+              {detailErrorMessage ? (
+                <div
+                  className="detail-card"
+                  style={{
+                    marginTop: 18,
+                    borderColor: "rgba(15, 76, 117, 0.18)",
+                    background: "rgba(222, 239, 248, 0.55)",
+                  }}
+                >
+                  <h3>最近一次同步失败</h3>
+                  <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
+                    {detailErrorMessage}
+                  </p>
+                  <div style={{ marginTop: 14 }}>
+                    <Button variant="outline" onClick={() => detailQuery.refetch()}>
+                      重新同步
+                    </Button>
+                  </div>
                 </div>
               ) : null}
 
@@ -370,7 +486,7 @@ export function DocumentsPage() {
                     <div>
                       <h3>任务执行失败</h3>
                       <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
-                        errorCode: {selectedTask.errorCode ?? "unknown"}
+                        错误类型：{formatErrorCodeLabel(selectedTask.errorCode)}
                       </p>
                       <p
                         className="small"
@@ -379,7 +495,7 @@ export function DocumentsPage() {
                         {selectedTask.errorMessage ?? "服务端未返回更多错误信息。"}
                       </p>
                     </div>
-                    <StatusBadge status="failed" />
+                    <span className="badge failed">{formatStatusLabel("failed")}</span>
                   </div>
                 </div>
               ) : null}
