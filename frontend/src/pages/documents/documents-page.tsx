@@ -105,6 +105,7 @@ function formatErrorCodeLabel(errorCode?: string | null) {
 
 export function DocumentsPage() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [preferredTaskId, setPreferredTaskId] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [taskType, setTaskType] = useState<"summary" | "conclusions" | "compare">("summary");
   const [language, setLanguage] = useState<"zh" | "en">("zh");
@@ -122,28 +123,34 @@ export function DocumentsPage() {
 
   useEffect(() => {
     if (!tasks.length) {
-      if (selectedTaskId !== null) {
+      if (selectedTaskId !== null && selectedTaskId !== preferredTaskId) {
         setSelectedTaskId(null);
       }
       return;
+    }
+
+    if (preferredTaskId) {
+      if (tasks.some((task) => task.id === preferredTaskId)) {
+        setPreferredTaskId(null);
+      } else {
+        if (selectedTaskId !== preferredTaskId) {
+          setSelectedTaskId(preferredTaskId);
+        }
+        return;
+      }
     }
 
     if (selectedTaskId && tasks.some((task) => task.id === selectedTaskId)) {
       return;
     }
 
-    const uploadedTaskId = uploadMutation.data?.id;
-    if (uploadedTaskId && tasks.some((task) => task.id === uploadedTaskId)) {
-      setSelectedTaskId(uploadedTaskId);
-      return;
-    }
-
     setSelectedTaskId(tasks[0].id);
-  }, [tasks, selectedTaskId, uploadMutation.data?.id]);
+  }, [preferredTaskId, selectedTaskId, tasks]);
 
   useEffect(() => {
     if (uploadMutation.data?.id) {
       setSelectedTaskId(uploadMutation.data.id);
+      setPreferredTaskId(uploadMutation.data.id);
     }
   }, [uploadMutation.data?.id]);
 
@@ -330,7 +337,6 @@ export function DocumentsPage() {
                       <span className={`badge ${task.status}`}>{formatStatusLabel(task.status)}</span>
                     </div>
                     <p className="muted small" style={{ marginTop: 12 }}>
-                      {formatCurrentStageLabel(task.currentStage, task.status)} ·{" "}
                       {task.resultPreview ?? getDocumentProgressLabel(task.progress)}
                     </p>
                   </button>
