@@ -1,16 +1,102 @@
 import { Upload } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
+import { useAppStore } from "@/app/store";
 import { PageSection } from "@/components/layout/page-section";
+import { EmptyState } from "@/components/shared/empty-state";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { Button } from "@/components/ui/button";
 import {
-  documentDetail,
-  documentFailureNote,
-  documentTasks,
-} from "@/features/documents/documents.mock";
+  useDocumentTasksQuery,
+  usePollingDocumentTaskQuery,
+  useUploadDocumentTaskMutation,
+} from "@/features/documents/documents.queries";
+import {
+  buildDocumentSummary,
+  getDocumentProgressLabel,
+  isDocumentTaskTerminal,
+} from "@/features/documents/documents.utils";
+import { getErrorMessage, parseApiError } from "@/lib/api-error";
+
+const taskTypeOptions = [
+  { value: "summary", label: "摘要总结" },
+  { value: "conclusions", label: "提炼结论" },
+  { value: "compare", label: "对比分析" },
+] as const;
+
+const languageOptions = [
+  { value: "zh", label: "中文" },
+  { value: "en", label: "English" },
+] as const;
 
 export function DocumentsPage() {
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [taskType, setTaskType] = useState<"summary" | "conclusions" | "compare">("summary");
+  const [language, setLanguage] = useState<"zh" | "en">("zh");
+  const [uploadError, setUploadError] = useState("");
+  const [fileInputKey, setFileInputKey] = useState(0);
+
+  const isAuthenticated = useAppStore((state) => state.isAuthenticated);
+  const currentTerm = useAppStore((state) => state.currentTerm);
+
+  const tasksQuery = useDocumentTasksQuery(isAuthenticated);
+  const uploadMutation = useUploadDocumentTaskMutation();
+  const detailQuery = usePollingDocumentTaskQuery(selectedTaskId, Boolean(selectedTaskId));
+
+  const tasks = useMemo(() => tasksQuery.data?.items ?? [], [tasksQuery.data?.items]);
+
+  useEffect(() => {
+    if (tasksQuery.data?.items.length && !selectedTaskId) {
+      setSelectedTaskId(tasksQuery.data.items[0].id);
+    }
+  }, [tasksQuery.data?.items, selectedTaskId]);
+
+  useEffect(() => {
+    if (uploadMutation.data?.id) {
+      setSelectedTaskId(uploadMutation.data.id);
+    }
+  }, [uploadMutation.data?.id]);
+
+  const selectedTask = detailQuery.data ?? null;
+  const summary = selectedTask
+    ? buildDocumentSummary(selectedTask.result)
+    : { summary: "", bulletPoints: [] };
+  const showPendingResult = Boolean(
+    selectedTask && !isDocumentTaskTerminal(selectedTask.status),
+  );
+
+  function handleUpload() {
+    if (!selectedFile || uploadMutation.isPending) {
+      return;
+    }
+
+    setUploadError("");
+    uploadMutation.mutate(
+      {
+        file: selectedFile,
+        termId: currentTerm.id,
+        taskType,
+        language,
+      },
+      {
+        onSuccess: () => {
+          setSelectedFile(null);
+          setFileInputKey((currentValue) => currentValue + 1);
+        },
+        onError: (error) => {
+          const parsed = parseApiError(error);
+          if (parsed.status === 413) {
+            setUploadError("PDF 超出服务端限制，请压缩后重试。");
+            return;
+          }
+          setUploadError(getErrorMessage(error, "上传失败，请稍后重试。"));
+        },
+      },
+    );
+  }
+
   return (
     <div className="page-stack">
       <PageSection className="paper" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -18,96 +104,294 @@ export function DocumentsPage() {
           <p className="kicker">Document Pipeline</p>
           <h2 style={{ marginTop: 14, fontSize: 30, letterSpacing: "-0.04em" }}>PDF 分析与总结任务</h2>
           <p className="muted small" style={{ marginTop: 10, lineHeight: 1.9 }}>
-            本轮只展示静态骨架，但页面结构已经为上传受理、任务推进与结果回写预留位置。
+            上传真实 PDF 后，页面会展示任务列表、轮询中的详情状态，以及最终摘要或失败反馈。
           </p>
         </div>
-        <div>
-          <Button>
-            <Upload size={16} />
-            上传 PDF
-          </Button>
+        <div className="upload-panel">
+          <div className="upload-controls">
+            <div className="upload-grid">
+              <div className="field">
+                <label htmlFor="document-upload">选择 PDF</label>
+                <input
+                  key={fileInputKey}
+                  id="document-upload"
+                  className="input"
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(event) => {
+                    setSelectedFile(event.target.files?.[0] ?? null);
+                    setUploadError("");
+                  }}
+                />
+              </div>
+              <div className="grid-2">
+                <div className="field">
+                  <label htmlFor="document-task-type">任务类型</label>
+                  <select
+                    id="document-task-type"
+                    className="upload-select"
+                    value={taskType}
+                    onChange={(event) => setTaskType(event.target.value as typeof taskType)}
+                  >
+                    {taskTypeOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="document-language">输出语言</label>
+                  <select
+                    id="document-language"
+                    className="upload-select"
+                    value={language}
+                    onChange={(event) => setLanguage(event.target.value as typeof language)}
+                  >
+                    {languageOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="upload-meta">
+              <Button
+                onClick={handleUpload}
+                disabled={!selectedFile || uploadMutation.isPending || !isAuthenticated}
+              >
+                <Upload size={16} />
+                {uploadMutation.isPending ? "上传中..." : "上传 PDF"}
+              </Button>
+              <p className="muted small" style={{ margin: 0, alignSelf: "center" }}>
+                当前学期：{currentTerm.name}
+                {selectedFile ? ` · 已选择：${selectedFile.name}` : " · 暂未选择文件"}
+              </p>
+            </div>
+          </div>
+
+          {uploadError ? (
+            <p className="small" style={{ margin: 0, color: "var(--danger-foreground)" }}>
+              {uploadError}
+            </p>
+          ) : null}
         </div>
       </PageSection>
 
       <div className="documents-layout">
         <PageSection className="paper">
-          <SectionHeading title="任务列表" description="左侧保留后续轮询驱动的任务概览区。" />
-          <div className="document-list">
-            {documentTasks.map((task) => (
-              <div key={task.id} className="document-item">
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start" }}>
-                  <div>
-                    <h3>{task.filename}</h3>
-                    <p className="muted small" style={{ marginTop: 10 }}>
-                      {task.currentStage}
+          <SectionHeading title="任务列表" description="左侧展示真实任务状态，并支持切换查看详情。" />
+          {tasksQuery.isLoading ? (
+            <div style={{ marginTop: 22 }}>
+              <EmptyState
+                title="正在加载任务列表"
+                description="文档任务正在同步中，请稍候。"
+              />
+            </div>
+          ) : tasksQuery.isError ? (
+            <div style={{ marginTop: 22 }}>
+              <EmptyState
+                title="任务列表加载失败"
+                description={getErrorMessage(tasksQuery.error, "暂时无法获取文档任务。")}
+                action={
+                  <Button variant="outline" onClick={() => tasksQuery.refetch()}>
+                    重试
+                  </Button>
+                }
+              />
+            </div>
+          ) : tasks.length ? (
+            <div className="document-list">
+              {tasks.map((task) => {
+                const isSelected = task.id === selectedTaskId;
+
+                return (
+                  <button
+                    key={task.id}
+                    type="button"
+                    className="document-item"
+                    onClick={() => setSelectedTaskId(task.id)}
+                    style={{
+                      width: "100%",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      borderColor: isSelected ? "rgba(31, 107, 104, 0.34)" : undefined,
+                      boxShadow: isSelected ? "var(--shadow-subtle)" : "none",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        alignItems: "flex-start",
+                      }}
+                    >
+                      <div>
+                        <h3>{task.filename}</h3>
+                        <p className="muted small" style={{ marginTop: 10 }}>
+                          {task.currentStage ?? "等待任务开始"}
+                        </p>
+                      </div>
+                      <StatusBadge status={task.status} />
+                    </div>
+                    <p className="muted small" style={{ marginTop: 12 }}>
+                      {task.resultPreview ?? getDocumentProgressLabel(task.progress)}
                     </p>
-                  </div>
-                  <StatusBadge status={task.status} />
-                </div>
-                <p className="muted small" style={{ marginTop: 12 }}>
-                  {task.progress}
-                </p>
-              </div>
-            ))}
-          </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div style={{ marginTop: 22 }}>
+              <EmptyState
+                title="暂无文档任务"
+                description="上传 PDF 后，这里会显示任务状态和结果预览。"
+              />
+            </div>
+          )}
         </PageSection>
 
         <PageSection className="paper">
-          <SectionHeading title="任务详情" description="右侧详情区承接阶段状态、摘要结果与失败反馈。" />
-          <div className="detail-card" style={{ marginTop: 22, display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start" }}>
-            <div>
-              <h3>{documentDetail.filename}</h3>
-              <p className="muted small" style={{ marginTop: 10 }}>
-                task_type: {documentDetail.taskType} · language: {documentDetail.language}
-              </p>
+          <SectionHeading title="任务详情" description="右侧详情区展示轮询状态、摘要内容与失败原因。" />
+          {!selectedTaskId ? (
+            <div style={{ marginTop: 22 }}>
+              <EmptyState
+                title="尚未选择任务"
+                description="从左侧选择一个任务后，这里会显示详细状态和处理结果。"
+              />
             </div>
-            <StatusBadge status={documentDetail.status} />
-          </div>
+          ) : detailQuery.isLoading && !selectedTask ? (
+            <div style={{ marginTop: 22 }}>
+              <EmptyState
+                title="正在同步任务详情"
+                description="系统正在获取最新任务状态，请稍候。"
+              />
+            </div>
+          ) : detailQuery.isError ? (
+            <div style={{ marginTop: 22 }}>
+              <EmptyState
+                title="任务详情加载失败"
+                description={getErrorMessage(detailQuery.error, "暂时无法获取任务详情。")}
+                action={
+                  <Button variant="outline" onClick={() => detailQuery.refetch()}>
+                    重试
+                  </Button>
+                }
+              />
+            </div>
+          ) : selectedTask ? (
+            <>
+              <div
+                className="detail-card"
+                style={{
+                  marginTop: 22,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  alignItems: "flex-start",
+                }}
+              >
+                <div>
+                  <h3>{selectedTask.filename}</h3>
+                  <p className="muted small" style={{ marginTop: 10 }}>
+                    taskType: {selectedTask.taskType} · language: {selectedTask.language}
+                  </p>
+                </div>
+                <StatusBadge status={selectedTask.status} />
+              </div>
 
-          <div className="detail-stages">
-            {documentDetail.stages.map((stage) => (
-              <div key={stage.label} className="detail-card">
-                <p style={{ fontWeight: 600 }}>{stage.label}</p>
-                <div style={{ marginTop: 12 }}>
-                  <StatusBadge status={stage.value} />
+              <div className="detail-stages">
+                <div className="detail-card">
+                  <p style={{ fontWeight: 600 }}>当前阶段</p>
+                  <p className="muted small" style={{ marginTop: 12 }}>
+                    {selectedTask.currentStage ?? "等待任务开始"}
+                  </p>
+                </div>
+                <div className="detail-card">
+                  <p style={{ fontWeight: 600 }}>处理进度</p>
+                  <p className="muted small" style={{ marginTop: 12 }}>
+                    {getDocumentProgressLabel(selectedTask.progress)}
+                  </p>
                 </div>
               </div>
-            ))}
-          </div>
 
-          <div className="detail-card" style={{ marginTop: 18, background: "rgba(255,255,255,0.92)" }}>
-            <h3>摘要结果</h3>
-            <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
-              {documentDetail.summary}
-            </p>
-            <ul className="summary-points">
-              {documentDetail.bulletPoints.map((point) => (
-                <li key={point}>{point}</li>
-              ))}
-            </ul>
-          </div>
+              {showPendingResult ? (
+                <div
+                  className="detail-card"
+                  style={{ marginTop: 18, background: "rgba(255,255,255,0.92)" }}
+                >
+                  <h3>结果尚未生成</h3>
+                  <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
+                    当前任务仍在处理中，页面会继续自动同步最新状态。
+                  </p>
+                </div>
+              ) : null}
 
-          <div
-            className="detail-card"
-            style={{
-              marginTop: 18,
-              borderColor: "rgba(141, 40, 58, 0.18)",
-              background: "rgba(251, 225, 229, 0.45)",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start" }}>
-              <div>
-                <h3>{documentFailureNote.title}</h3>
-                <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
-                  {documentFailureNote.description}
-                </p>
-                <p className="small" style={{ marginTop: 12, color: "var(--danger-foreground)" }}>
-                  最近失败样例：{documentFailureNote.latestFailedTask}
-                </p>
-              </div>
-              <StatusBadge status="failed" />
+              {selectedTask.status === "done" ? (
+                <div
+                  className="detail-card"
+                  style={{ marginTop: 18, background: "rgba(255,255,255,0.92)" }}
+                >
+                  <h3>摘要结果</h3>
+                  <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
+                    {summary.summary || "暂无摘要文本。"}
+                  </p>
+                  {summary.bulletPoints.length ? (
+                    <ul className="summary-points">
+                      {summary.bulletPoints.map((point) => (
+                        <li key={point}>{point}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {selectedTask.status === "failed" ? (
+                <div
+                  className="detail-card"
+                  style={{
+                    marginTop: 18,
+                    borderColor: "rgba(141, 40, 58, 0.18)",
+                    background: "rgba(251, 225, 229, 0.45)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 16,
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <div>
+                      <h3>任务执行失败</h3>
+                      <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
+                        errorCode: {selectedTask.errorCode ?? "unknown"}
+                      </p>
+                      <p
+                        className="small"
+                        style={{ marginTop: 12, color: "var(--danger-foreground)" }}
+                      >
+                        {selectedTask.errorMessage ?? "服务端未返回更多错误信息。"}
+                      </p>
+                    </div>
+                    <StatusBadge status="failed" />
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <div style={{ marginTop: 22 }}>
+              <EmptyState
+                title="暂无任务详情"
+                description="任务详情尚未返回，请稍后重试。"
+              />
             </div>
-          </div>
+          )}
         </PageSection>
       </div>
     </div>

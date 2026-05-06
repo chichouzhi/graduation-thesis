@@ -737,6 +737,37 @@ img {
   grid-template-columns: 1fr;
 }
 
+.upload-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.upload-controls {
+  display: grid;
+  gap: 12px;
+}
+
+.upload-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.upload-select {
+  width: 100%;
+  border: 1px solid var(--border-strong);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 14px 16px;
+  color: var(--foreground);
+  outline: none;
+}
+
+.upload-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .detail-stages {
   grid-template-columns: repeat(1, minmax(0, 1fr));
 }
