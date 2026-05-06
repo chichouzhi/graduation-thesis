@@ -12,10 +12,25 @@
 """
 from __future__ import annotations
 
-from flask import Flask
+from flask import Flask, request
+from werkzeug.exceptions import RequestEntityTooLarge
 
-from app.config import Config, ProductionConfig, broker_url_from_environ, get_config_class, validate_production_broker
-from app.extensions import init_extensions
+from app.config import (
+    Config,
+    get_config_class,
+    is_production_config,
+    runtime_config_overrides,
+    production_runtime_overrides,
+    validate_production_runtime_requirements,
+)
+from app.common.error_envelope import ErrorCode, ErrorEnvelope
+from app.extensions import init_extensions, register_runtime_clients
+
+
+def _request_entity_too_large_message() -> str:
+    if request.method == "POST" and request.path == "/api/v1/document-tasks":
+        return "uploaded file exceeds MAX_CONTENT_LENGTH"
+    return "request payload exceeds MAX_CONTENT_LENGTH"
 
 
 def _register_api_blueprints(app: Flask) -> None:
@@ -42,7 +57,7 @@ def _register_api_blueprints(app: Flask) -> None:
         app.register_blueprint(blueprint)
 
 
-def create_app(config: type[Config] | None = None) -> Flask:
+def create_app(config: type[Config] | Config | None = None) -> Flask:
     """Flask 应用工厂。
 
     AG-001：非业务域路由（``/``、``/health``）。AG-004：``/api/v1`` 下八大域 Blueprint 空壳。
@@ -50,11 +65,13 @@ def create_app(config: type[Config] | None = None) -> Flask:
     """
     app = Flask(__name__)
     cfg = config or get_config_class()
-    validate_production_broker(cfg)
     app.config.from_object(cfg)
-    if cfg is ProductionConfig:
-        app.config["BROKER_URL"] = broker_url_from_environ()
+    app.config.update(runtime_config_overrides(cfg))
+    if is_production_config(cfg):
+        app.config.update(production_runtime_overrides(cfg))
+        validate_production_runtime_requirements(cfg, app.config)
     init_extensions(app)
+    register_runtime_clients(app, default_to_mock=not is_production_config(cfg))
     from app.identity import model as _identity_model  # noqa: F401 — register ``users`` ORM (AG-008)
     from app.terms import model as _terms_model  # noqa: F401 — register ``terms`` ORM (AG-009)
     from app.chat import model as _chat_model  # noqa: F401 — register chat ORM (AG-011/AG-012)
@@ -72,6 +89,16 @@ def create_app(config: type[Config] | None = None) -> Flask:
     @app.get("/health")
     def _health() -> tuple[dict[str, str], int]:
         return {"status": "healthy"}, 200
+
+    @app.errorhandler(RequestEntityTooLarge)
+    def _handle_request_entity_too_large(_exc: RequestEntityTooLarge):
+        return (
+            ErrorEnvelope(
+                code=ErrorCode.VALIDATION_ERROR,
+                message=_request_entity_too_large_message(),
+            ).to_dict(),
+            413,
+        )
 
     return app
 

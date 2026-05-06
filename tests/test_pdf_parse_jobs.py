@@ -1,6 +1,12 @@
 from __future__ import annotations
 
 import pytest
+from app import create_app
+from app.document.model import DocumentArtifact, DocumentArtifactType, DocumentTask, DocumentTaskStatus
+from app.extensions import db
+from app.identity.model import User, UserRole
+from app.terms.model import Term
+from sqlalchemy.exc import IntegrityError
 
 from app.task.pdf_parse_jobs import handle_pdf_parse_job, run
 from app.use_cases.document_pdf_parse import PdfJobPayload, PdfParseSuccessPlan, parse_pdf_and_plan_document_jobs
@@ -50,13 +56,16 @@ def test_parse_pdf_and_plan_document_jobs_hooks_adapter_and_pipeline(
     jobs = plan.document_job_payloads
 
     assert called_paths == ["/tmp/demo.pdf"]
-    assert len(jobs) == 5  # extract + 2 summarize_chunk + aggregate + finalize
+    assert len(jobs) == 3  # extract + 2 summarize_chunk; aggregate/finalize 由 document_jobs 级联触发
     assert jobs[0]["stage"] == "extract"
     assert jobs[1]["stage"] == "summarize_chunk"
-    assert jobs[-1]["stage"] == "finalize"
+    assert jobs[-1]["stage"] == "summarize_chunk"
     assert all(job["request_id"] == "req-1" for job in jobs)
     assert plan.parsed_meta_for_result_json["pdf_parse_outline"]["max_chunks"] == 2
     assert plan.parsed_meta_for_result_json["pdf_parse_outline"]["page_text_char_counts"] == [1, 1]
+    assert plan.extracted_text_artifact_payload["artifact_type"] == "pdf_pages_text"
+    assert plan.extracted_text_artifact_payload["payload"]["pages"][1]["text"] == "b"
+    assert plan.extracted_text_artifact_payload["content_text"] == "a\n\nb"
 
 
 def test_handle_pdf_parse_job_enqueues_document_jobs(
@@ -77,19 +86,17 @@ def test_handle_pdf_parse_job_enqueues_document_jobs(
                 "chunk_index": None,
                 "max_chunks": 1,
             },
-            {
-                "document_task_id": "dt-1",
-                "user_id": "u-1",
-                "storage_path": "/tmp/demo.pdf",
-                "term_id": "term-1",
-                "stage": "finalize",
-                "chunk_index": None,
-                "max_chunks": 1,
-            },
         )
         return PdfParseSuccessPlan(
             document_job_payloads=payloads,
             parsed_meta_for_result_json={"pdf_parse_outline": {"page_count": 1, "max_chunks": 1, "page_text_char_counts": [9]}},
+            extracted_text_artifact_payload={
+                "artifact_type": "pdf_pages_text",
+                "stage": "pdf_extract",
+                "chunk_index": None,
+                "content_text": "page text",
+                "payload": {"pages": [{"page_index": 0, "text": "page text"}]},
+            },
         )
 
     def fake_enqueue(payload: dict[str, object] | None = None, **_: object) -> dict[str, str]:
@@ -107,15 +114,230 @@ def test_handle_pdf_parse_job_enqueues_document_jobs(
     monkeypatch.setattr("app.task.pdf_parse_jobs._default_writeback", capture_writeback)
 
     jobs = handle_pdf_parse_job(_valid_pdf_payload())
-    assert len(jobs) == 2
+    assert len(jobs) == 1
     assert enqueued == list(jobs)
     assert writebacks == [
         (
             "dt-1",
-            {"result_patch": {"pdf_parse_outline": {"page_count": 1, "max_chunks": 1, "page_text_char_counts": [9]}}},
+            {
+                "current_stage": "summarize_chunks",
+                "progress_patch": {"completed_chunks": 0, "total_chunks": 1},
+                "result_patch": {"pdf_parse_outline": {"page_count": 1, "max_chunks": 1, "page_text_char_counts": [9]}},
+                "artifacts": [
+                    {
+                        "artifact_type": "pdf_pages_text",
+                        "stage": "pdf_extract",
+                        "chunk_index": None,
+                        "content_text": "page text",
+                        "payload": {"pages": [{"page_index": 0, "text": "page text"}]},
+                    }
+                ],
+            },
         )
     ]
-    assert events == ["writeback_meta", "enqueue", "enqueue"]
+    assert events == ["writeback_meta", "enqueue"]
+
+
+def test_pdf_parse_writeback_persists_extracted_text_artifact(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="pdf-task-user", role=UserRole.student, display_name="PDF")
+        term = Term(name="Task4 PDF")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="paper.pdf",
+            storage_path="/tmp/paper.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+
+        def fake_enqueue(payload: dict[str, object] | None = None, **_: object) -> dict[str, str]:
+            assert payload is not None
+            return {"job_id": "doc-job"}
+
+        def fake_planner(_: PdfJobPayload) -> PdfParseSuccessPlan:
+            return PdfParseSuccessPlan(
+                document_job_payloads=(
+                    {
+                        "document_task_id": task.id,
+                        "user_id": user.id,
+                        "storage_path": "/tmp/paper.pdf",
+                        "term_id": term.id,
+                        "stage": "extract",
+                        "chunk_index": None,
+                        "max_chunks": 2,
+                    },
+                ),
+                parsed_meta_for_result_json={
+                    "pdf_parse_outline": {"page_count": 2, "max_chunks": 2, "page_text_char_counts": [5, 4]}
+                },
+                extracted_text_artifact_payload={
+                    "artifact_type": "pdf_pages_text",
+                    "stage": "pdf_extract",
+                    "chunk_index": None,
+                    "content_text": "alpha\n\nbeta",
+                    "payload": {
+                        "pages": [
+                            {"page_index": 0, "text": "alpha"},
+                            {"page_index": 1, "text": "beta"},
+                        ]
+                    },
+                },
+            )
+
+        monkeypatch.setattr("app.task.pdf_parse_jobs.parse_pdf_and_plan_document_jobs", fake_planner)
+        monkeypatch.setattr("app.task.pdf_parse_jobs.queue_mod.enqueue_document_jobs", fake_enqueue)
+
+        handle_pdf_parse_job(
+            {
+                "document_task_id": task.id,
+                "user_id": user.id,
+                "storage_path": "/tmp/paper.pdf",
+                "term_id": term.id,
+                "stage": "pdf_extract",
+            }
+        )
+
+        artifact = db.session.query(DocumentArtifact).filter_by(document_task_id=task.id).one()
+        assert artifact.artifact_type == DocumentArtifactType.pdf_pages_text
+        assert artifact.stage == "pdf_extract"
+        assert artifact.chunk_index is None
+        assert artifact.content_text == "alpha\n\nbeta"
+        assert artifact.payload_json == {
+            "pages": [
+                {"page_index": 0, "text": "alpha"},
+                {"page_index": 1, "text": "beta"},
+            ]
+        }
+
+
+def test_pdf_parse_writeback_updates_existing_artifact_in_place() -> None:
+    from app.task.pdf_parse_jobs import _default_writeback
+
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="pdf-task-dup", role=UserRole.student, display_name="PDF Dup")
+        term = Term(name="Task4 PDF Duplicate")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="dup.pdf",
+            storage_path="/tmp/dup.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+        db.session.add_all(
+            [
+                DocumentArtifact(
+                    document_task_id=task.id,
+                    artifact_type=DocumentArtifactType.pdf_pages_text,
+                    stage="pdf_extract",
+                    chunk_index=None,
+                    content_text="old-1",
+                ),
+            ]
+        )
+        db.session.commit()
+
+        _default_writeback(
+            task.id,
+            {
+                "artifacts": [
+                    {
+                        "artifact_type": "pdf_pages_text",
+                        "stage": "pdf_extract",
+                        "chunk_index": None,
+                        "content_text": "newest",
+                        "payload": {"pages": [{"page_index": 0, "text": "newest"}]},
+                    }
+                ]
+            },
+        )
+
+        artifacts = (
+            db.session.query(DocumentArtifact)
+            .filter_by(
+                document_task_id=task.id,
+                artifact_type=DocumentArtifactType.pdf_pages_text,
+                stage="pdf_extract",
+                chunk_index=None,
+            )
+            .order_by(DocumentArtifact.created_at.asc(), DocumentArtifact.id.asc())
+            .all()
+        )
+        assert len(artifacts) == 1
+        assert artifacts[0].content_text == "newest"
+
+
+def test_pdf_parse_writeback_retries_once_after_integrity_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.task.pdf_parse_jobs import _default_writeback
+
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="pdf-task-retry", role=UserRole.student, display_name="PDF Retry")
+        term = Term(name="Task4 PDF Retry")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="retry.pdf",
+            storage_path="/tmp/retry.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+
+        orig_commit = db.session.commit
+        seen = {"calls": 0}
+
+        def flaky_commit() -> None:
+            seen["calls"] += 1
+            if seen["calls"] == 1:
+                raise IntegrityError("insert", {}, Exception("duplicate artifact"))
+            orig_commit()
+
+        monkeypatch.setattr(db.session, "commit", flaky_commit)
+
+        _default_writeback(
+            task.id,
+            {
+                "artifacts": [
+                    {
+                        "artifact_type": "pdf_pages_text",
+                        "stage": "pdf_extract",
+                        "chunk_index": None,
+                        "content_text": "newest",
+                        "payload": {"pages": [{"page_index": 0, "text": "newest"}]},
+                    }
+                ]
+            },
+        )
+
+        artifacts = (
+            db.session.query(DocumentArtifact)
+            .filter_by(
+                document_task_id=task.id,
+                artifact_type=DocumentArtifactType.pdf_pages_text,
+                stage="pdf_extract",
+                chunk_index=None,
+            )
+            .all()
+        )
+        assert seen["calls"] == 2
+        assert len(artifacts) == 1
+        assert artifacts[0].content_text == "newest"
 
 
 def test_run_writes_failed_status_when_pdf_parse_raises(
@@ -135,8 +357,173 @@ def test_run_writes_failed_status_when_pdf_parse_raises(
     with pytest.raises(RuntimeError, match="pdf parse timeout"):
         run(_valid_pdf_payload())
 
-    assert writes[0] == ("dt-1", {"status": "running"})
+    assert writes[0] == ("dt-1", {"status": "running", "current_stage": "pdf_extract"})
     assert writes[1][0] == "dt-1"
     assert writes[1][1]["status"] == "failed"
     assert writes[1][1]["error_code"] == "DOMAIN_ERROR"
     assert "pdf parse timeout" in str(writes[1][1]["error_message"])
+
+
+def test_run_skips_failed_pdf_parse_task(monkeypatch: pytest.MonkeyPatch) -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="pdf-skip-failed", role=UserRole.student, display_name="PDF Skip")
+        term = Term(name="Task4 PDF Skip Failed")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="skip.pdf",
+            storage_path="/tmp/skip.pdf",
+            status=DocumentTaskStatus.failed,
+            current_stage="pdf_extract",
+            error_code="QUEUE_UNAVAILABLE",
+            error_message="broker down",
+        )
+        db.session.add(task)
+        db.session.commit()
+
+        called = {"count": 0}
+
+        def should_not_run(*_args: object, **_kwargs: object) -> tuple[dict[str, object], ...]:
+            called["count"] += 1
+            return ()
+
+        monkeypatch.setattr("app.task.pdf_parse_jobs.handle_pdf_parse_job", should_not_run)
+
+        run(
+            {
+                "document_task_id": task.id,
+                "user_id": user.id,
+                "storage_path": "/tmp/skip.pdf",
+                "term_id": term.id,
+                "stage": "pdf_extract",
+            }
+        )
+
+        task = db.session.get(DocumentTask, task.id)
+        assert task is not None
+        assert called["count"] == 0
+        assert task.status == DocumentTaskStatus.failed
+        assert task.error_code == "QUEUE_UNAVAILABLE"
+
+
+def test_run_writes_queue_unavailable_when_document_job_enqueue_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    writes: list[tuple[str, dict[str, object]]] = []
+
+    def fake_writeback(document_task_id: str, patch: dict[str, object]) -> None:
+        writes.append((document_task_id, patch))
+
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+
+        def fake_planner(_: PdfJobPayload) -> PdfParseSuccessPlan:
+            return PdfParseSuccessPlan(
+                document_job_payloads=(
+                    {
+                        "document_task_id": "dt-1",
+                        "user_id": "u-1",
+                        "storage_path": "/tmp/demo.pdf",
+                        "term_id": "term-1",
+                        "stage": "extract",
+                        "chunk_index": None,
+                        "max_chunks": 1,
+                    },
+                ),
+                parsed_meta_for_result_json={
+                    "pdf_parse_outline": {"page_count": 1, "max_chunks": 1, "page_text_char_counts": [9]}
+                },
+                extracted_text_artifact_payload={
+                    "artifact_type": "pdf_pages_text",
+                    "stage": "pdf_extract",
+                    "chunk_index": None,
+                    "content_text": "page text",
+                    "payload": {"pages": [{"page_index": 0, "text": "page text"}]},
+                },
+            )
+
+        def boom_enqueue(_payload: dict[str, object] | None = None, **_kwargs: object) -> dict[str, str]:
+            raise RuntimeError("broker down")
+
+        monkeypatch.setattr("app.task.pdf_parse_jobs._default_writeback", fake_writeback)
+        monkeypatch.setattr("app.task.pdf_parse_jobs.parse_pdf_and_plan_document_jobs", fake_planner)
+        monkeypatch.setattr("app.task.pdf_parse_jobs.queue_mod.enqueue_document_jobs", boom_enqueue)
+
+        with pytest.raises(RuntimeError, match="broker down"):
+            run(_valid_pdf_payload())
+
+    assert writes[0] == ("dt-1", {"status": "running", "current_stage": "pdf_extract"})
+    assert writes[1] == (
+        "dt-1",
+        {
+            "current_stage": "summarize_chunks",
+            "progress_patch": {"completed_chunks": 0, "total_chunks": 1},
+            "result_patch": {"pdf_parse_outline": {"page_count": 1, "max_chunks": 1, "page_text_char_counts": [9]}},
+            "artifacts": [
+                {
+                    "artifact_type": "pdf_pages_text",
+                    "stage": "pdf_extract",
+                    "chunk_index": None,
+                    "content_text": "page text",
+                    "payload": {"pages": [{"page_index": 0, "text": "page text"}]},
+                }
+            ],
+        },
+    )
+    assert writes[2][0] == "dt-1"
+    assert writes[2][1]["status"] == "failed"
+    assert writes[2][1]["error_code"] == "QUEUE_UNAVAILABLE"
+    assert "broker down" in str(writes[2][1]["error_message"])
+
+
+def test_run_skips_stale_pdf_parse_after_task_advanced(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="pdf-stale-parse", role=UserRole.student, display_name="PDF Stale")
+        term = Term(name="Task4 PDF Stale Parse")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="stale.pdf",
+            storage_path="/tmp/stale.pdf",
+            status=DocumentTaskStatus.running,
+            current_stage="summarize_chunks",
+            progress_json={"completed_chunks": 0, "total_chunks": 2},
+        )
+        db.session.add(task)
+        db.session.commit()
+
+        called = {"count": 0}
+
+        def should_not_run(*_args: object, **_kwargs: object) -> tuple[dict[str, object], ...]:
+            called["count"] += 1
+            return ()
+
+        monkeypatch.setattr("app.task.pdf_parse_jobs.handle_pdf_parse_job", should_not_run)
+
+        run(
+            {
+                "document_task_id": task.id,
+                "user_id": user.id,
+                "storage_path": "/tmp/stale.pdf",
+                "term_id": term.id,
+                "stage": "pdf_extract",
+            }
+        )
+
+        task = db.session.get(DocumentTask, task.id)
+        assert task is not None
+        assert called["count"] == 0
+        assert task.status == DocumentTaskStatus.running
+        assert task.current_stage == "summarize_chunks"
+        assert task.progress_json == {"completed_chunks": 0, "total_chunks": 2}

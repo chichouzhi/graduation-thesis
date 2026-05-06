@@ -9,12 +9,23 @@ token 级裁剪：与 ``execution_plan`` chat 子任务及 §14.6 引用一致�
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from datetime import datetime, timezone
+from typing import Any
 
+from app.chat.model import ChatJob, Message, MessageAsyncTaskStatus
+from app.common.error_envelope import ErrorCode
 from app.config import Config
+from app.extensions import db
 
 # 与 execution_plan「系统角色与免责声明」对齐
 CHAT_SYSTEM_DISCLAIMER_ZH = (
     "你是毕业设计领域的辅助助手。以下回答仅供学习与研究参考，不构成正式学术结论或法律意见。"
+)
+_TERMINAL_CHAT_JOB_STATUSES = frozenset(
+    {
+        MessageAsyncTaskStatus.done,
+        MessageAsyncTaskStatus.failed,
+    }
 )
 
 
@@ -164,9 +175,209 @@ def build_messages(
     return trim_messages_to_token_budget(out, max_tokens=budget)
 
 
-def run_turn(conversation_id: str, messages: list, term_id: str, **kwargs) -> None:
-    """Worker 路径：调用 LLM（由架构测试 patch ``adapter.llm``）。"""
+def _utc_now_naive() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _normalize_llm_output(result: Any) -> dict[str, Any]:
+    if isinstance(result, Mapping):
+        usage_raw = result.get("usage")
+        usage = dict(usage_raw) if isinstance(usage_raw, Mapping) else None
+        model_name = str(result.get("model") or result.get("model_name") or "").strip() or None
+        provider_request_id = (
+            str(result.get("provider_request_id") or result.get("request_id") or result.get("id") or "").strip() or None
+        )
+        content_raw = result.get("content", "")
+        return {
+            "content": "" if content_raw is None else str(content_raw),
+            "usage": usage,
+            "model_name": model_name,
+            "provider_request_id": provider_request_id,
+        }
+    return {
+        "content": "" if result is None else str(result),
+        "usage": None,
+        "model_name": None,
+        "provider_request_id": None,
+    }
+
+
+def _normalize_error_code(value: object) -> str:
+    if isinstance(value, ErrorCode):
+        return value.value
+    text = str(value).strip() if value is not None else ""
+    return text or ErrorCode.DOMAIN_ERROR.value
+
+
+def _persist_failed_job_if_possible(
+    *,
+    job_id: str,
+    assistant_message_id: str | None,
+    error_code: str,
+    error_message: str,
+    started_at: datetime | None = None,
+) -> Exception | None:
+    try:
+        db.session.rollback()
+    except Exception:  # noqa: BLE001 - best-effort cleanup before failure writeback
+        return None
+
+    try:
+        job = db.session.get(ChatJob, job_id) if job_id else None
+        assistant_message = (
+            db.session.get(Message, assistant_message_id)
+            if assistant_message_id is not None and str(assistant_message_id).strip()
+            else None
+        )
+        if job is None:
+            return None
+        if job.status == MessageAsyncTaskStatus.done:
+            return None
+
+        job.status = MessageAsyncTaskStatus.failed
+        job.started_at = job.started_at or started_at or _utc_now_naive()
+        job.finished_at = _utc_now_naive()
+        job.error_code = error_code
+        job.error_message = error_message
+        job.provider_request_id = None
+        job.model_name = None
+        job.usage_json = None
+        if assistant_message is not None:
+            assistant_message.delivery_status = MessageAsyncTaskStatus.failed
+            assistant_message.content = assistant_message.content or ""
+        db.session.commit()
+    except Exception as exc:  # noqa: BLE001 - preserve primary failure while surfacing writeback issue
+        try:
+            db.session.rollback()
+        except Exception:  # noqa: BLE001 - best effort only
+            pass
+        return exc
+    return None
+
+
+def _raise_with_failure_writeback(
+    exc: Exception,
+    *,
+    job_id: str,
+    assistant_message_id: str,
+    error_code: str,
+    started_at: datetime | None = None,
+) -> None:
+    writeback_exc = _persist_failed_job_if_possible(
+        job_id=job_id,
+        assistant_message_id=assistant_message_id,
+        error_code=error_code,
+        error_message=str(exc),
+        started_at=started_at,
+    )
+    if writeback_exc is not None and hasattr(exc, "add_note"):
+        exc.add_note(f"chat failure writeback also failed: {writeback_exc}")
+    raise exc
+
+
+def run_turn(conversation_id: str, messages: list, term_id: str, **kwargs: Any) -> None:
+    """Worker 路径：调用 LLM 并将 ChatJob / assistant 占位写回到终态。"""
     from app.adapter import llm as llm_mod
 
-    _ = (conversation_id, term_id, kwargs)
-    llm_mod.complete(messages)
+    job_id = str(kwargs.get("job_id", "")).strip()
+    assistant_message_id = str(kwargs.get("assistant_message_id", "")).strip()
+    user_message_id = str(kwargs.get("user_message_id", "")).strip()
+    if not job_id and not assistant_message_id and not user_message_id:
+        llm_mod.complete(
+            messages,
+            term_id=term_id,
+            user_id=kwargs.get("user_id"),
+            request_id=kwargs.get("request_id"),
+        )
+        return
+
+    job = db.session.get(ChatJob, job_id)
+    if job is None:
+        raise ValueError("chat job row is missing")
+    if job.status in _TERMINAL_CHAT_JOB_STATUSES:
+        return
+
+    user_message = db.session.get(Message, user_message_id)
+    assistant_message = db.session.get(Message, assistant_message_id)
+    if user_message is None or assistant_message is None:
+        exc = ValueError("chat job persistence rows are missing")
+        _raise_with_failure_writeback(
+            exc,
+            job_id=job_id,
+            assistant_message_id=assistant_message_id,
+            error_code=ErrorCode.DOMAIN_ERROR.value,
+        )
+    if job.conversation_id != str(conversation_id).strip():
+        exc = ValueError("chat job conversation_id mismatch")
+        _raise_with_failure_writeback(
+            exc,
+            job_id=job_id,
+            assistant_message_id=assistant_message_id,
+            error_code=ErrorCode.DOMAIN_ERROR.value,
+        )
+    if user_message.conversation_id != job.conversation_id or assistant_message.conversation_id != job.conversation_id:
+        exc = ValueError("chat job message rows do not belong to the same conversation")
+        _raise_with_failure_writeback(
+            exc,
+            job_id=job_id,
+            assistant_message_id=assistant_message_id,
+            error_code=ErrorCode.DOMAIN_ERROR.value,
+        )
+
+    started_at = job.started_at or _utc_now_naive()
+    job.status = MessageAsyncTaskStatus.running
+    job.started_at = started_at
+    job.finished_at = None
+    job.error_code = None
+    job.error_message = None
+    job.provider_request_id = None
+    job.model_name = None
+    job.usage_json = None
+    assistant_message.delivery_status = MessageAsyncTaskStatus.running
+    try:
+        db.session.commit()
+    except Exception as exc:  # noqa: BLE001 - must fail terminally when worker claim cannot persist
+        _raise_with_failure_writeback(
+            exc,
+            job_id=job_id,
+            assistant_message_id=assistant_message_id,
+            error_code=ErrorCode.DOMAIN_ERROR.value,
+            started_at=started_at,
+        )
+
+    try:
+        llm_result = llm_mod.complete(
+            messages,
+            term_id=term_id,
+            user_id=kwargs.get("user_id"),
+            request_id=kwargs.get("request_id"),
+        )
+    except Exception as exc:
+        _raise_with_failure_writeback(
+            exc,
+            job_id=job_id,
+            assistant_message_id=assistant_message_id,
+            error_code=_normalize_error_code(getattr(exc, "error_code", ErrorCode.DOMAIN_ERROR.value)),
+            started_at=started_at,
+        )
+
+    normalized = _normalize_llm_output(llm_result)
+    assistant_message.content = normalized["content"]
+    assistant_message.delivery_status = MessageAsyncTaskStatus.done
+    job.status = MessageAsyncTaskStatus.done
+    job.finished_at = _utc_now_naive()
+    job.provider_request_id = normalized["provider_request_id"]
+    job.model_name = normalized["model_name"]
+    job.usage_json = normalized["usage"]
+    job.error_code = None
+    job.error_message = None
+    try:
+        db.session.commit()
+    except Exception as exc:
+        _raise_with_failure_writeback(
+            exc,
+            job_id=job_id,
+            assistant_message_id=assistant_message_id,
+            error_code=ErrorCode.DOMAIN_ERROR.value,
+            started_at=started_at,
+        )

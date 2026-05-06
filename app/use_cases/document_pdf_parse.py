@@ -58,6 +58,7 @@ class PdfParseSuccessPlan:
 
     document_job_payloads: tuple[dict[str, Any], ...]
     parsed_meta_for_result_json: dict[str, Any]
+    extracted_text_artifact_payload: dict[str, Any]
 
 
 def _parsed_meta_for_writeback(parsed: dict[str, Any], *, max_chunks: int) -> dict[str, Any]:
@@ -70,6 +71,32 @@ def _parsed_meta_for_writeback(parsed: dict[str, Any], *, max_chunks: int) -> di
             "max_chunks": int(max_chunks),
             "page_text_char_counts": [len(str(p.get("text", ""))) for p in pages],
         }
+    }
+
+
+def _extracted_text_artifact_payload(parsed: dict[str, Any]) -> dict[str, Any]:
+    pages_raw = parsed.get("pages")
+    pages = pages_raw if isinstance(pages_raw, list) else []
+    normalized_pages = [
+        {
+            "page_index": int(page.get("page_index", idx)),
+            "text": str(page.get("text", "")),
+        }
+        for idx, page in enumerate(pages)
+        if isinstance(page, dict)
+    ]
+    full_text_raw = parsed.get("full_text")
+    full_text = (
+        str(full_text_raw)
+        if full_text_raw is not None
+        else "\n\n".join(page["text"] for page in normalized_pages)
+    )
+    return {
+        "artifact_type": "pdf_pages_text",
+        "stage": _PDF_EXTRACT_STAGE,
+        "chunk_index": None,
+        "content_text": full_text,
+        "payload": {"pages": normalized_pages},
     }
 
 
@@ -94,4 +121,8 @@ def parse_pdf_and_plan_document_jobs(payload: PdfJobPayload) -> PdfParseSuccessP
         request_id=payload.request_id,
     )
     meta = _parsed_meta_for_writeback(parsed, max_chunks=max_chunks)
-    return PdfParseSuccessPlan(document_job_payloads=payloads, parsed_meta_for_result_json=meta)
+    return PdfParseSuccessPlan(
+        document_job_payloads=payloads,
+        parsed_meta_for_result_json=meta,
+        extracted_text_artifact_payload=_extracted_text_artifact_payload(parsed),
+    )

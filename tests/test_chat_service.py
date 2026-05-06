@@ -12,7 +12,7 @@ from app.chat.model import (
     MessageRole,
 )
 from app.common.policy import PolicyDenied
-from app.chat.service import ChatService
+from app.chat.service import ChatService, create_chat
 from app.extensions import db
 from app.identity.model import User, UserRole
 from app.terms.model import Term
@@ -326,6 +326,17 @@ def test_send_user_message_calls_chat_orchestration_build_only(monkeypatch: pyte
         assert ma is not None and ma.content == "" and ma.delivery_status == MessageAsyncTaskStatus.pending
 
 
+def test_create_chat_rejects_non_integer_seq() -> None:
+    with pytest.raises(ValueError, match="seq"):
+        create_chat(
+            conversation_id="conv-seq",
+            term_id="term-seq",
+            user_id="user-seq",
+            content="hello",
+            seq=1.5,
+        )
+
+
 def test_send_user_message_commits_before_enqueue(monkeypatch: pytest.MonkeyPatch) -> None:
     app = create_app()
     with app.app_context():
@@ -406,3 +417,46 @@ def test_send_user_message_marks_failed_when_enqueue_fails(monkeypatch: pytest.M
         assistant = db.session.get(Message, job.assistant_message_id)
         assert assistant is not None
         assert assistant.delivery_status == MessageAsyncTaskStatus.failed
+
+
+def test_get_chat_job_for_user_exposes_runtime_metadata() -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = _create_user(username="u-chat-job-meta")
+        term = _create_term("2032 秋")
+        conv = _create_conversation(user_id=user.id, term_id=term.id, title="job-meta")
+        user_message = Message(conversation_id=conv.id, role=MessageRole.user, content="hello")
+        assistant = Message(
+            conversation_id=conv.id,
+            role=MessageRole.assistant,
+            content="done reply",
+            delivery_status=MessageAsyncTaskStatus.done,
+        )
+        db.session.add_all([user_message, assistant])
+        db.session.commit()
+
+        job = ChatJob(
+            job_id="job-meta-1",
+            conversation_id=conv.id,
+            user_message_id=user_message.id,
+            assistant_message_id=assistant.id,
+            status=MessageAsyncTaskStatus.done,
+            provider_request_id="provider-req-1",
+            model_name="gpt-4o-mini",
+            usage_json={"total_tokens": 9},
+        )
+        db.session.add(job)
+        db.session.commit()
+        job.started_at = job.created_at
+        job.finished_at = job.updated_at
+        db.session.commit()
+
+        payload = ChatService().get_chat_job_for_user(user.id, job.job_id)
+        assert payload is not None
+        assert payload["status"] == "done"
+        assert payload["provider_request_id"] == "provider-req-1"
+        assert payload["model_name"] == "gpt-4o-mini"
+        assert payload["usage"] == {"total_tokens": 9}
+        assert payload["started_at"] is not None
+        assert payload["finished_at"] is not None

@@ -141,9 +141,9 @@ def test_post_user_message_request_contract(
         pytest.param(
             "CreateConversationRequest",
             {"term_id": ""},
-            True,
-            (),
-            id="conv_empty_term_id_allowed_if_no_minlength",
+            False,
+            ("minLength",),
+            id="conv_empty_term_id_rejected",
         ),
         pytest.param(
             "CreateConversationRequest",
@@ -614,6 +614,61 @@ def test_message_schema_contract(
     )
 
 
+def test_chat_job_schema_declares_terminal_runtime_metadata(contract: dict[str, Any]) -> None:
+    schema = schema_by_name(contract, "ChatJob")
+    properties = schema.get("properties", {})
+    for field in ("started_at", "finished_at", "provider_request_id", "model_name", "usage"):
+        assert field in properties, f"ChatJob schema must declare {field}"
+
+    instance = {
+        "job_id": "job-1",
+        "conversation_id": "conv-1",
+        "user_message_id": "um-1",
+        "assistant_message_id": "am-1",
+        "status": "done",
+        "retry_count": 1,
+        "created_at": "2026-04-26T08:00:00Z",
+        "updated_at": "2026-04-26T08:00:01Z",
+        "started_at": "2026-04-26T08:00:00Z",
+        "finished_at": "2026-04-26T08:00:01Z",
+        "provider_request_id": "provider-req-1",
+        "model_name": "gpt-4o-mini",
+        "usage": {"total_tokens": 12},
+    }
+    errors = validate_instance(instance, schema, contract)
+    assert errors == [], f"ChatJob terminal metadata shape must validate; errors: {errors}"
+
+
+def test_document_task_schema_declares_progress_and_artifacts(contract: dict[str, Any]) -> None:
+    schema = schema_by_name(contract, "DocumentTask")
+    properties = schema.get("properties", {})
+    for field in ("current_stage", "progress", "artifacts"):
+        assert field in properties, f"DocumentTask schema must declare {field}"
+
+    instance = {
+        "id": "dt-1",
+        "term_id": "term-1",
+        "status": "running",
+        "filename": "paper.pdf",
+        "task_type": "summary",
+        "language": "zh",
+        "retry_count": 0,
+        "created_at": "2026-04-26T08:00:00Z",
+        "updated_at": "2026-04-26T08:00:01Z",
+        "current_stage": "summarize_chunks",
+        "progress": {"completed_chunks": 1, "total_chunks": 3},
+        "artifacts": [
+            {
+                "artifact_type": "final_result",
+                "stage": "finalize",
+                "storage_uri": "s3://bucket/final.json",
+            }
+        ],
+    }
+    errors = validate_instance(instance, schema, contract)
+    assert errors == [], f"DocumentTask progress/artifact shape must validate; errors: {errors}"
+
+
 @pytest.mark.parametrize(
     ("schema_name", "instance", "expect_valid", "error_substrings"),
     [
@@ -663,6 +718,38 @@ def test_message_schema_contract(
             False,
             ("< minimum",),
             id="chat_job_dispatch_negative",
+        ),
+        pytest.param(
+            "ChatJobPayload",
+            {
+                "job_id": "job-1",
+                "conversation_id": "conv-1",
+                "user_message_id": "um-1",
+                "assistant_message_id": "am-1",
+                "term_id": "term-1",
+                "user_id": "user-1",
+                "content": "hello",
+                "seq": "1",
+            },
+            False,
+            ("$.seq", "expected integer"),
+            id="chat_job_seq_string",
+        ),
+        pytest.param(
+            "ChatJobPayload",
+            {
+                "job_id": "job-1",
+                "conversation_id": "conv-1",
+                "user_message_id": "um-1",
+                "assistant_message_id": "am-1",
+                "term_id": "term-1",
+                "user_id": "user-1",
+                "content": "hello",
+                "seq": 1.5,
+            },
+            False,
+            ("$.seq", "got float"),
+            id="chat_job_seq_float",
         ),
         pytest.param(
             "ChatJobPayload",

@@ -14,6 +14,8 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 
+from app.adapter.llm import configure_llm_client_from_environment
+
 db = SQLAlchemy()
 
 
@@ -44,6 +46,15 @@ def init_extensions(app: Flask) -> None:
     from app.common.policy import PolicyGateway
 
     app.extensions["policy_gateway"] = PolicyGateway
+
+
+def register_runtime_clients(app: Flask, *, default_to_mock: bool) -> None:
+    """注册运行时依赖客户端，保持与应用工厂生命周期一致。"""
+    app.extensions["llm_client"] = configure_llm_client_from_environment(
+        app.config,
+        default_to_mock=default_to_mock,
+        set_as_default=False,
+    )
 
 
 def get_policy_gateway() -> Any:

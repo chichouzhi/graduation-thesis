@@ -310,6 +310,110 @@ def test_logout_rejects_blank_refresh_token() -> None:
             svc.logout("  ")
 
 
+def test_refresh_access_session_rotates_tokens_and_rejects_revoked_cookie() -> None:
+    app = create_app()
+    app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False
+    with app.app_context():
+        db.create_all()
+        user = _create_user(username="refresh-flow", password="refresh-pass")
+        svc = IdentityService()
+        refresh_token = svc.issue_refresh_token(user)
+
+        result = svc.refresh_access_session(refresh_token)
+
+        assert result["login"]["token_type"] == "Bearer"
+        assert result["login"]["user"] == user.to_user_summary()
+        assert result["refresh_cookie"]["value"] != refresh_token
+        assert svc.is_refresh_token_revoked(refresh_token) is True
+
+        with pytest.raises(ValueError, match="revoked"):
+            svc.refresh_access_session(refresh_token)
+
+
+def test_refresh_revocation_uses_shared_redis_store_and_single_use_consumption(monkeypatch) -> None:
+    app = create_app()
+    app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False
+    app.config["BROKER_URL"] = "redis://broker"
+    with app.app_context():
+        db.create_all()
+        user = _create_user(username="shared-refresh", password="shared-pass")
+        svc = IdentityService()
+        refresh_token = svc.issue_refresh_token(user)
+        consumed_keys: dict[str, int] = {}
+
+        class _Redis:
+            def set(self, name: str, value: str, *, ex: int | None = None, nx: bool = False) -> bool:
+                if name in consumed_keys:
+                    return False
+                if nx is not True:
+                    raise AssertionError("refresh revocation must use NX")
+                if ex is None or ex <= 0:
+                    raise AssertionError("refresh revocation must set positive expiry")
+                consumed_keys[name] = ex
+                return True
+
+            def exists(self, name: str) -> int:
+                return int(name in consumed_keys)
+
+        monkeypatch.setattr(
+            "app.identity.service.identity_service.IdentityService._redis_client_from_broker",
+            lambda self: _Redis(),
+        )
+
+        result = svc.refresh_access_session(refresh_token)
+
+        assert result["login"]["token_type"] == "Bearer"
+        assert svc.is_refresh_token_revoked(refresh_token) is True
+
+        with pytest.raises(ValueError, match="revoked"):
+            IdentityService().refresh_access_session(refresh_token)
+
+
+def test_refresh_revocation_falls_back_to_memory_for_non_redis_broker(monkeypatch) -> None:
+    app = create_app()
+    app.config["BROKER_URL"] = "amqp://broker"
+    with app.app_context():
+        db.create_all()
+        svc = IdentityService()
+
+        monkeypatch.setattr(
+            "app.identity.service.identity_service.decode_token",
+            lambda token: {"type": "refresh", "jti": "memory-jti", "exp": 200},
+        )
+        monkeypatch.setattr("app.identity.service.identity_service.time", lambda: 100)
+
+        svc.revoke_refresh_token("memory-token")
+
+        assert svc.is_refresh_token_revoked("memory-token") is True
+        assert app.extensions["identity_revoked_refresh_tokens"] == {"memory-jti": 200}
+
+
+def test_refresh_access_session_does_not_consume_old_token_before_replacement_ready(monkeypatch) -> None:
+    app = create_app()
+    app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False
+    with app.app_context():
+        db.create_all()
+        user = _create_user(username="refresh-safe", password="refresh-safe-pass")
+        svc = IdentityService()
+        refresh_token = svc.issue_refresh_token(user)
+
+        original_rotate = IdentityService.rotate_refresh_token
+
+        def _boom(self: IdentityService, rotate_user: User) -> dict[str, object]:
+            rotated = original_rotate(self, rotate_user)
+            raise RuntimeError("transient rotation failure")
+
+        monkeypatch.setattr(
+            "app.identity.service.identity_service.IdentityService.rotate_refresh_token",
+            _boom,
+        )
+
+        with pytest.raises(RuntimeError, match="transient rotation failure"):
+            svc.refresh_access_session(refresh_token)
+
+        assert svc.is_refresh_token_revoked(refresh_token) is False
+
+
 def test_refresh_revocation_store_uses_jti_and_prunes_expired_entries(monkeypatch) -> None:
     app = create_app()
     with app.app_context():
@@ -318,7 +422,7 @@ def test_refresh_revocation_store_uses_jti_and_prunes_expired_entries(monkeypatc
 
         monkeypatch.setattr(
             "app.identity.service.identity_service.decode_token",
-            lambda token: {"jti": f"jti-{token}", "exp": 200},
+            lambda token: {"type": "refresh", "jti": f"jti-{token}", "exp": 200},
         )
         monkeypatch.setattr("app.identity.service.identity_service.time", lambda: 100)
         svc.revoke_refresh_token("active-token")

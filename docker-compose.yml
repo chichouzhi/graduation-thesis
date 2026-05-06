@@ -1,11 +1,72 @@
-# Minimal deploy manifest (architecture.spec R-NO-QUEUE / M-QUEUE-WORKER 可机判子集).
-# Replace with real web + worker + redis services before production.
+# Minimal local bring-up manifest with web + worker + redis.
 services:
   web:
     image: python:3.11-slim
-    command: ["python", "-c", "print('placeholder web')"]
+    working_dir: /app
+    volumes:
+      - .:/app
+    command:
+      - sh
+      - -c
+      - pip install --no-cache-dir -r requirements.txt "psycopg[binary]" && python -m flask --app wsgi:app run --host=0.0.0.0 --port=5000
+    environment:
+      FLASK_ENV: ${FLASK_ENV:-development}
+      FLASK_APP: ${FLASK_APP:-wsgi:app}
+      PYTHONUNBUFFERED: ${PYTHONUNBUFFERED:-1}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://gd:gd@postgres:5432/gd}
+      BROKER_URL: ${BROKER_URL:-redis://redis:6379/0}
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      LLM_HTTP_BASE_URL: ${LLM_HTTP_BASE_URL:-}
+      LLM_HTTP_MODEL: ${LLM_HTTP_MODEL:-}
+      LLM_HTTP_API_KEY: ${LLM_HTTP_API_KEY:-}
+      LLM_HTTP_TIMEOUT_S: ${LLM_HTTP_TIMEOUT_S:-60}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "5000:5000"
   worker:
     image: python:3.11-slim
-    command: ["python", "-c", "print('placeholder worker consuming chat_jobs')"]
+    working_dir: /app
+    volumes:
+      - .:/app
+    command:
+      - sh
+      - -c
+      - pip install --no-cache-dir -r requirements.txt "psycopg[binary]" && python -c "import time; from app import create_app; from app.worker import run_once; app=create_app(); ctx=app.app_context(); ctx.push(); exec('while True:\\n    run_once()\\n    time.sleep(1)')"
+    environment:
+      FLASK_ENV: ${FLASK_ENV:-development}
+      PYTHONUNBUFFERED: ${PYTHONUNBUFFERED:-1}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://gd:gd@postgres:5432/gd}
+      BROKER_URL: ${BROKER_URL:-redis://redis:6379/0}
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      LLM_HTTP_BASE_URL: ${LLM_HTTP_BASE_URL:-}
+      LLM_HTTP_MODEL: ${LLM_HTTP_MODEL:-}
+      LLM_HTTP_API_KEY: ${LLM_HTTP_API_KEY:-}
+      LLM_HTTP_TIMEOUT_S: ${LLM_HTTP_TIMEOUT_S:-60}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: gd
+      POSTGRES_USER: gd
+      POSTGRES_PASSWORD: gd
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U gd -d gd
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
   redis:
     image: redis:7-alpine
+volumes:
+  postgres-data:

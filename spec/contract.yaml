@@ -11,7 +11,7 @@
 openapi: 3.0.3
 info:
   title: Graduation Design Assistant API Contract
-  version: "0.2.6"
+  version: "0.2.7"
   description: |
     Identity / Terms / Taskboard + Chat / Document / Topic / Selection REST + 推荐只读 + 队列任务 body 契约（与 execution_plan 阶段 5 对齐）。
     LLM 相关：仅经 queue + worker；HTTP 受理返回 202（Chat 发消息、Document 上传）。
@@ -112,7 +112,10 @@ components:
       type: object
       required: [term_id]
       properties:
-        term_id: { type: string, description: 写入 conversations.term_id；发消息入队 ChatJobPayload 须同源读取 }
+        term_id:
+          type: string
+          minLength: 1
+          description: 写入 conversations.term_id；发消息入队 ChatJobPayload 须同源读取
         title: { type: string }
         context_type:
           type: string
@@ -193,6 +196,29 @@ components:
           minimum: 1
           nullable: true
           description: 策略快照；null 表示由服务端默认（与 execution_plan 有限重试一致）
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: worker 成功 claim 并开始处理的时间；若 claim 失败但已进入失败补偿，仍可回填
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: 终态写回时间；pending/running 时通常为 null
+        provider_request_id:
+          type: string
+          nullable: true
+          description: 上游 LLM 厂商请求 id；若 provider 未返回则为 null
+        model_name:
+          type: string
+          nullable: true
+          description: 实际完成本次生成的模型名；若 provider 未返回则为 null
+        usage:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: provider usage 投影；字段集合由上游返回决定
         next_retry_at:
           type: string
           format: date-time
@@ -202,6 +228,21 @@ components:
         updated_at: { type: string, format: date-time }
 
     # --- Document ---
+    DocumentArtifactRef:
+      type: object
+      properties:
+        id: { type: string }
+        artifact_type:
+          type: string
+          enum: [pdf_pages_text, chunk_summary, aggregate_summary, final_result]
+        stage: { type: string }
+        chunk_index: { type: integer, nullable: true, minimum: 0 }
+        storage_uri: { type: string, nullable: true }
+        payload:
+          type: object
+          nullable: true
+          additionalProperties: true
+
     DocumentTask:
       type: object
       required: [id, term_id, status, filename, task_type, language, created_at, updated_at, retry_count]
@@ -220,6 +261,13 @@ components:
           type: string
           enum: [zh, en]
           description: POST 未传时服务端默认 zh
+        current_stage: { type: string, nullable: true }
+        progress:
+          type: object
+          additionalProperties: true
+        artifacts:
+          type: array
+          items: { $ref: "#/components/schemas/DocumentArtifactRef" }
         locked_at: { type: string, format: date-time, nullable: true }
         last_completed_chunk: { type: integer, nullable: true, minimum: 0 }
         created_at: { type: string, format: date-time }
@@ -257,6 +305,10 @@ components:
         term_id: { type: string, description: 与 DocumentTask.term_id 一致 }
         status: { $ref: "#/components/schemas/AsyncTaskStatus" }
         filename: { type: string }
+        current_stage: { type: string, nullable: true }
+        progress:
+          type: object
+          additionalProperties: true
         task_type:
           type: string
           enum: [summary, conclusions, compare]
@@ -562,11 +614,12 @@ components:
 
     RefreshResponse:
       type: object
-      required: [access_token, token_type, expires_in]
+      required: [access_token, token_type, expires_in, user]
       properties:
         access_token: { type: string }
         token_type: { type: string, enum: [Bearer] }
         expires_in: { type: integer }
+        user: { $ref: "#/components/schemas/UserSummary" }
 
     UserMe:
       type: object
@@ -728,10 +781,10 @@ paths:
   /auth/refresh:
     post:
       tags: [identity]
-      summary: 刷新访问令牌（默认使用 HttpOnly Refresh Cookie）
+      summary: 刷新访问令牌（默认使用 HttpOnly Refresh Cookie；成功时旋转并重写该 Cookie）
       responses:
         "200":
-          description: OK
+          description: OK，返回新的 access token，并旋转/重写 HttpOnly refresh cookie
           content:
             application/json:
               schema: { $ref: "#/components/schemas/RefreshResponse" }
@@ -1176,6 +1229,11 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/DocumentTask" }
+        "413":
+          description: Uploaded PDF exceeds server limit
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorEnvelope" }
         "429":
           description: OK
           content:

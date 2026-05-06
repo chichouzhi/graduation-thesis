@@ -2,6 +2,11 @@
 from __future__ import annotations
 
 import pytest
+from app import create_app
+from app.document.model import DocumentArtifact, DocumentArtifactType, DocumentTask
+from app.extensions import db
+from app.identity.model import User, UserRole
+from app.terms.model import Term
 
 from app.use_cases.document_pipeline import (
     DocumentChunkingPlan,
@@ -14,6 +19,7 @@ from app.use_cases.document_pipeline import (
     format_document_job_idempotency_key,
     parse_document_job_idempotency_key,
     planned_job_count,
+    run_document_job_stage,
     resolve_document_chunk_max_parallel,
     validate_chunk_parallel_limit,
 )
@@ -71,8 +77,7 @@ def test_build_document_job_payloads_for_plan_matches_default_plan() -> None:
         term_id="t1",
         request_id="r1",
     )
-    planned = expand_default_document_job_plan(plan)
-    assert len(payloads) == len(planned)
+    assert len(payloads) == 3
     assert payloads[0]["stage"] == "extract" and payloads[0]["chunk_index"] is None
     assert payloads[1] == {
         "document_task_id": "d1",
@@ -84,6 +89,8 @@ def test_build_document_job_payloads_for_plan_matches_default_plan() -> None:
         "max_chunks": 2,
         "request_id": "r1",
     }
+    assert payloads[2]["stage"] == "summarize_chunk"
+    assert payloads[2]["chunk_index"] == 1
 
 
 def test_expand_default_plan_three_chunks() -> None:
@@ -131,3 +138,250 @@ def test_chunk_summarize_waves_five_by_two() -> None:
 
 def test_chunk_summarize_waves_single_wave_when_under_cap() -> None:
     assert chunk_summarize_waves(3, max_parallel=10) == ((0, 1, 2),)
+
+
+def test_run_document_job_stage_summarize_uses_extracted_chunk_text(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="pipeline-user", role=UserRole.student, display_name="Pipe")
+        term = Term(name="Task4 Pipeline")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="pipeline.pdf",
+            storage_path="/tmp/pipeline.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+        db.session.add(
+            DocumentArtifact(
+                document_task_id=task.id,
+                artifact_type=DocumentArtifactType.pdf_pages_text,
+                stage="pdf_extract",
+                content_text="page zero\n\npage one",
+                payload_json={
+                    "pages": [
+                        {"page_index": 0, "text": "page zero"},
+                        {"page_index": 1, "text": "page one"},
+                    ]
+                },
+            )
+        )
+        db.session.commit()
+
+        captured_messages: list[list[dict[str, str]]] = []
+
+        def fake_complete(messages: list[dict[str, str]], **_: object) -> dict[str, str]:
+            captured_messages.append(messages)
+            return {"content": "summary for page one"}
+
+        monkeypatch.setattr("app.adapter.llm.complete", fake_complete)
+        patch = run_document_job_stage(
+            stage="summarize_chunk",
+            chunk_index=1,
+            document_task_id=task.id,
+            storage_path="/tmp/pipeline.pdf",
+            term_id=term.id,
+            user_id=user.id,
+            max_chunks=2,
+        )
+
+        assert captured_messages
+        assert "page one" in captured_messages[0][0]["content"]
+        assert "chunk 1" in captured_messages[0][0]["content"]
+        assert patch["artifacts"] == [
+            {
+                "artifact_type": "chunk_summary",
+                "stage": "summarize_chunk",
+                "chunk_index": 1,
+                "content_text": "summary for page one",
+                "payload": {"chunk_text": "page one", "max_chunks": 2},
+            }
+        ]
+
+
+def test_run_document_job_stage_aggregate_combines_chunk_summaries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="pipeline-aggregate-user", role=UserRole.student, display_name="Pipe Agg")
+        term = Term(name="Task4 Pipeline Aggregate")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="aggregate.pdf",
+            storage_path="/tmp/aggregate.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+        db.session.add_all(
+            [
+                DocumentArtifact(
+                    document_task_id=task.id,
+                    artifact_type=DocumentArtifactType.chunk_summary,
+                    stage="summarize_chunk",
+                    chunk_index=0,
+                    content_text="summary zero",
+                    payload_json={"chunk_text": "page zero", "max_chunks": 2},
+                ),
+                DocumentArtifact(
+                    document_task_id=task.id,
+                    artifact_type=DocumentArtifactType.chunk_summary,
+                    stage="summarize_chunk",
+                    chunk_index=1,
+                    content_text="summary one",
+                    payload_json={"chunk_text": "page one", "max_chunks": 2},
+                ),
+            ]
+        )
+        db.session.commit()
+
+        captured_messages: list[list[dict[str, str]]] = []
+
+        def fake_complete(messages: list[dict[str, str]], **_: object) -> dict[str, str]:
+            captured_messages.append(messages)
+            return {"content": "overall summary\n- point a\n- point b"}
+
+        monkeypatch.setattr("app.adapter.llm.complete", fake_complete)
+        patch = run_document_job_stage(
+            stage="aggregate",
+            chunk_index=None,
+            document_task_id=task.id,
+            storage_path="/tmp/aggregate.pdf",
+            term_id=term.id,
+            user_id=user.id,
+            max_chunks=2,
+        )
+
+        assert captured_messages
+        assert "summary zero" in captured_messages[0][0]["content"]
+        assert "summary one" in captured_messages[0][0]["content"]
+        assert patch == {
+            "status": "running",
+            "current_stage": "aggregate",
+            "progress_patch": {"completed_chunks": 2, "total_chunks": 2},
+            "artifacts": [
+                {
+                    "artifact_type": "aggregate_summary",
+                    "stage": "aggregate",
+                    "chunk_index": None,
+                    "content_text": "overall summary\n- point a\n- point b",
+                    "payload": {
+                        "chunk_summaries": ["summary zero", "summary one"],
+                        "max_chunks": 2,
+                    },
+                }
+            ],
+        }
+
+
+def test_run_document_job_stage_aggregate_requires_all_chunk_summaries() -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="pipeline-aggregate-gap-user", role=UserRole.student, display_name="Pipe Gap")
+        term = Term(name="Task4 Pipeline Aggregate Gap")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="aggregate-gap.pdf",
+            storage_path="/tmp/aggregate-gap.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+        db.session.add(
+            DocumentArtifact(
+                document_task_id=task.id,
+                artifact_type=DocumentArtifactType.chunk_summary,
+                stage="summarize_chunk",
+                chunk_index=0,
+                content_text="summary zero",
+                payload_json={"chunk_text": "page zero", "max_chunks": 2},
+            )
+        )
+        db.session.commit()
+
+        with pytest.raises(ValueError, match="incomplete chunk_summary"):
+            run_document_job_stage(
+                stage="aggregate",
+                chunk_index=None,
+                document_task_id=task.id,
+                storage_path="/tmp/aggregate-gap.pdf",
+                term_id=term.id,
+                user_id=user.id,
+                max_chunks=2,
+            )
+
+
+def test_run_document_job_stage_finalize_projects_final_result() -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        user = User(username="pipeline-finalize-user", role=UserRole.student, display_name="Pipe Final")
+        term = Term(name="Task4 Pipeline Finalize")
+        db.session.add_all([user, term])
+        db.session.commit()
+        task = DocumentTask(
+            user_id=user.id,
+            term_id=term.id,
+            filename="finalize.pdf",
+            storage_path="/tmp/finalize.pdf",
+        )
+        db.session.add(task)
+        db.session.commit()
+        db.session.add(
+            DocumentArtifact(
+                document_task_id=task.id,
+                artifact_type=DocumentArtifactType.aggregate_summary,
+                stage="aggregate",
+                chunk_index=None,
+                content_text="overall summary\n- point a\n- point b",
+                payload_json={"chunk_summaries": ["summary zero", "summary one"], "max_chunks": 2},
+            )
+        )
+        db.session.commit()
+
+        patch = run_document_job_stage(
+            stage="finalize",
+            chunk_index=None,
+            document_task_id=task.id,
+            storage_path="/tmp/finalize.pdf",
+            term_id=term.id,
+            user_id=user.id,
+            max_chunks=2,
+        )
+
+        assert patch == {
+            "status": "done",
+            "current_stage": "finalize",
+            "progress_patch": {"completed_chunks": 2, "total_chunks": 2},
+            "result_patch": {
+                "summary": "overall summary",
+                "bullet_points": ["point a", "point b"],
+                "raw_model": "overall summary\n- point a\n- point b",
+            },
+            "artifacts": [
+                {
+                    "artifact_type": "final_result",
+                    "stage": "finalize",
+                    "chunk_index": None,
+                    "content_text": "overall summary\n- point a\n- point b",
+                    "payload": {
+                        "summary": "overall summary",
+                        "bullet_points": ["point a", "point b"],
+                        "raw_model": "overall summary\n- point a\n- point b",
+                    },
+                }
+            ],
+        }
