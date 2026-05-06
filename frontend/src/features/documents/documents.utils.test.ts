@@ -7,12 +7,12 @@ import {
   shouldPollDocumentTask,
 } from "@/features/documents/documents.utils";
 import type {
-  DocumentTask,
   DocumentTaskDto,
-  DocumentTaskProgress,
+  DocumentSummaryView,
+  DocumentTaskProgressView,
 } from "@/features/documents/documents.types";
 
-const baseTask: DocumentTask = {
+const baseTaskDto: DocumentTaskDto = {
   id: "task-1",
   term_id: "term-1",
   status: "running",
@@ -32,12 +32,29 @@ const baseTask: DocumentTask = {
   },
 };
 
+const baseProgressView: DocumentTaskProgressView = {
+  completedChunks: 1,
+  totalChunks: 3,
+};
+
+const baseSummaryView: DocumentSummaryView = {
+  summary: "summary text",
+  bulletPoints: ["point-a", "point-b"],
+};
+
 describe("documents.utils", () => {
-  it("uses explicit DTO aliases for current API-shaped task types", () => {
-    expectTypeOf<DocumentTask>().toEqualTypeOf<DocumentTaskDto>();
-    expectTypeOf<DocumentTask["progress"]>().toEqualTypeOf<
-      DocumentTaskProgress | undefined
+  it("keeps DTO and helper-facing view types distinct", () => {
+    expectTypeOf(baseTaskDto.progress).toEqualTypeOf<
+      DocumentTaskDto["progress"] | undefined
     >();
+    expectTypeOf<DocumentTaskProgressView>().toEqualTypeOf<{
+      completedChunks?: number;
+      totalChunks?: number;
+    }>();
+    expectTypeOf<DocumentSummaryView>().toEqualTypeOf<{
+      summary: string;
+      bulletPoints: string[];
+    }>();
   });
 
   it("treats done and failed as terminal", () => {
@@ -53,30 +70,28 @@ describe("documents.utils", () => {
   });
 
   it("formats progress labels from object progress", () => {
-    expect(getDocumentProgressLabel(baseTask)).toBe("1 / 3 chunks");
+    expect(getDocumentProgressLabel(baseProgressView)).toBe("1 / 3 chunks");
   });
 
   it("falls back when progress data is absent or malformed", () => {
-    expect(getDocumentProgressLabel({ progress: undefined })).toBe("处理中");
+    expect(getDocumentProgressLabel(undefined)).toBe("处理中");
     expect(
       getDocumentProgressLabel({
-        progress: {
-          completed_chunks: "1",
-          total_chunks: 3,
-        } as unknown as DocumentTaskProgress,
-      }),
+        completedChunks: "1",
+        totalChunks: 3,
+      } as unknown as DocumentTaskProgressView),
     ).toBe("处理中");
   });
 
   it("extracts summary and bullet points safely", () => {
-    expect(buildDocumentSummary(baseTask)).toEqual({
+    expect(buildDocumentSummary(baseSummaryView)).toEqual({
       summary: "summary text",
       bulletPoints: ["point-a", "point-b"],
     });
   });
 
   it("returns empty summary values when result is null", () => {
-    expect(buildDocumentSummary({ result: null })).toEqual({
+    expect(buildDocumentSummary(null)).toEqual({
       summary: "",
       bulletPoints: [],
     });

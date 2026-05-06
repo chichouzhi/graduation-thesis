@@ -8,6 +8,11 @@ export type DocumentTaskProgress = {
   total_chunks?: number;
 } & Record<string, unknown>;
 
+export type DocumentTaskProgressView = {
+  completedChunks?: number;
+  totalChunks?: number;
+};
+
 export type DocumentTaskResultDto = {
   summary?: string;
   bullet_points?: string[];
@@ -15,6 +20,11 @@ export type DocumentTaskResultDto = {
 } | null;
 
 export type DocumentTaskResult = DocumentTaskResultDto;
+
+export type DocumentSummaryView = {
+  summary: string;
+  bulletPoints: string[];
+};
 
 export type DocumentArtifactRefDto = {
   id?: string;

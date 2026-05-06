@@ -1,4 +1,7 @@
-import type { DocumentTask } from "@/features/documents/documents.types";
+import type {
+  DocumentSummaryView,
+  DocumentTaskProgressView,
+} from "@/features/documents/documents.types";
 import type { AsyncStatus } from "@/types/app";
 
 export function isDocumentTaskTerminal(status: AsyncStatus) {
@@ -9,9 +12,9 @@ export function shouldPollDocumentTask(status: AsyncStatus) {
   return status === "pending" || status === "running";
 }
 
-export function getDocumentProgressLabel(task: Pick<DocumentTask, "progress">) {
-  const completed = task.progress?.completed_chunks;
-  const total = task.progress?.total_chunks;
+export function getDocumentProgressLabel(progress?: DocumentTaskProgressView | null) {
+  const completed = progress?.completedChunks;
+  const total = progress?.totalChunks;
 
   if (typeof completed === "number" && typeof total === "number") {
     return `${completed} / ${total} chunks`;
@@ -20,9 +23,11 @@ export function getDocumentProgressLabel(task: Pick<DocumentTask, "progress">) {
   return "处理中";
 }
 
-export function buildDocumentSummary(task: Pick<DocumentTask, "result">) {
+export function buildDocumentSummary(
+  result?: DocumentSummaryView | null,
+): DocumentSummaryView {
   return {
-    summary: task.result?.summary ?? "",
-    bulletPoints: task.result?.bullet_points ?? [],
+    summary: result?.summary ?? "",
+    bulletPoints: result?.bulletPoints ?? [],
   };
 }
