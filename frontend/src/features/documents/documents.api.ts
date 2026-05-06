@@ -1,13 +1,19 @@
 import { apiClient } from "@/lib/axios";
 import type {
-  DocumentTask,
+  DocumentTaskDto,
   DocumentTaskListItem,
+  DocumentTaskListItemDto,
+  PaginatedResponseDto,
   UploadDocumentPayload,
 } from "@/features/documents/documents.types";
-import type { PaginatedResponse } from "@/features/chat/chat.types";
+import {
+  mapDocumentTaskDto,
+  mapDocumentTaskListItemDto,
+  mapPaginatedResponseDto,
+} from "@/features/documents/documents.types";
 
 export async function getDocumentTasks() {
-  const response = await apiClient.get<PaginatedResponse<DocumentTaskListItem>>(
+  const response = await apiClient.get<PaginatedResponseDto<DocumentTaskListItemDto>>(
     "/document-tasks",
     {
       params: {
@@ -17,12 +23,15 @@ export async function getDocumentTasks() {
     },
   );
 
-  return response.data;
+  return mapPaginatedResponseDto<DocumentTaskListItemDto, DocumentTaskListItem>(
+    response.data,
+    mapDocumentTaskListItemDto,
+  );
 }
 
 export async function getDocumentTask(taskId: string) {
-  const response = await apiClient.get<DocumentTask>(`/document-tasks/${taskId}`);
-  return response.data;
+  const response = await apiClient.get<DocumentTaskDto>(`/document-tasks/${taskId}`);
+  return mapDocumentTaskDto(response.data);
 }
 
 export async function uploadDocumentTask(payload: UploadDocumentPayload) {
@@ -32,11 +41,11 @@ export async function uploadDocumentTask(payload: UploadDocumentPayload) {
   formData.append("task_type", payload.taskType);
   formData.append("language", payload.language);
 
-  const response = await apiClient.post<DocumentTask>("/document-tasks", formData, {
+  const response = await apiClient.post<DocumentTaskDto>("/document-tasks", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
   });
 
-  return response.data;
+  return mapDocumentTaskDto(response.data);
 }
