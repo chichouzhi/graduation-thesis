@@ -324,8 +324,10 @@ def test_production_bootstraps_openai_compatible_llm_client(monkeypatch: pytest.
     app = create_app()
 
     assert isinstance(app.extensions["llm_client"], OpenAiCompatibleHttpClient)
-
-
+
+
+
+
 def test_production_with_broker_url_succeeds(monkeypatch: pytest.MonkeyPatch) -> None:
     from app import create_app
 
@@ -340,8 +342,10 @@ def test_production_with_broker_url_succeeds(monkeypatch: pytest.MonkeyPatch) ->
     assert app.config["BROKER_URL"] == "redis://localhost:6379/0"
     assert app.config["SECRET_KEY"] == "production-secret-key-32-bytes-minimum"
     assert app.config["JWT_SECRET_KEY"] == "production-jwt-secret-key-32-bytes"
-
-
+
+
+
+
 def test_production_accepts_redis_url_alias(monkeypatch: pytest.MonkeyPatch) -> None:
     from app import create_app
 
@@ -354,8 +358,10 @@ def test_production_accepts_redis_url_alias(monkeypatch: pytest.MonkeyPatch) -> 
 
     app = create_app()
     assert app.config["BROKER_URL"] == "redis://redis:6379/1"
-
-
+
+
+
+
 def test_explicit_production_config_validated(monkeypatch: pytest.MonkeyPatch) -> None:
     from app import create_app
     from app.config import ProductionConfig
