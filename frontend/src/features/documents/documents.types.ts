@@ -3,13 +3,20 @@ import type { AsyncStatus } from "@/types/app";
 export type DocumentTaskType = "summary" | "conclusions" | "compare";
 export type DocumentLanguage = "zh" | "en";
 
-export type DocumentTaskResult = {
+export type DocumentTaskProgress = {
+  completed_chunks?: number;
+  total_chunks?: number;
+} & Record<string, unknown>;
+
+export type DocumentTaskResultDto = {
   summary?: string;
   bullet_points?: string[];
   raw_model?: string;
 } | null;
 
-export type DocumentArtifactRef = {
+export type DocumentTaskResult = DocumentTaskResultDto;
+
+export type DocumentArtifactRefDto = {
   id?: string;
   artifact_type?: string;
   stage?: string;
@@ -18,13 +25,15 @@ export type DocumentArtifactRef = {
   payload?: Record<string, unknown> | null;
 };
 
-export type DocumentTaskListItem = {
+export type DocumentArtifactRef = DocumentArtifactRefDto;
+
+export type DocumentTaskListItemDto = {
   id: string;
   term_id: string;
   status: AsyncStatus;
   filename: string;
   current_stage?: string | null;
-  progress?: Record<string, unknown>;
+  progress?: DocumentTaskProgress;
   task_type?: DocumentTaskType;
   created_at: string;
   updated_at?: string;
@@ -32,7 +41,9 @@ export type DocumentTaskListItem = {
   result_preview?: string | null;
 };
 
-export type DocumentTask = {
+export type DocumentTaskListItem = DocumentTaskListItemDto;
+
+export type DocumentTaskDto = {
   id: string;
   term_id: string;
   status: AsyncStatus;
@@ -40,13 +51,13 @@ export type DocumentTask = {
   task_type: DocumentTaskType;
   language: DocumentLanguage;
   current_stage?: string | null;
-  progress?: Record<string, unknown>;
-  artifacts: DocumentArtifactRef[];
+  progress?: DocumentTaskProgress;
+  artifacts: DocumentArtifactRefDto[];
   locked_at?: string | null;
   last_completed_chunk?: number | null;
   created_at: string;
   updated_at: string;
-  result?: DocumentTaskResult;
+  result?: DocumentTaskResultDto;
   result_storage_uri?: string | null;
   error_code?: string | null;
   error_message?: string | null;
@@ -54,6 +65,8 @@ export type DocumentTask = {
   max_attempts?: number | null;
   next_retry_at?: string | null;
 };
+
+export type DocumentTask = DocumentTaskDto;
 
 export type UploadDocumentPayload = {
   file: File;

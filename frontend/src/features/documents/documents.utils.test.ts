@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 
 import {
   buildDocumentSummary,
@@ -6,7 +6,11 @@ import {
   isDocumentTaskTerminal,
   shouldPollDocumentTask,
 } from "@/features/documents/documents.utils";
-import type { DocumentTask } from "@/features/documents/documents.types";
+import type {
+  DocumentTask,
+  DocumentTaskDto,
+  DocumentTaskProgress,
+} from "@/features/documents/documents.types";
 
 const baseTask: DocumentTask = {
   id: "task-1",
@@ -29,6 +33,13 @@ const baseTask: DocumentTask = {
 };
 
 describe("documents.utils", () => {
+  it("uses explicit DTO aliases for current API-shaped task types", () => {
+    expectTypeOf<DocumentTask>().toEqualTypeOf<DocumentTaskDto>();
+    expectTypeOf<DocumentTask["progress"]>().toEqualTypeOf<
+      DocumentTaskProgress | undefined
+    >();
+  });
+
   it("treats done and failed as terminal", () => {
     expect(isDocumentTaskTerminal("done")).toBe(true);
     expect(isDocumentTaskTerminal("failed")).toBe(true);
@@ -45,10 +56,29 @@ describe("documents.utils", () => {
     expect(getDocumentProgressLabel(baseTask)).toBe("1 / 3 chunks");
   });
 
+  it("falls back when progress data is absent or malformed", () => {
+    expect(getDocumentProgressLabel({ progress: undefined })).toBe("处理中");
+    expect(
+      getDocumentProgressLabel({
+        progress: {
+          completed_chunks: "1",
+          total_chunks: 3,
+        } as unknown as DocumentTaskProgress,
+      }),
+    ).toBe("处理中");
+  });
+
   it("extracts summary and bullet points safely", () => {
     expect(buildDocumentSummary(baseTask)).toEqual({
       summary: "summary text",
       bulletPoints: ["point-a", "point-b"],
+    });
+  });
+
+  it("returns empty summary values when result is null", () => {
+    expect(buildDocumentSummary({ result: null })).toEqual({
+      summary: "",
+      bulletPoints: [],
     });
   });
 });
