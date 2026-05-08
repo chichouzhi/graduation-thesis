@@ -47,7 +47,7 @@ export function LoginPage() {
         <p className="kicker">Academic Copilot</p>
         <h1 className="auth-title">面向毕业设计全过程的 AI 学术助手工作台</h1>
         <p className="auth-copy">
-          将异步聊天、文档处理、选题辅助和任务推进整合到同一套学生端工作空间中，适合演示完整的毕业设计产品链路。
+          将异步聊天、文档处理、选题辅助和任务推进整合到同一套学生端工作空间中，帮助学生持续管理毕业设计过程。
         </p>
         <div className="auth-grid">
           <Card className="auth-card">
@@ -60,8 +60,8 @@ export function LoginPage() {
           <Card className="auth-card">
             <CardContent>
               <KeyRound size={20} color="var(--primary)" />
-          <h3>学生端答辩视角</h3>
-              <p>当前接入真实登录链路，继续保留轻量、稳定的演示型工作台体验。</p>
+          <h3>学生端工作入口</h3>
+              <p>当前接入真实登录链路，进入后可查看当前学期的任务、文档和选题状态。</p>
             </CardContent>
           </Card>
         </div>

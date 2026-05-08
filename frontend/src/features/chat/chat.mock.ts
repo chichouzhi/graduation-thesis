@@ -12,9 +12,9 @@ export const messages: Array<{
   content: string;
   status: AsyncStatus | null;
 }> = [
-  { id: "m-1", role: "user", content: "请帮我梳理一下答辩演示应该如何突出系统的异步能力。", status: null },
-  { id: "m-2", role: "assistant", content: "建议从受理、排队、处理中和结果回写四个阶段讲解。", status: "done" },
-  { id: "m-3", role: "assistant", content: "正在补充 PDF 任务链路说明…", status: "running" },
+  { id: "m-1", role: "user", content: "请帮我比较一下选题推荐和文档摘要两个模块的实现重点。", status: null },
+  { id: "m-2", role: "assistant", content: "选题推荐更关注课题画像、学生偏好和可解释匹配；文档摘要更关注 PDF 解析、分块处理和结果回写。", status: "done" },
+  { id: "m-3", role: "assistant", content: "正在补充志愿状态与任务链路说明…", status: "running" },
   { id: "m-4", role: "assistant", content: "一个历史任务因为超时而失败，可在页面中清楚展示。", status: "failed" },
   { id: "m-5", role: "assistant", content: "", status: "pending" },
 ];

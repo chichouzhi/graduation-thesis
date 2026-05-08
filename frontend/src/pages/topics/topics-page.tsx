@@ -71,7 +71,7 @@ export function TopicsPage() {
         <p className="kicker">Topic Discovery</p>
         <h2 className="hero-title">选题辅助浏览</h2>
         <p className="hero-copy">
-          这里不是简单的题目后台，而是把研究方向、能力要求和个人决策放在同一个浏览界面里，帮助学生从“感兴趣”过渡到“适合做”。
+          浏览当前学期已发布课题，查看研究摘要、能力要求、技术关键词和剩余容量，结合个人方向完成志愿选择。
         </p>
       </PageSection>
 
@@ -79,7 +79,7 @@ export function TopicsPage() {
         <PageSection className="paper">
           <SectionHeading
             title="题目浏览"
-            description={`当前学期：${currentTerm.name} · 以选题辅助视角组织题目，而不是简单表格管理。`}
+            description={`当前学期：${currentTerm.name} · 按题目状态、容量和技术关键词查看可选课题。`}
           />
           {topicsQuery.isLoading ? (
             <div style={{ marginTop: 22 }}>
@@ -162,7 +162,7 @@ export function TopicsPage() {
         <PageSection className="paper">
           <SectionHeading
             title="题目详情摘要"
-            description="右侧展示研究要求、关键词与容量信息，便于答辩演示时按题目逐项讲解。"
+            description="右侧展示研究要求、关键词与容量信息，便于学生判断课题匹配度。"
           />
           {!selectedTopicId ? (
             <div style={{ marginTop: 22 }}>

@@ -35,7 +35,7 @@ export function AppSidebar() {
 
       <div className="sidebar-footer">
         <small>Student Workspace</small>
-        <strong>当前聚焦：毕业设计推进与答辩准备</strong>
+        <strong>当前聚焦：智能选题与文献分析推进中</strong>
       </div>
     </aside>
   );
