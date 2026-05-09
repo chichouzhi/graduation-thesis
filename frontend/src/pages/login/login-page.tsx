@@ -13,8 +13,8 @@ import { getErrorMessage, parseApiError } from "@/lib/api-error";
 export function LoginPage() {
   const navigate = useNavigate();
   const login = useAppStore((state) => state.login);
-  const [username, setUsername] = useState("api-login-user");
-  const [password, setPassword] = useState("correct-pass");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   const mutation = useMutation({
@@ -74,6 +74,32 @@ export function LoginPage() {
           <p className="muted small" style={{ marginTop: 10 }}>
             使用学生端入口进入当前学期工作空间。
           </p>
+
+          <div
+            className="detail-card"
+            style={{
+              marginTop: 18,
+              borderColor: "rgba(31, 107, 104, 0.18)",
+              background: "rgba(223, 236, 235, 0.56)",
+            }}
+          >
+            <p style={{ fontWeight: 600 }}>答辩演示账号</p>
+            <p className="muted small" style={{ marginTop: 10, lineHeight: 1.8 }}>
+              演示时可一键填入学生账号，平时保持输入框为空，避免把演示密码直接暴露在首屏。
+            </p>
+            <Button
+              variant="outline"
+              style={{ marginTop: 14 }}
+              disabled={mutation.isPending}
+              onClick={() => {
+                setUsername("api-login-user");
+                setPassword("correct-pass");
+                setErrorMessage("");
+              }}
+            >
+              填入演示账号
+            </Button>
+          </div>
 
           <div className="form-stack">
             <div className="field">
