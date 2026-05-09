@@ -86,6 +86,8 @@ vi.mock("@/app/store", () => ({
 }));
 
 const updateUserMeMutation = vi.fn().mockResolvedValue({});
+const createApplicationMutation = vi.fn().mockResolvedValue({});
+const deleteApplicationMutation = vi.fn().mockResolvedValue(undefined);
 const recommendationsRefetch = vi.fn();
 
 vi.mock("@/features/topics/topics.queries", () => ({
@@ -126,6 +128,23 @@ vi.mock("@/features/users/users.queries", () => ({
   }),
   useUpdateUserMeMutation: () => ({
     mutateAsync: updateUserMeMutation,
+    isPending: false,
+  }),
+}));
+
+vi.mock("@/features/selection/selection.queries", () => ({
+  useApplicationsQuery: () => ({
+    data: { items: [], page: 1, pageSize: 50, total: 0 },
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useCreateApplicationMutation: () => ({
+    mutateAsync: createApplicationMutation,
+    isPending: false,
+  }),
+  useDeleteApplicationMutation: () => ({
+    mutateAsync: deleteApplicationMutation,
     isPending: false,
   }),
 }));
@@ -199,5 +218,48 @@ describe("TopicsPage", () => {
     expect(recommendationsRefetch).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain("与你的技能和时间投入较匹配");
     expect(container.textContent).toContain("前后端联调");
+  });
+
+  it("submits a recommended topic as first application choice", async () => {
+    const { TopicsPage } = await import("@/pages/topics/topics-page");
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <TopicsPage />
+        </StrictMode>,
+      );
+    });
+
+    const studentButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("学生推荐"),
+    );
+
+    await act(async () => {
+      studentButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const recommendButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("保存画像并开始推荐"),
+    );
+
+    await act(async () => {
+      recommendButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const submitButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("提交第一志愿"),
+    );
+
+    await act(async () => {
+      submitButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(createApplicationMutation).toHaveBeenCalledWith({
+      topic_id: "topic-1",
+      term_id: "term-2026-spring",
+      priority: 1,
+    });
   });
 });

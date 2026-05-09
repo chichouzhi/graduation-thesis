@@ -8,6 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  useApplicationsQuery,
+  useCreateApplicationMutation,
+  useDeleteApplicationMutation,
+} from "@/features/selection/selection.queries";
+import {
+  buildCreateApplicationRequest,
+  type ApplicationPriority,
+} from "@/features/selection/selection.types";
+import {
   useCreateTopicMutation,
   useTopicQuery,
   useTopicRecommendationsQuery,
@@ -285,6 +294,7 @@ export function TopicsPage() {
   const [studentDraft, setStudentDraft] = useState<StudentProfileDraft>(initialStudentDraft);
   const [studentDraftDirty, setStudentDraftDirty] = useState(false);
   const [recommendationEnabled, setRecommendationEnabled] = useState(false);
+  const [applicationError, setApplicationError] = useState("");
 
   const isAuthenticated = useAppStore((state) => state.isAuthenticated);
   const currentTerm = useAppStore((state) => state.currentTerm);
@@ -296,6 +306,12 @@ export function TopicsPage() {
   const createTopicMutation = useCreateTopicMutation();
   const updateTopicMutation = useUpdateTopicMutation();
   const updateUserMeMutation = useUpdateUserMeMutation();
+  const applicationsQuery = useApplicationsQuery(
+    isAuthenticated && mode === "student",
+    { termId: currentTerm.id },
+  );
+  const createApplicationMutation = useCreateApplicationMutation();
+  const deleteApplicationMutation = useDeleteApplicationMutation();
   const recommendationsQuery = useTopicRecommendationsQuery(
     currentTerm.id,
     isAuthenticated && mode === "student" && recommendationEnabled,
@@ -319,8 +335,11 @@ export function TopicsPage() {
     ? formatJobStatusLabel(selectedTopic.llmKeywordJobStatus)
     : "";
   const recommendationItems = recommendationsQuery.data?.items ?? [];
+  const applications = applicationsQuery.data?.items ?? [];
   const selectedRecommendation =
     recommendationItems.find((item) => item.topicId === effectiveSelectedTopicId) ?? null;
+  const selectedApplication =
+    applications.find((item) => item.topicId === effectiveSelectedTopicId && item.status !== "withdrawn") ?? null;
 
   function syncTeacherDraftFromTopic(topic: Topic) {
     setTeacherDraft({
@@ -373,6 +392,30 @@ export function TopicsPage() {
     setStudentDraftDirty(false);
     setRecommendationEnabled(true);
     await recommendationsQuery.refetch();
+  }
+
+  async function handleSubmitApplication(topicId: string, priority: ApplicationPriority) {
+    setApplicationError("");
+
+    try {
+      await createApplicationMutation.mutateAsync(
+        buildCreateApplicationRequest(topicId, currentTerm.id, priority),
+      );
+      await applicationsQuery.refetch();
+    } catch (error) {
+      setApplicationError(getErrorMessage(error, "志愿提交失败，请稍后重试。"));
+    }
+  }
+
+  async function handleWithdrawApplication(applicationId: string) {
+    setApplicationError("");
+
+    try {
+      await deleteApplicationMutation.mutateAsync(applicationId);
+      await applicationsQuery.refetch();
+    } catch (error) {
+      setApplicationError(getErrorMessage(error, "志愿撤销失败，请稍后重试。"));
+    }
   }
 
   const currentTopicCount = topics.length;
@@ -950,8 +993,72 @@ export function TopicsPage() {
                     题目简介：{selectedTopic.summary}
                   </p>
                 ) : null}
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 16 }}>
+                  <Button
+                    onClick={() => void handleSubmitApplication(selectedRecommendation.topicId, 1)}
+                    disabled={createApplicationMutation.isPending || selectedApplication?.priority === 1}
+                  >
+                    提交第一志愿
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => void handleSubmitApplication(selectedRecommendation.topicId, 2)}
+                    disabled={createApplicationMutation.isPending || selectedApplication?.priority === 2}
+                  >
+                    提交第二志愿
+                  </Button>
+                  {selectedApplication ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => void handleWithdrawApplication(selectedApplication.id)}
+                      disabled={deleteApplicationMutation.isPending}
+                    >
+                      撤销当前志愿
+                    </Button>
+                  ) : null}
+                </div>
+
+                {applicationError ? (
+                  <p className="small" style={{ marginTop: 12, color: "var(--danger-foreground)" }}>
+                    {applicationError}
+                  </p>
+                ) : null}
               </div>
             ) : null}
+
+            <div className="detail-card" style={{ marginTop: 18 }}>
+              <p style={{ fontWeight: 600 }}>我的志愿</p>
+              {applicationsQuery.isLoading ? (
+                <p className="muted small" style={{ marginTop: 12 }}>
+                  正在同步志愿列表。
+                </p>
+              ) : applications.length ? (
+                <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
+                  {applications.map((application) => (
+                    <div key={application.id} className="timeline-item">
+                      <div>
+                        <h3>{application.topicTitle ?? application.topicId}</h3>
+                        <p className="muted small" style={{ marginTop: 8 }}>
+                          第 {application.priority} 志愿 · {application.status}
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        onClick={() => void handleWithdrawApplication(application.id)}
+                        disabled={deleteApplicationMutation.isPending}
+                      >
+                        撤销
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted small" style={{ marginTop: 12 }}>
+                  暂未提交志愿，可从推荐题目中选择第一或第二志愿。
+                </p>
+              )}
+            </div>
 
             <div
               className="detail-card"
