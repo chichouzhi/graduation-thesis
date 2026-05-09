@@ -125,6 +125,26 @@ const topics = {
   total: 2,
 };
 
+const assignments = {
+  items: [
+    {
+      id: "assignment-1",
+      studentId: "student-1",
+      studentName: "联调学生",
+      teacherId: "teacher-1",
+      topicId: "topic-1",
+      topicTitle: "AI 学术助手工作台",
+      termId: "term-1",
+      applicationId: "application-1",
+      status: "active",
+      confirmedAt: "2026-05-09T03:00:00Z",
+    },
+  ],
+  page: 1,
+  pageSize: 50,
+  total: 1,
+};
+
 vi.mock("@/app/store", () => ({
   useAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
@@ -174,6 +194,14 @@ vi.mock("@/features/topics/topics.queries", () => ({
   }),
 }));
 
+vi.mock("@/features/selection/selection.queries", () => ({
+  useAssignmentsQuery: () => ({
+    data: assignments,
+    isLoading: false,
+    isError: false,
+  }),
+}));
+
 describe("DashboardPage", () => {
   let container: HTMLDivElement;
 
@@ -205,5 +233,8 @@ describe("DashboardPage", () => {
     expect(container.textContent).toContain("论文初稿.pdf");
     expect(container.textContent).toContain("选题咨询");
     expect(container.textContent).toContain("AI 学术助手工作台");
+    expect(container.textContent).toContain("指导关系");
+    expect(container.textContent).toContain("联调学生");
+    expect(container.textContent).toContain("已确认指导");
   });
 });

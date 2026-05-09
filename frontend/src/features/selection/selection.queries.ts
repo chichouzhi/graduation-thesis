@@ -5,11 +5,13 @@ import {
   decideApplication,
   deleteApplication,
   getApplications,
+  getAssignments,
   updateApplication,
 } from "@/features/selection/selection.api";
 import type {
   ApplicationDecisionRequest,
   ApplicationListParams,
+  AssignmentListParams,
   CreateApplicationRequest,
   PatchApplicationRequest,
 } from "@/features/selection/selection.types";
@@ -25,6 +27,13 @@ export const selectionKeys = {
       params.page ?? 1,
       params.pageSize ?? 50,
     ] as const,
+  assignments: (params: AssignmentListParams) =>
+    [
+      ...selectionKeys.all,
+      "assignments",
+      params.page ?? 1,
+      params.pageSize ?? 50,
+    ] as const,
 };
 
 export function useApplicationsQuery(
@@ -34,6 +43,17 @@ export function useApplicationsQuery(
   return useQuery({
     queryKey: selectionKeys.applications(params),
     queryFn: () => getApplications(params),
+    enabled,
+  });
+}
+
+export function useAssignmentsQuery(
+  enabled: boolean,
+  params: AssignmentListParams = {},
+) {
+  return useQuery({
+    queryKey: selectionKeys.assignments(params),
+    queryFn: () => getAssignments(params),
     enabled,
   });
 }

@@ -4,8 +4,10 @@ import {
   buildCreateApplicationRequest,
   mapApplicationDto,
   mapApplicationDecisionDto,
+  mapAssignmentDto,
   mapPaginatedResponseDto,
   type ApplicationDto,
+  type AssignmentDto,
 } from "@/features/selection/selection.types";
 
 describe("selection.types", () => {
@@ -110,5 +112,34 @@ describe("selection.types", () => {
       status: "active",
       confirmedAt: "2026-05-09T03:00:00Z",
     });
+  });
+
+  it("maps paginated assignment response metadata", () => {
+    const response = mapPaginatedResponseDto(
+      {
+        page: 1,
+        page_size: 10,
+        total: 1,
+        items: [
+          {
+            id: "assignment-1",
+            student_id: "student-1",
+            student_name: "联调学生",
+            teacher_id: "teacher-1",
+            topic_id: "topic-1",
+            topic_title: "AI 学术助手工作台",
+            term_id: "term-2026-spring",
+            application_id: "application-1",
+            status: "active",
+            confirmed_at: "2026-05-09T03:00:00Z",
+          } satisfies AssignmentDto,
+        ],
+      },
+      mapAssignmentDto,
+    );
+
+    expect(response.total).toBe(1);
+    expect(response.items[0]?.studentName).toBe("联调学生");
+    expect(response.items[0]?.topicTitle).toBe("AI 学术助手工作台");
   });
 });

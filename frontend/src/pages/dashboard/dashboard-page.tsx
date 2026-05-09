@@ -9,6 +9,7 @@ import { StatCard } from "@/components/shared/stat-card";
 import { StatusBadge } from "@/components/shared/status-badge";
 import { useConversationsQuery } from "@/features/chat/chat.queries";
 import { useDocumentTasksQuery } from "@/features/documents/documents.queries";
+import { useAssignmentsQuery } from "@/features/selection/selection.queries";
 import { useMilestonesQuery } from "@/features/taskboard/taskboard.queries";
 import { useTopicsQuery } from "@/features/topics/topics.queries";
 import {
@@ -28,6 +29,17 @@ const quickLinks = [
 
 const statIcons = [Bot, Files, Clock3, CheckCircle2];
 
+function formatAssignmentStatusLabel(status: string) {
+  switch (status) {
+    case "active":
+      return "已确认指导";
+    case "cancelled":
+      return "已取消";
+    default:
+      return status;
+  }
+}
+
 export function DashboardPage() {
   const isAuthenticated = useAppStore((state) => state.isAuthenticated);
   const currentTerm = useAppStore((state) => state.currentTerm);
@@ -37,6 +49,8 @@ export function DashboardPage() {
   const topicsQuery = useTopicsQuery(isAuthenticated, currentTerm.id);
   const documentTasksQuery = useDocumentTasksQuery(isAuthenticated);
   const milestonesQuery = useMilestonesQuery(isAuthenticated);
+  const assignmentsQuery = useAssignmentsQuery(isAuthenticated);
+  const assignments = assignmentsQuery.data?.items ?? [];
 
   const dashboardSnapshot = {
     conversations: conversationsQuery.data?.items ?? [],
@@ -176,17 +190,58 @@ export function DashboardPage() {
         </PageSection>
 
         <PageSection className="paper">
-          <SectionHeading title="下一步建议" description="根据当前学期进度整理常用操作，帮助保持节奏。" />
-          <div className="detail-card" style={{ marginTop: 22 }}>
-            <h3>当前学期建议</h3>
-            <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
-              {dashboardStatusOverview.some((item) => item.status === "running")
-                ? "先看 Topics 和 Documents 的异步结果，再回到 Taskboard 补齐进行中的节点。"
-                : "可以先用 Chat 梳理下一个选题问题，再到 Topics 和 Taskboard 继续推进。"}
-            </p>
-          </div>
+          <SectionHeading title="指导关系" description="展示老师接受志愿后形成的师生课题绑定。" />
+
+          {assignmentsQuery.isLoading ? (
+            <div style={{ marginTop: 22 }}>
+              <EmptyState title="正在加载指导关系" description="系统正在同步已确认的选题关系。" />
+            </div>
+          ) : assignmentsQuery.isError ? (
+            <div style={{ marginTop: 22 }}>
+              <EmptyState title="指导关系加载失败" description="暂时无法获取师生指导关系。" />
+            </div>
+          ) : assignments.length ? (
+            <div className="timeline-list">
+              {assignments.slice(0, 3).map((assignment) => (
+                <div key={assignment.id} className="timeline-item">
+                  <div>
+                    <h3>{assignment.topicTitle ?? assignment.topicId}</h3>
+                    <p className="muted small" style={{ marginTop: 10 }}>
+                      {assignment.studentName ?? assignment.studentId} ·{" "}
+                      {formatAssignmentStatusLabel(assignment.status)}
+                    </p>
+                    <p className="muted small" style={{ marginTop: 8 }}>
+                      确认时间：{assignment.confirmedAt ?? "待后端返回"}
+                    </p>
+                  </div>
+                  <StatusBadge
+                    status={assignment.status === "active" ? "done" : "failed"}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ marginTop: 22 }}>
+              <EmptyState
+                title="暂无指导关系"
+                description="老师接受学生志愿后，这里会展示正式的师生课题关系。"
+              />
+            </div>
+          )}
         </PageSection>
       </div>
+
+      <PageSection className="paper">
+        <SectionHeading title="下一步建议" description="根据当前学期进度整理常用操作，帮助保持节奏。" />
+        <div className="detail-card" style={{ marginTop: 22 }}>
+          <h3>当前学期建议</h3>
+          <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
+            {dashboardStatusOverview.some((item) => item.status === "running")
+              ? "先看 Topics 和 Documents 的异步结果，再回到 Taskboard 补齐进行中的节点。"
+              : "可以先用 Chat 梳理下一个选题问题，再到 Topics 和 Taskboard 继续推进。"}
+          </p>
+        </div>
+      </PageSection>
 
       <PageSection className="paper">
         <SectionHeading title="最近活动" description="记录本学期工作区中的关键状态变化。" />

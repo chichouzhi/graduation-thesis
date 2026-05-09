@@ -5,6 +5,9 @@ import type {
   ApplicationDecisionRequest,
   ApplicationDto,
   ApplicationListParams,
+  Assignment,
+  AssignmentDto,
+  AssignmentListParams,
   CreateApplicationRequest,
   PaginatedResponseDto,
   PatchApplicationRequest,
@@ -12,6 +15,7 @@ import type {
 import {
   mapApplicationDto,
   mapApplicationDecisionDto,
+  mapAssignmentDto,
   mapPaginatedResponseDto,
 } from "@/features/selection/selection.types";
 
@@ -28,6 +32,20 @@ export async function getApplications(params: ApplicationListParams = {}) {
   return mapPaginatedResponseDto<ApplicationDto, Application>(
     response.data,
     mapApplicationDto,
+  );
+}
+
+export async function getAssignments(params: AssignmentListParams = {}) {
+  const response = await apiClient.get<PaginatedResponseDto<AssignmentDto>>("/assignments", {
+    params: {
+      page: params.page ?? 1,
+      page_size: params.pageSize ?? 50,
+    },
+  });
+
+  return mapPaginatedResponseDto<AssignmentDto, Assignment>(
+    response.data,
+    mapAssignmentDto,
   );
 }
 

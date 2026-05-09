@@ -82,6 +82,11 @@ export type ApplicationListParams = {
   pageSize?: number;
 };
 
+export type AssignmentListParams = {
+  page?: number;
+  pageSize?: number;
+};
+
 export type CreateApplicationRequest = {
   topic_id: string;
   term_id: string;
