@@ -236,5 +236,10 @@ describe("DashboardPage", () => {
     expect(container.textContent).toContain("指导关系");
     expect(container.textContent).toContain("联调学生");
     expect(container.textContent).toContain("已确认指导");
+    expect(container.textContent).toContain("答辩演示链路");
+    expect(container.textContent).toContain("老师录入选题并生成题目画像");
+    expect(container.textContent).toContain("学生画像驱动推荐并提交志愿");
+    expect(container.textContent).toContain("接受志愿形成指导关系");
+    expect(container.textContent).toContain("进入任务看板持续跟踪毕业过程");
   });
 });

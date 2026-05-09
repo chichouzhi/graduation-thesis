@@ -27,6 +27,29 @@ const quickLinks = [
   { label: "更新阶段任务", to: "/app/taskboard" },
 ];
 
+const defenseFlow = [
+  {
+    id: "teacher-analysis",
+    title: "老师录入选题并生成题目画像",
+    description: "大模型把题目摘要、要求和关键词整理成难度、能力、风险与适合学生类型。",
+  },
+  {
+    id: "student-recommendation",
+    title: "学生画像驱动推荐并提交志愿",
+    description: "学生输入兴趣、技能和目标后，系统返回可解释推荐，并把意向沉淀为志愿。",
+  },
+  {
+    id: "teacher-decision",
+    title: "接受志愿形成指导关系",
+    description: "教师处理学生志愿，接受后形成正式师生课题绑定，避免盲目匹配。",
+  },
+  {
+    id: "task-follow-up",
+    title: "进入任务看板持续跟踪毕业过程",
+    description: "指导关系进入 Dashboard 和 Taskboard，后续按学生查看开题、实现、论文和答辩任务。",
+  },
+];
+
 const statIcons = [Bot, Files, Clock3, CheckCircle2];
 
 function formatAssignmentStatusLabel(status: string) {
@@ -175,6 +198,24 @@ export function DashboardPage() {
           )}
         </PageSection>
       </div>
+
+      <PageSection className="paper">
+        <SectionHeading
+          title="答辩演示链路"
+          description="把系统价值讲成一条完整论文逻辑：不是通用管理后台，而是围绕毕业设计选题匹配与过程指导。"
+        />
+        <div className="activity-grid" style={{ marginTop: 22 }}>
+          {defenseFlow.map((step, index) => (
+            <article key={step.id} className="activity-card">
+              <div className="activity-time">Step {index + 1}</div>
+              <h3 className="activity-title">{step.title}</h3>
+              <p className="muted small" style={{ marginTop: 10, lineHeight: 1.9 }}>
+                {step.description}
+              </p>
+            </article>
+          ))}
+        </div>
+      </PageSection>
 
       <div className="grid-2 wide">
         <PageSection className="paper">
