@@ -836,6 +836,27 @@ img {
   color: var(--muted-foreground);
 }
 
+.logout-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 0 14px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 700;
+  transition: border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.logout-button:hover {
+  border-color: rgba(31, 107, 104, 0.28);
+  color: var(--foreground);
+  box-shadow: var(--shadow-subtle);
+}
+
 .avatar {
   width: 42px;
   height: 42px;

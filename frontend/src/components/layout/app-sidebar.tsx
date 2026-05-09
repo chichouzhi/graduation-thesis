@@ -4,11 +4,11 @@ import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const items = [
-  { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/app/chat", label: "Chat", icon: MessagesSquare },
-  { to: "/app/documents", label: "Documents", icon: Files },
-  { to: "/app/topics", label: "Topics", icon: BookOpenText },
-  { to: "/app/taskboard", label: "Taskboard", icon: SquareKanban },
+  { to: "/app/dashboard", label: "工作台", icon: LayoutDashboard },
+  { to: "/app/chat", label: "AI 对话", icon: MessagesSquare },
+  { to: "/app/documents", label: "文档分析", icon: Files },
+  { to: "/app/topics", label: "选题中心", icon: BookOpenText },
+  { to: "/app/taskboard", label: "任务看板", icon: SquareKanban },
 ];
 
 export function AppSidebar() {
