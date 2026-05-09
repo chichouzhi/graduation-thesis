@@ -8,16 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  useCreateTopicMutation,
   useTopicQuery,
+  useUpdateTopicMutation,
   useTopicsQuery,
 } from "@/features/topics/topics.queries";
 import type { Topic } from "@/features/topics/topics.types";
 import {
-  buildTopicAnalysis,
   buildTopicRecommendations,
   parseWorkbenchTerms,
   type StudentProfileDraft,
-  type TopicAnalysisDraft,
   type TopicRecommendation,
 } from "@/features/topics/topics-workbench";
 import {
@@ -25,11 +25,16 @@ import {
   getTopicKeywordGroups,
   getTopicStatusLabel,
 } from "@/features/topics/topics.utils";
+import {
+  buildCreateTopicRequest,
+  buildPatchTopicRequest,
+  type TeacherTopicDraft,
+} from "@/pages/topics/topics-page.utils";
 import { getErrorMessage } from "@/lib/api-error";
 
 type TopicsMode = "browse" | "teacher" | "student";
 
-const initialTeacherDraft: TopicAnalysisDraft = {
+const initialTeacherDraft: TeacherTopicDraft = {
   title: "",
   summary: "",
   requirements: "",
@@ -48,15 +53,28 @@ const initialStudentDraft: StudentProfileDraft = {
 function formatJobStatusLabel(status?: "pending" | "running" | "done" | "failed" | null) {
   switch (status) {
     case "pending":
-      return "关键词抽取待处理";
+      return "题目画像待处理";
     case "running":
-      return "关键词抽取进行中";
+      return "题目画像分析中";
     case "done":
-      return "关键词抽取已完成";
+      return "题目画像已完成";
     case "failed":
-      return "关键词抽取失败";
+      return "题目画像分析失败";
     default:
       return "";
+  }
+}
+
+function formatDifficultyLabel(label?: "basic" | "intermediate" | "advanced" | null) {
+  switch (label) {
+    case "basic":
+      return "基础";
+    case "intermediate":
+      return "进阶";
+    case "advanced":
+      return "挑战";
+    default:
+      return "未标注";
   }
 }
 
@@ -112,24 +130,30 @@ function TopicTopicCard({
   );
 }
 
-function AnalysisSummaryCard({
-  analysis,
+function PortraitSummaryCard({
+  topic,
 }: {
-  analysis: ReturnType<typeof buildTopicAnalysis>;
+  topic: Topic;
 }) {
+  const portrait = topic.portrait;
+
+  if (!portrait) {
+    return null;
+  }
+
   return (
     <>
       <div className="detail-card" style={{ marginTop: 22 }}>
         <p style={{ fontWeight: 600 }}>AI 分析摘要</p>
         <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
-          {analysis.summary}
+          {portrait.summary ?? topic.summary}
         </p>
       </div>
 
       <div className="detail-card" style={{ marginTop: 18 }}>
         <p style={{ fontWeight: 600 }}>关键词与画像</p>
         <div className="keyword-row" style={{ marginTop: 12 }}>
-          {analysis.focusKeywords.map((keyword) => (
+          {portrait.keywords.map((keyword) => (
             <span key={keyword} className="keyword-pill">
               {keyword}
             </span>
@@ -140,14 +164,14 @@ function AnalysisSummaryCard({
       <div className="detail-card" style={{ marginTop: 18 }}>
         <p style={{ fontWeight: 600 }}>难度判断</p>
         <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
-          {analysis.difficultyLabel} · {analysis.difficultyReason}
+          {formatDifficultyLabel(portrait.difficultyLabel)} · {portrait.difficultyReason ?? "暂无说明"}
         </p>
       </div>
 
       <div className="detail-card" style={{ marginTop: 18 }}>
         <p style={{ fontWeight: 600 }}>所需能力</p>
         <div className="keyword-row" style={{ marginTop: 12 }}>
-          {analysis.requiredCapabilities.map((item) => (
+          {portrait.requiredCapabilities.map((item) => (
             <span key={item} className="keyword-pill">
               {item}
             </span>
@@ -158,7 +182,7 @@ function AnalysisSummaryCard({
       <div className="detail-card" style={{ marginTop: 18 }}>
         <p style={{ fontWeight: 600 }}>适合学生</p>
         <ul className="summary-points" style={{ marginTop: 12, paddingLeft: 0 }}>
-          {analysis.suitableStudents.map((item) => (
+          {portrait.suitableStudents.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
@@ -167,25 +191,7 @@ function AnalysisSummaryCard({
       <div className="detail-card" style={{ marginTop: 18 }}>
         <p style={{ fontWeight: 600 }}>风险提示</p>
         <ul className="summary-points" style={{ marginTop: 12, paddingLeft: 0 }}>
-          {analysis.risks.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="detail-card" style={{ marginTop: 18 }}>
-        <p style={{ fontWeight: 600 }}>落地提醒</p>
-        <ul className="summary-points" style={{ marginTop: 12, paddingLeft: 0 }}>
-          {analysis.milestoneHints.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="detail-card" style={{ marginTop: 18 }}>
-        <p style={{ fontWeight: 600 }}>答辩展示点</p>
-        <ul className="summary-points" style={{ marginTop: 12, paddingLeft: 0 }}>
-          {analysis.demoHighlights.map((item) => (
+          {portrait.risks.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
@@ -259,18 +265,18 @@ function RecommendationCard({
 export function TopicsPage() {
   const [mode, setMode] = useState<TopicsMode>("browse");
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
-  const [teacherDraft, setTeacherDraft] = useState<TopicAnalysisDraft>(initialTeacherDraft);
+  const [teacherDraft, setTeacherDraft] = useState<TeacherTopicDraft>(initialTeacherDraft);
   const [studentDraft, setStudentDraft] = useState<StudentProfileDraft>(initialStudentDraft);
-  const [analysisResult, setAnalysisResult] = useState<ReturnType<typeof buildTopicAnalysis> | null>(
-    null,
-  );
   const [recommendationResult, setRecommendationResult] = useState<TopicRecommendation[]>([]);
 
   const isAuthenticated = useAppStore((state) => state.isAuthenticated);
   const currentTerm = useAppStore((state) => state.currentTerm);
+  const currentUser = useAppStore((state) => state.currentUser);
 
   const topicsQuery = useTopicsQuery(isAuthenticated, currentTerm.id);
   const detailQuery = useTopicQuery(selectedTopicId, Boolean(selectedTopicId));
+  const createTopicMutation = useCreateTopicMutation();
+  const updateTopicMutation = useUpdateTopicMutation();
 
   const topics = topicsQuery.data?.items ?? [];
   const portraitTopics = topics.filter((topic) => (topic.portrait?.keywords ?? []).length > 0);
@@ -313,9 +319,26 @@ export function TopicsPage() {
     });
   }
 
-  function handleAnalyzeTopic() {
-    setAnalysisResult(buildTopicAnalysis(teacherDraft));
-    setMode("teacher");
+  async function handleSaveTeacherDraft() {
+    if (!currentUser || !selectedTopic) {
+      return;
+    }
+
+    const payload = buildPatchTopicRequest(teacherDraft);
+
+    const savedTopic =
+      selectedTopic.teacherId === currentUser.id && selectedTopic.status !== "published"
+        ? await updateTopicMutation.mutateAsync({
+            topicId: selectedTopic.id,
+            payload,
+          })
+        : await createTopicMutation.mutateAsync(
+            buildCreateTopicRequest(teacherDraft, currentTerm.id),
+          );
+
+    setSelectedTopicId(savedTopic.id);
+    syncTeacherDraftFromTopic(savedTopic);
+    await topicsQuery.refetch();
   }
 
   function handleRecommendTopics() {
@@ -635,14 +658,16 @@ export function TopicsPage() {
                 导入当前选中题目
               </Button>
               <Button
-                onClick={handleAnalyzeTopic}
+                onClick={() => void handleSaveTeacherDraft()}
                 disabled={
+                  createTopicMutation.isPending ||
+                  updateTopicMutation.isPending ||
                   !teacherDraft.title.trim() &&
                   !teacherDraft.summary.trim() &&
                   !teacherDraft.requirements.trim()
                 }
               >
-                生成分析摘要
+                保存并生成分析
               </Button>
             </div>
 
@@ -686,17 +711,17 @@ export function TopicsPage() {
 
           <PageSection className="paper">
             <SectionHeading
-              title="AI 分析结果"
-              description="这里展示题目画像、适合学生类型和实现风险，后续可以替换为真实大模型输出。"
+              title="题目画像结果"
+              description="这里展示后端返回的题目画像、适合学生类型和实现风险。"
             />
 
-            {analysisResult ? (
-              <AnalysisSummaryCard analysis={analysisResult} />
+            {selectedTopic?.portrait ? (
+              <PortraitSummaryCard topic={selectedTopic} />
             ) : (
               <div style={{ marginTop: 22 }}>
                 <EmptyState
-                  title="等待生成分析"
-                  description="填写题目信息后点击“生成分析摘要”，这里会出现结构化画像。"
+                  title="等待题目画像"
+                  description="保存题目后，这里会展示后端异步生成的结构化画像。"
                 />
               </div>
             )}
@@ -711,7 +736,7 @@ export function TopicsPage() {
             >
               <p style={{ fontWeight: 600 }}>落地说明</p>
               <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
-                当前页面把“老师录题 - 题目分析 - 学生推荐”串成了完整前端演示流。等后端补上真实分析接口后，只需要把本页的本地分析函数替换成 API 调用即可。
+                当前页面把“老师录题 - 题目画像 - 学生推荐”串成了完整前端演示流。老师分析已切到后端题目画像字段，后续只需要继续补学生画像保存和推荐联调。
               </p>
             </div>
           </PageSection>
