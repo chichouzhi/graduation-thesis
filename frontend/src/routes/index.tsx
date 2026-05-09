@@ -7,19 +7,23 @@ import { LoginPage } from "@/pages/login/login-page";
 import { TaskboardPage } from "@/pages/taskboard/taskboard-page";
 import { TopicsPage } from "@/pages/topics/topics-page";
 import { ProtectedLayout } from "@/routes/protected-layout";
+import { RouteErrorPage } from "@/routes/route-error-page";
 
 export const router = createBrowserRouter([
   {
     path: "/",
     element: <Navigate to="/login" replace />,
+    errorElement: <RouteErrorPage />,
   },
   {
     path: "/login",
     element: <LoginPage />,
+    errorElement: <RouteErrorPage />,
   },
   {
     path: "/app",
     element: <ProtectedLayout />,
+    errorElement: <RouteErrorPage />,
     children: [
       { index: true, element: <Navigate to="/app/dashboard" replace /> },
       { path: "dashboard", element: <DashboardPage /> },
