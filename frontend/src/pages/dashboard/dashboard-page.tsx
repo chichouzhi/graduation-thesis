@@ -27,7 +27,30 @@ const quickLinks = [
   { label: "更新阶段任务", to: "/app/taskboard" },
 ];
 
-const defenseFlow = [
+const studentDefenseFlow = [
+  {
+    id: "student-profile",
+    title: "保存学生画像并生成推荐",
+    description: "先填写兴趣方向、已具备技能和毕业设计目标，让推荐结果对应真实个人需求。",
+  },
+  {
+    id: "student-application",
+    title: "查看推荐理由并提交志愿",
+    description: "对比题目匹配理由、要求和容量后，选择合适题目提交第一或第二志愿。",
+  },
+  {
+    id: "student-guidance",
+    title: "等待教师确认形成指导关系",
+    description: "老师接受志愿后，系统会把选题关系同步到首页和任务看板。",
+  },
+  {
+    id: "student-taskboard",
+    title: "进入任务看板持续推进毕业设计",
+    description: "围绕开题、实现、论文和答辩节点持续更新进度，形成完整毕业过程记录。",
+  },
+];
+
+const teacherDefenseFlow = [
   {
     id: "teacher-analysis",
     title: "老师录入选题并生成题目画像",
@@ -87,6 +110,7 @@ export function DashboardPage() {
   const dashboardActivities = buildDashboardActivities(dashboardSnapshot);
   const dashboardStatusOverview = buildDashboardStatusOverview(dashboardSnapshot);
   const focusMessage = buildDashboardFocus(dashboardSnapshot);
+  const defenseFlow = currentUser?.role === "teacher" ? teacherDefenseFlow : studentDefenseFlow;
 
   const hasAnyData =
     dashboardSnapshot.conversations.length > 0 ||
