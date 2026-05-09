@@ -50,6 +50,17 @@ export type MilestoneListParams = {
   pageSize?: number;
 };
 
+export type CreateMilestoneRequest = {
+  title: string;
+  description?: string | null;
+  start_date: string;
+  end_date: string;
+  status: MilestoneStatus;
+  sort_order?: number;
+};
+
+export type PatchMilestoneRequest = Partial<CreateMilestoneRequest>;
+
 export function mapPaginatedResponseDto<TDto, TModel>(
   response: PaginatedResponseDto<TDto>,
   mapItem: (item: TDto) => TModel,

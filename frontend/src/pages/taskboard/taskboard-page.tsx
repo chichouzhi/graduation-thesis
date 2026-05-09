@@ -1,10 +1,19 @@
+import { useState } from "react";
+
 import { useAppStore } from "@/app/store";
 import { PageSection } from "@/components/layout/page-section";
 import { EmptyState } from "@/components/shared/empty-state";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { Button } from "@/components/ui/button";
-import { useMilestonesQuery } from "@/features/taskboard/taskboard.queries";
-import type { Milestone } from "@/features/taskboard/taskboard.types";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  useCreateMilestoneMutation,
+  useDeleteMilestoneMutation,
+  useMilestonesQuery,
+  useUpdateMilestoneMutation,
+} from "@/features/taskboard/taskboard.queries";
+import type { Milestone, MilestoneStatus } from "@/features/taskboard/taskboard.types";
 import {
   buildMilestoneColumns,
   buildMilestoneSummary,
@@ -12,8 +21,48 @@ import {
   getMilestoneStatusLabel,
 } from "@/features/taskboard/taskboard.utils";
 import { getErrorMessage } from "@/lib/api-error";
+import {
+  buildCreateMilestoneRequest,
+  buildPatchMilestoneStatusRequest,
+  initialMilestoneDraft,
+  type MilestoneDraft,
+} from "@/pages/taskboard/taskboard-page.utils";
 
-function MilestoneCard({ milestone }: { milestone: Milestone }) {
+function getNextStatus(status: MilestoneStatus): MilestoneStatus {
+  switch (status) {
+    case "todo":
+      return "doing";
+    case "doing":
+      return "done";
+    case "done":
+      return "todo";
+  }
+}
+
+function getNextStatusActionLabel(status: MilestoneStatus) {
+  switch (status) {
+    case "todo":
+      return "开始推进";
+    case "doing":
+      return "标记完成";
+    case "done":
+      return "重新待办";
+  }
+}
+
+function MilestoneCard({
+  milestone,
+  isMutating,
+  onDelete,
+  onStatusChange,
+}: {
+  milestone: Milestone;
+  isMutating: boolean;
+  onDelete: (milestoneId: string) => void;
+  onStatusChange: (milestoneId: string, status: MilestoneStatus) => void;
+}) {
+  const nextStatus = getNextStatus(milestone.status);
+
   return (
     <div className="task-card">
       <div
@@ -48,19 +97,84 @@ function MilestoneCard({ milestone }: { milestone: Milestone }) {
           <span className="badge failed">已逾期</span>
         </div>
       ) : null}
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 16 }}>
+        <Button
+          variant="outline"
+          onClick={() => onStatusChange(milestone.id, nextStatus)}
+          disabled={isMutating}
+        >
+          {getNextStatusActionLabel(milestone.status)}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => onDelete(milestone.id)}
+          disabled={isMutating}
+        >
+          删除
+        </Button>
+      </div>
     </div>
   );
 }
 
 export function TaskboardPage() {
+  const [draft, setDraft] = useState<MilestoneDraft>(initialMilestoneDraft);
+  const [operationError, setOperationError] = useState("");
+
   const isAuthenticated = useAppStore((state) => state.isAuthenticated);
   const currentTerm = useAppStore((state) => state.currentTerm);
   const currentUser = useAppStore((state) => state.currentUser);
 
   const milestonesQuery = useMilestonesQuery(isAuthenticated);
+  const createMilestoneMutation = useCreateMilestoneMutation();
+  const updateMilestoneMutation = useUpdateMilestoneMutation();
+  const deleteMilestoneMutation = useDeleteMilestoneMutation();
   const milestones = milestonesQuery.data?.items ?? [];
   const columns = buildMilestoneColumns(milestones);
   const summary = buildMilestoneSummary(milestones);
+  const isMutating =
+    createMilestoneMutation.isPending ||
+    updateMilestoneMutation.isPending ||
+    deleteMilestoneMutation.isPending;
+
+  async function handleCreateMilestone() {
+    if (!draft.title.trim() || createMilestoneMutation.isPending) {
+      return;
+    }
+
+    setOperationError("");
+
+    try {
+      await createMilestoneMutation.mutateAsync(buildCreateMilestoneRequest(draft));
+      setDraft(initialMilestoneDraft);
+    } catch (error) {
+      setOperationError(getErrorMessage(error, "里程碑创建失败，请稍后重试。"));
+    }
+  }
+
+  async function handleStatusChange(milestoneId: string, status: MilestoneStatus) {
+    setOperationError("");
+
+    try {
+      await updateMilestoneMutation.mutateAsync({
+        milestoneId,
+        payload: buildPatchMilestoneStatusRequest(status),
+      });
+    } catch (error) {
+      setOperationError(getErrorMessage(error, "任务状态更新失败，请稍后重试。"));
+    }
+  }
+
+  async function handleDeleteMilestone(milestoneId: string) {
+    setOperationError("");
+
+    try {
+      await deleteMilestoneMutation.mutateAsync(milestoneId);
+    } catch (error) {
+      setOperationError(getErrorMessage(error, "任务删除失败，请稍后重试。"));
+    }
+  }
 
   return (
     <div className="page-stack">
@@ -98,6 +212,112 @@ export function TaskboardPage() {
           title="毕业任务看板"
           description={`当前学期：${currentTerm.name} · 当前用户：${currentUser?.display_name ?? currentUser?.username ?? "未登录"}`}
         />
+
+        <div className="form-stack" style={{ marginTop: 22 }}>
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="milestone-title">任务标题</label>
+              <Input
+                id="milestone-title"
+                value={draft.title}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, title: event.target.value }))
+                }
+                placeholder="例如：补充答辩演示材料"
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="milestone-status">任务状态</label>
+              <select
+                id="milestone-status"
+                className="upload-select"
+                value={draft.status}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    status: event.target.value as MilestoneStatus,
+                  }))
+                }
+              >
+                <option value="todo">待办</option>
+                <option value="doing">进行中</option>
+                <option value="done">已完成</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="field">
+            <label htmlFor="milestone-description">任务说明</label>
+            <Textarea
+              id="milestone-description"
+              value={draft.description}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, description: event.target.value }))
+              }
+              placeholder="说明这个阶段任务要产出什么材料或验证结果。"
+            />
+          </div>
+
+          <div className="grid-3">
+            <div className="field">
+              <label htmlFor="milestone-start-date">开始日期</label>
+              <Input
+                id="milestone-start-date"
+                type="date"
+                value={draft.startDate}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, startDate: event.target.value }))
+                }
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="milestone-end-date">截止日期</label>
+              <Input
+                id="milestone-end-date"
+                type="date"
+                value={draft.endDate}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, endDate: event.target.value }))
+                }
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="milestone-sort-order">排序</label>
+              <Input
+                id="milestone-sort-order"
+                value={draft.sortOrder}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, sortOrder: event.target.value }))
+                }
+                placeholder="例如：0"
+              />
+            </div>
+          </div>
+
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+            <Button
+              onClick={() => void handleCreateMilestone()}
+              disabled={!draft.title.trim() || createMilestoneMutation.isPending}
+            >
+              创建里程碑
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDraft(initialMilestoneDraft);
+                setOperationError("");
+              }}
+            >
+              清空输入
+            </Button>
+          </div>
+        </div>
+
+        {operationError ? (
+          <p className="small" style={{ marginTop: 12, color: "var(--danger-foreground)" }}>
+            {operationError}
+          </p>
+        ) : null}
 
         {milestonesQuery.isLoading ? (
           <div style={{ marginTop: 22 }}>
@@ -149,7 +369,15 @@ export function TaskboardPage() {
               <div style={{ display: "grid", gap: 14, marginTop: 18 }}>
                 {column.items.length ? (
                   column.items.map((milestone) => (
-                    <MilestoneCard key={milestone.id} milestone={milestone} />
+                    <MilestoneCard
+                      key={milestone.id}
+                      milestone={milestone}
+                      isMutating={isMutating}
+                      onDelete={(milestoneId) => void handleDeleteMilestone(milestoneId)}
+                      onStatusChange={(milestoneId, status) =>
+                        void handleStatusChange(milestoneId, status)
+                      }
+                    />
                   ))
                 ) : (
                   <EmptyState
