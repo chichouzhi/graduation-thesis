@@ -62,6 +62,11 @@ def test_handle_keyword_job_calls_uc_and_writes_portrait(monkeypatch: pytest.Mon
     assert captured_payloads and captured_payloads[0]["keyword_job_id"] == "kj-1"
     assert topic.portrait_json is not None
     assert topic.portrait_json["keywords"] == ["Python", "Flask"]
+    assert topic.portrait_json["difficulty_label"] in {"basic", "intermediate", "advanced"}
+    assert isinstance(topic.portrait_json["required_capabilities"], list)
+    assert isinstance(topic.portrait_json["suitable_students"], list)
+    assert isinstance(topic.portrait_json["risks"], list)
+    assert isinstance(topic.portrait_json["summary"], str)
     assert topic.llm_keyword_job_id == "kj-1"
     assert topic.llm_keyword_job_status.value == "done"
     session.commit.assert_called_once()

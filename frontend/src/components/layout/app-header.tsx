@@ -20,7 +20,7 @@ const pageCopy: Record<string, { title: string; description: string }> = {
   },
   "/app/topics": {
     title: "Topics",
-    description: "浏览题目方向，组织选题思路与研究重点。",
+    description: "浏览题目、生成教师分析，并组织学生推荐思路。",
   },
   "/app/taskboard": {
     title: "Taskboard",

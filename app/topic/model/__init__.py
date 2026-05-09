@@ -15,18 +15,41 @@ from app.extensions import db
 
 
 class TopicPortraitStored(TypedDict, total=False):
-    """``portrait_json`` 列允许写入的契约子集（关键词 + 可选抽取时间 ISO 字符串）。"""
+    """``portrait_json`` 列允许写入的契约子集。"""
 
     keywords: list[str]
+    difficulty_label: str | None
+    difficulty_reason: str | None
+    required_capabilities: list[str]
+    suitable_students: list[str]
+    risks: list[str]
+    summary: str | None
     extracted_at: str | None
 
 
+def _ensure_str_list(values: Any) -> list[str]:
+    if not isinstance(values, list):
+        return []
+    out: list[str] = []
+    for value in values:
+        text = str(value).strip()
+        if text and text not in out:
+            out.append(text)
+    return out
+
+
 def contract_portrait_from_json(portrait_json: dict[str, Any] | None) -> dict[str, Any] | None:
-    """将库内 JSON 列转为 ``Topic.portrait`` 响应形状（缺省键显式为 ``null``/省略由调用方一致化）。"""
+    """将库内 JSON 列转为 ``Topic.portrait`` 响应形状。"""
     if portrait_json is None:
         return None
     return {
-        "keywords": portrait_json.get("keywords"),
+        "keywords": _ensure_str_list(portrait_json.get("keywords")),
+        "difficulty_label": portrait_json.get("difficulty_label"),
+        "difficulty_reason": portrait_json.get("difficulty_reason"),
+        "required_capabilities": _ensure_str_list(portrait_json.get("required_capabilities")),
+        "suitable_students": _ensure_str_list(portrait_json.get("suitable_students")),
+        "risks": _ensure_str_list(portrait_json.get("risks")),
+        "summary": portrait_json.get("summary"),
         "extracted_at": portrait_json.get("extracted_at"),
     }
 

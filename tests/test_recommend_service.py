@@ -18,7 +18,7 @@ def test_recommend_top_n_and_explain() -> None:
             username="rec-student",
             role=UserRole.student,
             display_name="s",
-            student_profile={"skills": ["python", "nlp"]},
+            student_profile={"skills": ["python", "nlp", "推荐", "画像"], "weekly_hours": 8},
         )
         teacher = User(username="rec-teacher", role=UserRole.teacher, display_name="t")
         db.session.add_all([student, teacher])
@@ -32,12 +32,22 @@ def test_recommend_top_n_and_explain() -> None:
                     title="NLP A",
                     summary="s",
                     requirements="r",
-                    tech_keywords=["nlp", "python"],
+                    tech_keywords=["nlp", "python", "推荐", "画像"],
                     capacity=5,
                     selected_count=0,
                     teacher_id=teacher.id,
                     term_id=term.id,
                     status=TopicStatus.published,
+                    portrait_json={
+                        "keywords": ["nlp", "python", "推荐", "画像"],
+                        "difficulty_label": "intermediate",
+                        "difficulty_reason": "r",
+                        "required_capabilities": ["模型调用与语义分析"],
+                        "suitable_students": ["student"],
+                        "risks": ["risk"],
+                        "summary": "summary",
+                        "extracted_at": "2026-01-01T00:00:00Z",
+                    },
                 ),
                 Topic(
                     title="Other",
@@ -60,8 +70,12 @@ def test_recommend_top_n_and_explain() -> None:
         assert body["items"][0]["score"] == 1.0
         expl = body["items"][0]["explain"]
         assert expl is not None
-        assert set(expl["matched_skills"]) == {"nlp", "python"}
+        assert set(expl["matched_skills"]) == {"nlp", "python", "推荐", "画像"}
         assert expl["matched_keywords"] == []
+        assert expl["matched_capabilities"] == ["模型调用与语义分析"]
+        assert expl["difficulty_fit"] == "匹配"
+        assert expl["capacity_status"] == "available"
+        assert expl["warnings"] == []
 
 
 def test_recommend_uses_portrait_json_keywords() -> None:
@@ -88,7 +102,16 @@ def test_recommend_uses_portrait_json_keywords() -> None:
                     summary="s",
                     requirements="r",
                     tech_keywords=[],
-                        portrait_json={"keywords": ["rust"]},
+                    portrait_json={
+                        "keywords": ["rust"],
+                        "difficulty_label": "basic",
+                        "difficulty_reason": "r",
+                        "required_capabilities": ["后端接口与数据建模"],
+                        "suitable_students": ["student"],
+                        "risks": ["risk"],
+                        "summary": "summary",
+                        "extracted_at": "2026-01-01T00:00:00Z",
+                    },
                     capacity=3,
                     selected_count=0,
                     teacher_id=teacher.id,

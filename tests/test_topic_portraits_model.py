@@ -16,15 +16,41 @@ def test_contract_portrait_from_json_none() -> None:
 
 def test_contract_portrait_from_json_maps_contract_keys() -> None:
     ext = "2026-05-01T12:00:00Z"
-    assert contract_portrait_from_json({"keywords": ["x"], "extracted_at": ext}) == {
+    assert contract_portrait_from_json(
+        {
+            "keywords": ["x"],
+            "difficulty_label": "advanced",
+            "difficulty_reason": "r",
+            "required_capabilities": ["a"],
+            "suitable_students": ["b"],
+            "risks": ["c"],
+            "summary": "s",
+            "extracted_at": ext,
+        }
+    ) == {
         "keywords": ["x"],
+        "difficulty_label": "advanced",
+        "difficulty_reason": "r",
+        "required_capabilities": ["a"],
+        "suitable_students": ["b"],
+        "risks": ["c"],
+        "summary": "s",
         "extracted_at": ext,
     }
 
 
 def test_contract_portrait_from_json_ignores_extra_keys() -> None:
     out = contract_portrait_from_json({"keywords": ["a"], "extra": 1})
-    assert out == {"keywords": ["a"], "extracted_at": None}
+    assert out == {
+        "keywords": ["a"],
+        "difficulty_label": None,
+        "difficulty_reason": None,
+        "required_capabilities": [],
+        "suitable_students": [],
+        "risks": [],
+        "summary": None,
+        "extracted_at": None,
+    }
 
 
 def test_topic_portrait_and_llm_job_fields_round_trip() -> None:
@@ -45,7 +71,16 @@ def test_topic_portrait_and_llm_job_fields_round_trip() -> None:
             teacher_id=teacher.id,
             term_id=term.id,
             status=TopicStatus.published,
-            portrait_json={"keywords": ["a"], "extracted_at": ext},
+            portrait_json={
+                "keywords": ["a"],
+                "difficulty_label": "basic",
+                "difficulty_reason": "r",
+                "required_capabilities": ["cap"],
+                "suitable_students": ["stu"],
+                "risks": ["risk"],
+                "summary": "summary",
+                "extracted_at": ext,
+            },
             llm_keyword_job_id="job-uuid",
             llm_keyword_job_status=TopicKeywordJobStatus.done,
         )
@@ -56,6 +91,15 @@ def test_topic_portrait_and_llm_job_fields_round_trip() -> None:
         assert loaded is not None
         body = loaded.to_topic()
         assert body["status"] == "published"
-        assert body["portrait"] == {"keywords": ["a"], "extracted_at": ext}
+        assert body["portrait"] == {
+            "keywords": ["a"],
+            "difficulty_label": "basic",
+            "difficulty_reason": "r",
+            "required_capabilities": ["cap"],
+            "suitable_students": ["stu"],
+            "risks": ["risk"],
+            "summary": "summary",
+            "extracted_at": ext,
+        }
         assert body["llm_keyword_job_id"] == "job-uuid"
         assert body["llm_keyword_job_status"] == "done"
