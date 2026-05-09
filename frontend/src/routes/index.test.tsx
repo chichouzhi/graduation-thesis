@@ -10,4 +10,10 @@ describe("router", () => {
     expect(loginRoute?.errorElement).toBeTruthy();
     expect(appRoute?.errorElement).toBeTruthy();
   });
+
+  it("routes unknown paths to a friendly not found page", () => {
+    const notFoundRoute = router.routes.find((route) => route.path === "*");
+
+    expect(notFoundRoute?.element).toBeTruthy();
+  });
 });

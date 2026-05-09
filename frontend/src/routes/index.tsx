@@ -6,6 +6,7 @@ import { DocumentsPage } from "@/pages/documents/documents-page";
 import { LoginPage } from "@/pages/login/login-page";
 import { TaskboardPage } from "@/pages/taskboard/taskboard-page";
 import { TopicsPage } from "@/pages/topics/topics-page";
+import { NotFoundPage } from "@/routes/not-found-page";
 import { ProtectedLayout } from "@/routes/protected-layout";
 import { RouteErrorPage } from "@/routes/route-error-page";
 
@@ -32,5 +33,10 @@ export const router = createBrowserRouter([
       { path: "topics", element: <TopicsPage /> },
       { path: "taskboard", element: <TaskboardPage /> },
     ],
+  },
+  {
+    path: "*",
+    element: <NotFoundPage />,
+    errorElement: <RouteErrorPage />,
   },
 ]);
