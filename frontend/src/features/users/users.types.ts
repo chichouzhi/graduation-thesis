@@ -40,9 +40,9 @@ export type PatchUserMeRequest = {
   display_name?: string;
   email?: string;
   student_profile?: {
-    interests: string[];
-    skills: string[];
-    keywords: string[];
+    interests?: string[];
+    skills?: string[];
+    keywords?: string[];
     goal?: string | null;
     weekly_hours?: number | null;
   } | null;
