@@ -330,7 +330,7 @@ export function TopicsPage() {
   const updateTopicMutation = useUpdateTopicMutation();
   const updateUserMeMutation = useUpdateUserMeMutation();
   const applicationsQuery = useApplicationsQuery(
-    isAuthenticated && mode === "student",
+    isAuthenticated && mode !== "teacher",
     { termId: currentTerm.id },
   );
   const createApplicationMutation = useCreateApplicationMutation();
@@ -693,6 +693,48 @@ export function TopicsPage() {
                     <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
                       {keywordJobStatusLabel}
                     </p>
+                  </div>
+                ) : null}
+
+                {mode === "browse" ? (
+                  <div
+                    className="detail-card"
+                    style={{
+                      marginTop: 18,
+                      borderColor: "rgba(31, 107, 104, 0.18)",
+                      background: "rgba(223, 236, 235, 0.56)",
+                    }}
+                  >
+                    <p style={{ fontWeight: 600 }}>申请选题</p>
+                    <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
+                      {selectedApplication
+                        ? `当前题目已提交为第 ${selectedApplication.priority} 志愿，可先撤销后重新申请。`
+                        : "选中题目后可直接申请为第一志愿。"}
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 16 }}>
+                      <Button
+                        onClick={() => void handleSubmitApplication(selectedTopic.id, 1)}
+                        disabled={
+                          createApplicationMutation.isPending || selectedApplication?.priority === 1
+                        }
+                      >
+                        {selectedApplication?.priority === 1 ? "已申请第一志愿" : "申请第一志愿"}
+                      </Button>
+                      {selectedApplication ? (
+                        <Button
+                          variant="outline"
+                          onClick={() => void handleWithdrawApplication(selectedApplication.id)}
+                          disabled={deleteApplicationMutation.isPending}
+                        >
+                          撤销申请
+                        </Button>
+                      ) : null}
+                    </div>
+                    {applicationError ? (
+                      <p className="small" style={{ marginTop: 12, color: "var(--danger-foreground)" }}>
+                        {applicationError}
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
               </>
@@ -1135,14 +1177,14 @@ export function TopicsPage() {
                     onClick={() => void handleSubmitApplication(selectedRecommendation.topicId, 1)}
                     disabled={createApplicationMutation.isPending || selectedApplication?.priority === 1}
                   >
-                    提交第一志愿
+                    申请第一志愿
                   </Button>
                   <Button
                     variant="outline"
                     onClick={() => void handleSubmitApplication(selectedRecommendation.topicId, 2)}
                     disabled={createApplicationMutation.isPending || selectedApplication?.priority === 2}
                   >
-                    提交第二志愿
+                    申请第二志愿
                   </Button>
                   {selectedApplication ? (
                     <Button

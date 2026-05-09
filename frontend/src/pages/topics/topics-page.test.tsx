@@ -210,6 +210,35 @@ describe("TopicsPage", () => {
     expect(container.textContent).toContain("跨前端、后端与异步任务");
   });
 
+  it("shows an application button in browse mode for the selected topic", async () => {
+    const { TopicsPage } = await import("@/pages/topics/topics-page");
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <TopicsPage />
+        </StrictMode>,
+      );
+    });
+
+    const applyButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("申请第一志愿"),
+    );
+
+    expect(applyButton).toBeTruthy();
+
+    await act(async () => {
+      applyButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(createApplicationMutation).toHaveBeenCalledWith({
+      topic_id: "topic-1",
+      term_id: "term-2026-spring",
+      priority: 1,
+    });
+  });
+
   it("shows recommendation explanations after saving student profile", async () => {
     const { TopicsPage } = await import("@/pages/topics/topics-page");
     const root = createRoot(container);
@@ -273,7 +302,7 @@ describe("TopicsPage", () => {
     });
 
     const submitButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("提交第一志愿"),
+      button.textContent?.includes("申请第一志愿"),
     );
 
     await act(async () => {
