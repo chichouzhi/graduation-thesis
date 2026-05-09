@@ -10,10 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   useApplicationsQuery,
   useCreateApplicationMutation,
+  useDecideApplicationMutation,
   useDeleteApplicationMutation,
 } from "@/features/selection/selection.queries";
 import {
   buildCreateApplicationRequest,
+  type ApplicationDecisionAction,
   type ApplicationPriority,
 } from "@/features/selection/selection.types";
 import {
@@ -98,6 +100,23 @@ function formatCapacityStatusLabel(status?: "available" | "nearly_full" | "full"
       return "已满员";
     default:
       return "容量未知";
+  }
+}
+
+function formatApplicationStatusLabel(status: string) {
+  switch (status) {
+    case "pending":
+      return "待处理";
+    case "withdrawn":
+      return "已撤销";
+    case "accepted":
+      return "已接受";
+    case "rejected":
+      return "已拒绝";
+    case "superseded":
+      return "已被替代";
+    default:
+      return status;
   }
 }
 
@@ -287,6 +306,10 @@ function RecommendationCard({
   );
 }
 
+function ApplicationPriorityLabel({ priority }: { priority: ApplicationPriority }) {
+  return <>第 {priority} 志愿</>;
+}
+
 export function TopicsPage() {
   const [mode, setMode] = useState<TopicsMode>("browse");
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
@@ -311,6 +334,7 @@ export function TopicsPage() {
     { termId: currentTerm.id },
   );
   const createApplicationMutation = useCreateApplicationMutation();
+  const decideApplicationMutation = useDecideApplicationMutation();
   const deleteApplicationMutation = useDeleteApplicationMutation();
   const recommendationsQuery = useTopicRecommendationsQuery(
     currentTerm.id,
@@ -323,6 +347,13 @@ export function TopicsPage() {
     selectedTopicId && topics.some((topic) => topic.id === selectedTopicId)
       ? selectedTopicId
       : topics[0]?.id ?? null;
+  const teacherApplicationsQuery = useApplicationsQuery(
+    isAuthenticated && mode === "teacher" && Boolean(effectiveSelectedTopicId),
+    {
+      termId: currentTerm.id,
+      topicId: effectiveSelectedTopicId ?? undefined,
+    },
+  );
 
   const selectedTopic =
     detailQuery.data?.id === effectiveSelectedTopicId
@@ -336,6 +367,7 @@ export function TopicsPage() {
     : "";
   const recommendationItems = recommendationsQuery.data?.items ?? [];
   const applications = applicationsQuery.data?.items ?? [];
+  const teacherApplications = teacherApplicationsQuery.data?.items ?? [];
   const selectedRecommendation =
     recommendationItems.find((item) => item.topicId === effectiveSelectedTopicId) ?? null;
   const selectedApplication =
@@ -415,6 +447,27 @@ export function TopicsPage() {
       await applicationsQuery.refetch();
     } catch (error) {
       setApplicationError(getErrorMessage(error, "志愿撤销失败，请稍后重试。"));
+    }
+  }
+
+  async function handleDecideApplication(
+    applicationId: string,
+    action: ApplicationDecisionAction,
+  ) {
+    setApplicationError("");
+
+    try {
+      await decideApplicationMutation.mutateAsync({
+        applicationId,
+        payload: { action },
+      });
+      await teacherApplicationsQuery.refetch();
+      await topicsQuery.refetch();
+      if (effectiveSelectedTopicId) {
+        await detailQuery.refetch();
+      }
+    } catch (error) {
+      setApplicationError(getErrorMessage(error, "志愿处理失败，请稍后重试。"));
     }
   }
 
@@ -798,6 +851,89 @@ export function TopicsPage() {
               </div>
             )}
 
+            <div className="detail-card" style={{ marginTop: 18 }}>
+              <p style={{ fontWeight: 600 }}>学生志愿</p>
+              <p className="muted small" style={{ marginTop: 10, lineHeight: 1.9 }}>
+                当前选中题目的学生申请会显示在这里，老师可以直接接受或拒绝，形成“推荐 - 志愿 - 指导关系”的闭环。
+              </p>
+
+              {!effectiveSelectedTopicId ? (
+                <p className="muted small" style={{ marginTop: 12 }}>
+                  请选择一个题目后查看学生志愿。
+                </p>
+              ) : teacherApplicationsQuery.isLoading ? (
+                <p className="muted small" style={{ marginTop: 12 }}>
+                  正在同步学生志愿列表。
+                </p>
+              ) : teacherApplicationsQuery.isError ? (
+                <div style={{ marginTop: 14 }}>
+                  <EmptyState
+                    title="学生志愿加载失败"
+                    description={getErrorMessage(
+                      teacherApplicationsQuery.error,
+                      "暂时无法获取该题目的学生志愿。",
+                    )}
+                    action={
+                      <Button
+                        variant="outline"
+                        onClick={() => void teacherApplicationsQuery.refetch()}
+                      >
+                        重试
+                      </Button>
+                    }
+                  />
+                </div>
+              ) : teacherApplications.length ? (
+                <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
+                  {teacherApplications.map((application) => (
+                    <div key={application.id} className="timeline-item">
+                      <div>
+                        <h3>{application.studentId}</h3>
+                        <p className="muted small" style={{ marginTop: 8 }}>
+                          <ApplicationPriorityLabel priority={application.priority} /> ·{" "}
+                          {formatApplicationStatusLabel(application.status)}
+                        </p>
+                        <p className="muted small" style={{ marginTop: 8 }}>
+                          提交时间：{application.createdAt}
+                        </p>
+                      </div>
+                      {application.status === "pending" ? (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                          <Button
+                            onClick={() =>
+                              void handleDecideApplication(application.id, "accept")
+                            }
+                            disabled={decideApplicationMutation.isPending}
+                          >
+                            接受志愿
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() =>
+                              void handleDecideApplication(application.id, "reject")
+                            }
+                            disabled={decideApplicationMutation.isPending}
+                          >
+                            拒绝志愿
+                          </Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="muted small" style={{ marginTop: 12 }}>
+                  该题目暂时还没有学生提交志愿。
+                </p>
+              )}
+
+              {applicationError && mode === "teacher" ? (
+                <p className="small" style={{ marginTop: 12, color: "var(--danger-foreground)" }}>
+                  {applicationError}
+                </p>
+              ) : null}
+            </div>
+
             <div
               className="detail-card"
               style={{
@@ -808,7 +944,7 @@ export function TopicsPage() {
             >
               <p style={{ fontWeight: 600 }}>落地说明</p>
               <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
-                当前页面把“老师录题 - 题目画像 - 学生推荐”串成了完整前端演示流。老师分析已切到后端题目画像字段，后续只需要继续补学生画像保存和推荐联调。
+                当前页面把“老师录题 - 题目画像 - 学生推荐 - 志愿处理”串成了完整前端演示流。老师接受志愿后，后端会返回对应指导关系，便于后续在任务看板和仪表盘继续展示。
               </p>
             </div>
           </PageSection>

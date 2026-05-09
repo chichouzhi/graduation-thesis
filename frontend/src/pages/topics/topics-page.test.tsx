@@ -88,6 +88,7 @@ vi.mock("@/app/store", () => ({
 const updateUserMeMutation = vi.fn().mockResolvedValue({});
 const createApplicationMutation = vi.fn().mockResolvedValue({});
 const deleteApplicationMutation = vi.fn().mockResolvedValue(undefined);
+const decideApplicationMutation = vi.fn().mockResolvedValue({});
 const recommendationsRefetch = vi.fn();
 
 vi.mock("@/features/topics/topics.queries", () => ({
@@ -133,8 +134,27 @@ vi.mock("@/features/users/users.queries", () => ({
 }));
 
 vi.mock("@/features/selection/selection.queries", () => ({
-  useApplicationsQuery: () => ({
-    data: { items: [], page: 1, pageSize: 50, total: 0 },
+  useApplicationsQuery: (_enabled: boolean, params?: { topicId?: string }) => ({
+    data: {
+      items: params?.topicId
+        ? [
+            {
+              id: "application-1",
+              topicId: "topic-1",
+              topicTitle: "AI 学术助手工作台",
+              studentId: "student-1",
+              termId: "term-2026-spring",
+              priority: 1,
+              status: "pending",
+              createdAt: "2026-05-09T00:00:00Z",
+              updatedAt: "2026-05-09T01:00:00Z",
+            },
+          ]
+        : [],
+      page: 1,
+      pageSize: 50,
+      total: params?.topicId ? 1 : 0,
+    },
     isLoading: false,
     isError: false,
     refetch: vi.fn(),
@@ -145,6 +165,10 @@ vi.mock("@/features/selection/selection.queries", () => ({
   }),
   useDeleteApplicationMutation: () => ({
     mutateAsync: deleteApplicationMutation,
+    isPending: false,
+  }),
+  useDecideApplicationMutation: () => ({
+    mutateAsync: decideApplicationMutation,
     isPending: false,
   }),
 }));
@@ -260,6 +284,43 @@ describe("TopicsPage", () => {
       topic_id: "topic-1",
       term_id: "term-2026-spring",
       priority: 1,
+    });
+  });
+
+  it("accepts a pending application in teacher mode", async () => {
+    const { TopicsPage } = await import("@/pages/topics/topics-page");
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <TopicsPage />
+        </StrictMode>,
+      );
+    });
+
+    const teacherButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("老师分析"),
+    );
+
+    await act(async () => {
+      teacherButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain("学生志愿");
+    expect(container.textContent).toContain("student-1");
+
+    const acceptButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("接受志愿"),
+    );
+
+    await act(async () => {
+      acceptButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(decideApplicationMutation).toHaveBeenCalledWith({
+      applicationId: "application-1",
+      payload: { action: "accept" },
     });
   });
 });

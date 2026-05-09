@@ -2,11 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   createApplication,
+  decideApplication,
   deleteApplication,
   getApplications,
   updateApplication,
 } from "@/features/selection/selection.api";
 import type {
+  ApplicationDecisionRequest,
   ApplicationListParams,
   CreateApplicationRequest,
   PatchApplicationRequest,
@@ -58,6 +60,23 @@ export function useUpdateApplicationMutation() {
       applicationId: string;
       payload: PatchApplicationRequest;
     }) => updateApplication(applicationId, payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: selectionKeys.all });
+    },
+  });
+}
+
+export function useDecideApplicationMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      applicationId,
+      payload,
+    }: {
+      applicationId: string;
+      payload: ApplicationDecisionRequest;
+    }) => decideApplication(applicationId, payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: selectionKeys.all });
     },

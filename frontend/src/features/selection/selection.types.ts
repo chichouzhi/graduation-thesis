@@ -7,6 +7,10 @@ export type ApplicationFlowStatus =
 
 export type ApplicationPriority = 1 | 2;
 
+export type ApplicationDecisionAction = "accept" | "reject";
+
+export type AssignmentStatus = "active" | "cancelled";
+
 export type PaginatedResponseDto<T> = {
   page: number;
   page_size: number;
@@ -45,6 +49,32 @@ export type Application = {
   updatedAt: string | null;
 };
 
+export type AssignmentDto = {
+  id: string;
+  student_id: string;
+  student_name?: string | null;
+  teacher_id: string;
+  topic_id: string;
+  topic_title?: string | null;
+  term_id: string;
+  application_id?: string | null;
+  status: AssignmentStatus;
+  confirmed_at?: string | null;
+};
+
+export type Assignment = {
+  id: string;
+  studentId: string;
+  studentName: string | null;
+  teacherId: string;
+  topicId: string;
+  topicTitle: string | null;
+  termId: string;
+  applicationId: string | null;
+  status: AssignmentStatus;
+  confirmedAt: string | null;
+};
+
 export type ApplicationListParams = {
   termId?: string;
   topicId?: string;
@@ -60,6 +90,21 @@ export type CreateApplicationRequest = {
 
 export type PatchApplicationRequest = {
   priority?: ApplicationPriority;
+};
+
+export type ApplicationDecisionRequest = {
+  action: ApplicationDecisionAction;
+  comment?: string;
+};
+
+export type ApplicationDecisionDto = {
+  application: ApplicationDto;
+  assignment: AssignmentDto | null;
+};
+
+export type ApplicationDecision = {
+  application: Application;
+  assignment: Assignment | null;
 };
 
 export function mapPaginatedResponseDto<TDto, TModel>(
@@ -85,6 +130,30 @@ export function mapApplicationDto(application: ApplicationDto): Application {
     status: application.status,
     createdAt: application.created_at,
     updatedAt: application.updated_at ?? null,
+  };
+}
+
+export function mapAssignmentDto(assignment: AssignmentDto): Assignment {
+  return {
+    id: assignment.id,
+    studentId: assignment.student_id,
+    studentName: assignment.student_name ?? null,
+    teacherId: assignment.teacher_id,
+    topicId: assignment.topic_id,
+    topicTitle: assignment.topic_title ?? null,
+    termId: assignment.term_id,
+    applicationId: assignment.application_id ?? null,
+    status: assignment.status,
+    confirmedAt: assignment.confirmed_at ?? null,
+  };
+}
+
+export function mapApplicationDecisionDto(
+  decision: ApplicationDecisionDto,
+): ApplicationDecision {
+  return {
+    application: mapApplicationDto(decision.application),
+    assignment: decision.assignment ? mapAssignmentDto(decision.assignment) : null,
   };
 }
 

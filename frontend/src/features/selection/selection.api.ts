@@ -1,6 +1,8 @@
 import { apiClient } from "@/lib/axios";
 import type {
   Application,
+  ApplicationDecisionDto,
+  ApplicationDecisionRequest,
   ApplicationDto,
   ApplicationListParams,
   CreateApplicationRequest,
@@ -9,6 +11,7 @@ import type {
 } from "@/features/selection/selection.types";
 import {
   mapApplicationDto,
+  mapApplicationDecisionDto,
   mapPaginatedResponseDto,
 } from "@/features/selection/selection.types";
 
@@ -42,6 +45,18 @@ export async function updateApplication(
     payload,
   );
   return mapApplicationDto(response.data);
+}
+
+export async function decideApplication(
+  applicationId: string,
+  payload: ApplicationDecisionRequest,
+) {
+  const response = await apiClient.post<ApplicationDecisionDto>(
+    `/applications/${applicationId}/decisions`,
+    payload,
+  );
+
+  return mapApplicationDecisionDto(response.data);
 }
 
 export async function deleteApplication(applicationId: string) {
