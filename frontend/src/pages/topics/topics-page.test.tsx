@@ -34,6 +34,40 @@ const topic = {
   updatedAt: "2026-05-09T00:00:00Z",
 };
 
+const recommendation = {
+  topicId: "topic-1",
+  title: "AI 学术助手工作台",
+  score: 96,
+  explain: {
+    matchedSkills: ["React", "Flask"],
+    matchedKeywords: ["画像", "推荐"],
+    matchedCapabilities: ["前后端联调", "异步任务"],
+    difficultyFit: "与你的技能和时间投入较匹配，适合作为答辩型题目。",
+    capacityStatus: "available",
+    warnings: [],
+    reasons: ["和学生画像中的前端联调、异步任务经验高度一致。"],
+  },
+};
+
+const topicsListResponse = { items: [topic], page: 1, pageSize: 50, total: 1 };
+const studentProfile = {
+  interests: ["AI 学术助手", "选题推荐"],
+  skills: ["React", "Flask"],
+  keywords: ["画像", "异步任务"],
+  goal: "希望完成可用于答辩演示的毕业设计",
+  weeklyHours: 10,
+};
+const userMe = {
+  id: "student-1",
+  username: "student-demo",
+  role: "student",
+  displayName: "联调学生",
+  email: "student@example.com",
+  studentProfile,
+  teacherProfile: null,
+};
+const recommendationList = { items: [recommendation], topN: 10 };
+
 vi.mock("@/app/store", () => ({
   useAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
@@ -51,9 +85,12 @@ vi.mock("@/app/store", () => ({
     }),
 }));
 
+const updateUserMeMutation = vi.fn().mockResolvedValue({});
+const recommendationsRefetch = vi.fn();
+
 vi.mock("@/features/topics/topics.queries", () => ({
   useTopicsQuery: () => ({
-    data: { items: [topic], page: 1, pageSize: 50, total: 1 },
+    data: topicsListResponse,
     isLoading: false,
     isError: false,
     refetch: vi.fn(),
@@ -72,9 +109,28 @@ vi.mock("@/features/topics/topics.queries", () => ({
     mutateAsync: vi.fn(),
     isPending: false,
   }),
+  useTopicRecommendationsQuery: () => ({
+    data: recommendationList,
+    isLoading: false,
+    isError: false,
+    refetch: recommendationsRefetch,
+  }),
 }));
 
-describe("TopicsPage teacher mode", () => {
+vi.mock("@/features/users/users.queries", () => ({
+  useUserMeQuery: () => ({
+    data: userMe,
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+  useUpdateUserMeMutation: () => ({
+    mutateAsync: updateUserMeMutation,
+    isPending: false,
+  }),
+}));
+
+describe("TopicsPage", () => {
   let container: HTMLDivElement;
 
   beforeEach(() => {
@@ -109,5 +165,39 @@ describe("TopicsPage teacher mode", () => {
 
     expect(container.textContent).toContain("这是一个适合答辩展示的综合题目。");
     expect(container.textContent).toContain("跨前端、后端与异步任务");
+  });
+
+  it("shows recommendation explanations after saving student profile", async () => {
+    const { TopicsPage } = await import("@/pages/topics/topics-page");
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <TopicsPage />
+        </StrictMode>,
+      );
+    });
+
+    const studentButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("学生推荐"),
+    );
+
+    await act(async () => {
+      studentButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const recommendButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("保存画像并开始推荐"),
+    );
+
+    await act(async () => {
+      recommendButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(updateUserMeMutation).toHaveBeenCalledTimes(1);
+    expect(recommendationsRefetch).toHaveBeenCalledTimes(1);
+    expect(container.textContent).toContain("与你的技能和时间投入较匹配");
+    expect(container.textContent).toContain("前后端联调");
   });
 });

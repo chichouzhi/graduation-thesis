@@ -124,6 +124,7 @@ export function DocumentsPage() {
   useEffect(() => {
     if (!tasks.length) {
       if (selectedTaskId !== null && selectedTaskId !== preferredTaskId) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedTaskId(null);
       }
       return;
@@ -149,6 +150,7 @@ export function DocumentsPage() {
 
   useEffect(() => {
     if (uploadMutation.data?.id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedTaskId(uploadMutation.data.id);
       setPreferredTaskId(uploadMutation.data.id);
     }

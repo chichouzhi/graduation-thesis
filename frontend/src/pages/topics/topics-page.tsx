@@ -10,16 +10,16 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   useCreateTopicMutation,
   useTopicQuery,
+  useTopicRecommendationsQuery,
   useUpdateTopicMutation,
   useTopicsQuery,
 } from "@/features/topics/topics.queries";
-import type { Topic } from "@/features/topics/topics.types";
+import type { RecommendationTopicItem, Topic } from "@/features/topics/topics.types";
 import {
-  buildTopicRecommendations,
-  parseWorkbenchTerms,
+  buildStudentProfilePatch,
+  mapStudentProfileToDraft,
   type StudentProfileDraft,
-  type TopicRecommendation,
-} from "@/features/topics/topics-workbench";
+} from "@/pages/topics/topics-page.utils";
 import {
   buildTopicCapacityLabel,
   getTopicKeywordGroups,
@@ -30,6 +30,7 @@ import {
   buildPatchTopicRequest,
   type TeacherTopicDraft,
 } from "@/pages/topics/topics-page.utils";
+import { useUpdateUserMeMutation, useUserMeQuery } from "@/features/users/users.queries";
 import { getErrorMessage } from "@/lib/api-error";
 
 type TopicsMode = "browse" | "teacher" | "student";
@@ -75,6 +76,19 @@ function formatDifficultyLabel(label?: "basic" | "intermediate" | "advanced" | n
       return "挑战";
     default:
       return "未标注";
+  }
+}
+
+function formatCapacityStatusLabel(status?: "available" | "nearly_full" | "full" | null) {
+  switch (status) {
+    case "available":
+      return "容量充足";
+    case "nearly_full":
+      return "接近满员";
+    case "full":
+      return "已满员";
+    default:
+      return "容量未知";
   }
 }
 
@@ -205,15 +219,17 @@ function RecommendationCard({
   active,
   onSelect,
 }: {
-  item: TopicRecommendation;
+  item: RecommendationTopicItem;
   active: boolean;
   onSelect: (topicId: string) => void;
 }) {
+  const explain = item.explain;
+
   return (
     <button
       type="button"
       className="topic-card"
-      onClick={() => onSelect(item.topic.id)}
+      onClick={() => onSelect(item.topicId)}
       style={{
         width: "100%",
         cursor: "pointer",
@@ -231,31 +247,31 @@ function RecommendationCard({
         }}
       >
         <div>
-          <h3 className="topic-title">{item.topic.title}</h3>
+          <h3 className="topic-title">{item.title}</h3>
           <p className="muted small" style={{ marginTop: 10 }}>
             推荐分：{item.score}
           </p>
         </div>
-        <span className="badge done">{item.matchedTerms.length} 个匹配词</span>
+        <span className="badge done">{formatCapacityStatusLabel(explain?.capacityStatus)}</span>
       </div>
       <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
-        {item.topic.summary}
+        {explain?.difficultyFit ?? "暂无难度匹配说明。"}
       </p>
       <div className="keyword-row">
-        {item.matchedTerms.slice(0, 4).map((term) => (
+        {(explain?.matchedCapabilities ?? []).slice(0, 4).map((term) => (
           <span key={term} className="keyword-pill">
             {term}
           </span>
         ))}
       </div>
-      {item.reasons.length ? (
+      {explain?.reasons.length ? (
         <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
-          {item.reasons[0]}
+          {explain.reasons[0]}
         </p>
       ) : null}
-      {item.warning ? (
+      {explain?.warnings.length ? (
         <p className="muted small" style={{ marginTop: 12 }}>
-          {item.warning}
+          {explain.warnings[0]}
         </p>
       ) : null}
     </button>
@@ -267,7 +283,8 @@ export function TopicsPage() {
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
   const [teacherDraft, setTeacherDraft] = useState<TeacherTopicDraft>(initialTeacherDraft);
   const [studentDraft, setStudentDraft] = useState<StudentProfileDraft>(initialStudentDraft);
-  const [recommendationResult, setRecommendationResult] = useState<TopicRecommendation[]>([]);
+  const [studentDraftDirty, setStudentDraftDirty] = useState(false);
+  const [recommendationEnabled, setRecommendationEnabled] = useState(false);
 
   const isAuthenticated = useAppStore((state) => state.isAuthenticated);
   const currentTerm = useAppStore((state) => state.currentTerm);
@@ -275,36 +292,35 @@ export function TopicsPage() {
 
   const topicsQuery = useTopicsQuery(isAuthenticated, currentTerm.id);
   const detailQuery = useTopicQuery(selectedTopicId, Boolean(selectedTopicId));
+  const userMeQuery = useUserMeQuery(isAuthenticated && mode === "student");
   const createTopicMutation = useCreateTopicMutation();
   const updateTopicMutation = useUpdateTopicMutation();
+  const updateUserMeMutation = useUpdateUserMeMutation();
+  const recommendationsQuery = useTopicRecommendationsQuery(
+    currentTerm.id,
+    isAuthenticated && mode === "student" && recommendationEnabled,
+  );
 
   const topics = topicsQuery.data?.items ?? [];
   const portraitTopics = topics.filter((topic) => (topic.portrait?.keywords ?? []).length > 0);
+  const effectiveSelectedTopicId =
+    selectedTopicId && topics.some((topic) => topic.id === selectedTopicId)
+      ? selectedTopicId
+      : topics[0]?.id ?? null;
 
-  useEffect(() => {
-    if (!topics.length) {
-      if (selectedTopicId !== null) {
-        setSelectedTopicId(null);
-      }
-      return;
-    }
-
-    if (selectedTopicId && topics.some((topic) => topic.id === selectedTopicId)) {
-      return;
-    }
-
-    setSelectedTopicId(topics[0].id);
-  }, [selectedTopicId, topics]);
-
-  const selectedTopic = detailQuery.data?.id === selectedTopicId ? detailQuery.data : topics.find((topic) => topic.id === selectedTopicId) ?? null;
+  const selectedTopic =
+    detailQuery.data?.id === effectiveSelectedTopicId
+      ? detailQuery.data
+      : topics.find((topic) => topic.id === effectiveSelectedTopicId) ?? null;
   const keywordGroups = selectedTopic
     ? getTopicKeywordGroups(selectedTopic)
     : { primary: [], derived: [] };
   const keywordJobStatusLabel = selectedTopic
     ? formatJobStatusLabel(selectedTopic.llmKeywordJobStatus)
     : "";
-
-  const selectedRecommendation = recommendationResult.find((item) => item.topic.id === selectedTopicId) ?? null;
+  const recommendationItems = recommendationsQuery.data?.items ?? [];
+  const selectedRecommendation =
+    recommendationItems.find((item) => item.topicId === effectiveSelectedTopicId) ?? null;
 
   function syncTeacherDraftFromTopic(topic: Topic) {
     setTeacherDraft({
@@ -318,6 +334,17 @@ export function TopicsPage() {
       capacity: String(topic.capacity),
     });
   }
+
+  useEffect(() => {
+    if (mode !== "student" || studentDraftDirty) {
+      return;
+    }
+
+    if (userMeQuery.data?.studentProfile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStudentDraft(mapStudentProfileToDraft(userMeQuery.data.studentProfile));
+    }
+  }, [mode, studentDraftDirty, userMeQuery.data?.studentProfile]);
 
   async function handleSaveTeacherDraft() {
     if (!currentUser || !selectedTopic) {
@@ -341,14 +368,16 @@ export function TopicsPage() {
     await topicsQuery.refetch();
   }
 
-  function handleRecommendTopics() {
-    setRecommendationResult(buildTopicRecommendations(topics, studentDraft));
-    setMode("student");
+  async function handleSaveAndRecommend() {
+    await updateUserMeMutation.mutateAsync(buildStudentProfilePatch(studentDraft));
+    setStudentDraftDirty(false);
+    setRecommendationEnabled(true);
+    await recommendationsQuery.refetch();
   }
 
   const currentTopicCount = topics.length;
   const keywordCoverage = portraitTopics.length;
-  const recommendationCount = recommendationResult.length;
+  const recommendationCount = recommendationsQuery.data?.items.length ?? 0;
 
   return (
     <div className="page-stack">
@@ -431,7 +460,7 @@ export function TopicsPage() {
                   <TopicTopicCard
                     key={topic.id}
                     topic={topic}
-                    isSelected={topic.id === selectedTopicId}
+                    isSelected={topic.id === effectiveSelectedTopicId}
                     onSelect={setSelectedTopicId}
                   />
                 ))}
@@ -448,7 +477,7 @@ export function TopicsPage() {
               title="题目详情摘要"
               description="右侧展示研究要求、关键词与容量信息，便于学生判断课题匹配度。"
             />
-            {!selectedTopicId ? (
+            {!effectiveSelectedTopicId ? (
               <div style={{ marginTop: 22 }}>
                 <EmptyState
                   title="尚未选择题目"
@@ -690,7 +719,7 @@ export function TopicsPage() {
                     <TopicTopicCard
                       key={topic.id}
                       topic={topic}
-                      isSelected={topic.id === selectedTopicId}
+                      isSelected={topic.id === effectiveSelectedTopicId}
                       onSelect={(topicId) => {
                         setSelectedTopicId(topicId);
                         const current = topics.find((item) => item.id === topicId);
@@ -757,9 +786,10 @@ export function TopicsPage() {
                 <Textarea
                   id="student-interests"
                   value={studentDraft.interests}
-                  onChange={(event) =>
-                    setStudentDraft((current) => ({ ...current, interests: event.target.value }))
-                  }
+                  onChange={(event) => {
+                    setStudentDraftDirty(true);
+                    setStudentDraft((current) => ({ ...current, interests: event.target.value }));
+                  }}
                   placeholder="例如：AI 学术助手、毕业设计、推荐系统"
                 />
               </div>
@@ -768,9 +798,10 @@ export function TopicsPage() {
                 <Textarea
                   id="student-skills"
                   value={studentDraft.skills}
-                  onChange={(event) =>
-                    setStudentDraft((current) => ({ ...current, skills: event.target.value }))
-                  }
+                  onChange={(event) => {
+                    setStudentDraftDirty(true);
+                    setStudentDraft((current) => ({ ...current, skills: event.target.value }));
+                  }}
                   placeholder="例如：React、Flask、接口联调、论文写作"
                 />
               </div>
@@ -779,9 +810,10 @@ export function TopicsPage() {
                 <Input
                   id="student-keywords"
                   value={studentDraft.keywords}
-                  onChange={(event) =>
-                    setStudentDraft((current) => ({ ...current, keywords: event.target.value }))
-                  }
+                  onChange={(event) => {
+                    setStudentDraftDirty(true);
+                    setStudentDraft((current) => ({ ...current, keywords: event.target.value }));
+                  }}
                   placeholder="例如：可解释推荐，画像，异步任务"
                 />
               </div>
@@ -790,9 +822,10 @@ export function TopicsPage() {
                 <Textarea
                   id="student-goal"
                   value={studentDraft.goal}
-                  onChange={(event) =>
-                    setStudentDraft((current) => ({ ...current, goal: event.target.value }))
-                  }
+                  onChange={(event) => {
+                    setStudentDraftDirty(true);
+                    setStudentDraft((current) => ({ ...current, goal: event.target.value }));
+                  }}
                   placeholder="例如：希望做一个能展示模型价值、适合答辩演示的题目。"
                 />
               </div>
@@ -801,9 +834,10 @@ export function TopicsPage() {
                 <Input
                   id="student-hours"
                   value={studentDraft.weeklyHours}
-                  onChange={(event) =>
-                    setStudentDraft((current) => ({ ...current, weeklyHours: event.target.value }))
-                  }
+                  onChange={(event) => {
+                    setStudentDraftDirty(true);
+                    setStudentDraft((current) => ({ ...current, weeklyHours: event.target.value }));
+                  }}
                   placeholder="例如：8"
                 />
               </div>
@@ -812,19 +846,22 @@ export function TopicsPage() {
             <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 18 }}>
               <Button
                 variant="outline"
-                onClick={() =>
+                onClick={() => {
                   setStudentDraft({
                     interests: initialStudentDraft.interests,
                     skills: initialStudentDraft.skills,
                     keywords: initialStudentDraft.keywords,
                     goal: initialStudentDraft.goal,
                     weeklyHours: initialStudentDraft.weeklyHours,
-                  })
-                }
+                  });
+                  setStudentDraftDirty(true);
+                }}
               >
                 恢复示例输入
               </Button>
-              <Button onClick={handleRecommendTopics}>开始推荐</Button>
+              <Button onClick={() => void handleSaveAndRecommend()}>
+                保存画像并开始推荐
+              </Button>
             </div>
 
             <div
@@ -837,7 +874,7 @@ export function TopicsPage() {
             >
               <p style={{ fontWeight: 600 }}>推荐说明</p>
               <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
-                当前推荐试算优先匹配题目关键词、系统画像和容量信息，结果是前端演示版，后续可以直接接入真实 `/recommendations/topics` 或学生画像保存接口。
+                当前推荐通过先保存学生画像，再调用后端的 `/recommendations/topics` 获取结果。后续只需要把这块换成真实联调数据即可。
               </p>
             </div>
           </PageSection>
@@ -848,20 +885,46 @@ export function TopicsPage() {
               description="点击任意推荐项可以切换右侧题目详情。"
             />
 
-            {!recommendationResult.length ? (
+            {!recommendationEnabled ? (
               <div style={{ marginTop: 22 }}>
                 <EmptyState
-                  title="等待生成推荐"
-                  description="填写学生画像后点击“开始推荐”，这里会列出匹配的课题。"
+                  title="等待开始推荐"
+                  description="先保存学生画像，系统再请求后端生成匹配结果。"
+                />
+              </div>
+            ) : recommendationsQuery.isLoading ? (
+              <div style={{ marginTop: 22 }}>
+                <EmptyState
+                  title="推荐生成中"
+                  description="后端正在基于学生画像和当前学期题目计算推荐结果。"
+                />
+              </div>
+            ) : recommendationsQuery.isError ? (
+              <div style={{ marginTop: 22 }}>
+                <EmptyState
+                  title="推荐结果加载失败"
+                  description={getErrorMessage(recommendationsQuery.error, "暂时无法获取推荐结果。")}
+                  action={
+                    <Button variant="outline" onClick={() => void recommendationsQuery.refetch()}>
+                      重试
+                    </Button>
+                  }
+                />
+              </div>
+            ) : !recommendationItems.length ? (
+              <div style={{ marginTop: 22 }}>
+                <EmptyState
+                  title="暂无推荐结果"
+                  description="当前学生画像和学期题目没有匹配到合适结果。"
                 />
               </div>
             ) : (
               <div className="topic-list">
-                {recommendationResult.map((item) => (
+                {recommendationItems.map((item) => (
                   <RecommendationCard
-                    key={item.topic.id}
+                    key={item.topicId}
                     item={item}
-                    active={item.topic.id === selectedTopicId}
+                    active={item.topicId === effectiveSelectedTopicId}
                     onSelect={setSelectedTopicId}
                   />
                 ))}
@@ -872,23 +935,21 @@ export function TopicsPage() {
               <div className="detail-card" style={{ marginTop: 18 }}>
                 <p style={{ fontWeight: 600 }}>当前选中的推荐题目</p>
                 <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
-                  {selectedRecommendation.topic.title}
+                  {selectedRecommendation.title}
                 </p>
                 <p className="muted small" style={{ marginTop: 10, lineHeight: 1.9 }}>
-                  {selectedRecommendation.topic.summary}
+                  推荐分：{selectedRecommendation.score} · {formatCapacityStatusLabel(selectedRecommendation.explain?.capacityStatus)}
                 </p>
-                <div className="keyword-row">
-                  {selectedRecommendation.topic.techKeywords.map((keyword) => (
-                    <span key={keyword} className="keyword-pill">
-                      {keyword}
-                    </span>
-                  ))}
-                </div>
                 <ul className="summary-points" style={{ marginTop: 12, paddingLeft: 0 }}>
-                  {selectedRecommendation.reasons.map((reason) => (
+                  {(selectedRecommendation.explain?.reasons ?? []).map((reason) => (
                     <li key={reason}>{reason}</li>
                   ))}
                 </ul>
+                {selectedTopic ? (
+                  <p className="muted small" style={{ marginTop: 10, lineHeight: 1.9 }}>
+                    题目简介：{selectedTopic.summary}
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
@@ -902,12 +963,7 @@ export function TopicsPage() {
             >
               <p style={{ fontWeight: 600 }}>当前匹配逻辑</p>
               <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
-                题目推荐先看“题目画像 + 学生输入画像”的交集，再结合容量和可解释性排序。输入里已经支持逗号分隔的关键词，便于后续直接替换成模型分析结果。
-              </p>
-              <p className="muted small" style={{ marginTop: 10, lineHeight: 1.9 }}>
-                学生输入词条数：{parseWorkbenchTerms(studentDraft.interests).length +
-                  parseWorkbenchTerms(studentDraft.skills).length +
-                  parseWorkbenchTerms(studentDraft.keywords).length}
+                推荐结果由后端返回的可解释字段驱动，前端只负责展示“匹配技能、关键词、容量状态、建议与风险”。学生画像输入已经预留了后续接模型分析结果的空间。
               </p>
             </div>
           </PageSection>

@@ -35,6 +35,7 @@ export function ChatPage() {
 
   useEffect(() => {
     if (conversationsQuery.data?.items.length && !selectedConversationId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedConversationId(conversationsQuery.data.items[0].id);
     }
   }, [conversationsQuery.data?.items, selectedConversationId]);
@@ -61,12 +62,14 @@ export function ChatPage() {
 
   useEffect(() => {
     if (createConversationMutation.data?.id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedConversationId(createConversationMutation.data.id);
     }
   }, [createConversationMutation.data?.id]);
 
   useEffect(() => {
     if (chatJobQuery.data?.status === "done" || chatJobQuery.data?.status === "failed") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveJobId(null);
     }
   }, [chatJobQuery.data?.status]);
