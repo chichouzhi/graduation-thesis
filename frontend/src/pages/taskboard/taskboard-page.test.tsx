@@ -24,6 +24,27 @@ const milestone = {
 const createMilestone = vi.fn().mockResolvedValue(milestone);
 const updateMilestone = vi.fn().mockResolvedValue({ ...milestone, status: "done" });
 const deleteMilestone = vi.fn().mockResolvedValue(undefined);
+const useMilestonesQueryMock = vi.fn();
+
+const assignments = {
+  items: [
+    {
+      id: "assignment-1",
+      studentId: "student-1",
+      studentName: "联调学生",
+      teacherId: "teacher-1",
+      topicId: "topic-1",
+      topicTitle: "AI 学术助手工作台",
+      termId: "term-1",
+      applicationId: "application-1",
+      status: "active",
+      confirmedAt: "2026-05-09T03:00:00Z",
+    },
+  ],
+  page: 1,
+  pageSize: 50,
+  total: 1,
+};
 
 function fillInput(input: HTMLInputElement, value: string) {
   const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
@@ -49,12 +70,16 @@ vi.mock("@/app/store", () => ({
 }));
 
 vi.mock("@/features/taskboard/taskboard.queries", () => ({
-  useMilestonesQuery: () => ({
-    data: { items: [milestone], page: 1, pageSize: 50, total: 1 },
-    isLoading: false,
-    isError: false,
-    refetch: vi.fn(),
-  }),
+  useMilestonesQuery: (enabled: boolean, params?: { studentId?: string }) => {
+    useMilestonesQueryMock(enabled, params);
+
+    return {
+      data: { items: [milestone], page: 1, pageSize: 50, total: 1 },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    };
+  },
   useCreateMilestoneMutation: () => ({
     mutateAsync: createMilestone,
     isPending: false,
@@ -66,6 +91,14 @@ vi.mock("@/features/taskboard/taskboard.queries", () => ({
   useDeleteMilestoneMutation: () => ({
     mutateAsync: deleteMilestone,
     isPending: false,
+  }),
+}));
+
+vi.mock("@/features/selection/selection.queries", () => ({
+  useAssignmentsQuery: () => ({
+    data: assignments,
+    isLoading: false,
+    isError: false,
   }),
 }));
 
@@ -114,6 +147,26 @@ describe("TaskboardPage", () => {
       end_date: "2026-05-12",
       status: "todo",
       sort_order: 0,
+    });
+  });
+
+  it("loads milestones for the selected guidance assignment student", async () => {
+    const { TaskboardPage } = await import("@/pages/taskboard/taskboard-page");
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <TaskboardPage />
+        </StrictMode>,
+      );
+    });
+
+    expect(container.textContent).toContain("指导课题");
+    expect(container.textContent).toContain("AI 学术助手工作台");
+    expect(container.textContent).toContain("联调学生");
+    expect(useMilestonesQueryMock).toHaveBeenCalledWith(true, {
+      studentId: "student-1",
     });
   });
 

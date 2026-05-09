@@ -7,6 +7,7 @@ import { SectionHeading } from "@/components/shared/section-heading";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useAssignmentsQuery } from "@/features/selection/selection.queries";
 import {
   useCreateMilestoneMutation,
   useDeleteMilestoneMutation,
@@ -121,12 +122,22 @@ function MilestoneCard({
 export function TaskboardPage() {
   const [draft, setDraft] = useState<MilestoneDraft>(initialMilestoneDraft);
   const [operationError, setOperationError] = useState("");
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<string | null>(null);
 
   const isAuthenticated = useAppStore((state) => state.isAuthenticated);
   const currentTerm = useAppStore((state) => state.currentTerm);
   const currentUser = useAppStore((state) => state.currentUser);
 
-  const milestonesQuery = useMilestonesQuery(isAuthenticated);
+  const assignmentsQuery = useAssignmentsQuery(isAuthenticated);
+  const assignments = assignmentsQuery.data?.items ?? [];
+  const selectedAssignment =
+    assignments.find((assignment) => assignment.id === selectedAssignmentId) ??
+    assignments[0] ??
+    null;
+  const milestoneStudentId = selectedAssignment?.studentId;
+  const milestonesQuery = useMilestonesQuery(isAuthenticated, {
+    studentId: milestoneStudentId,
+  });
   const createMilestoneMutation = useCreateMilestoneMutation();
   const updateMilestoneMutation = useUpdateMilestoneMutation();
   const deleteMilestoneMutation = useDeleteMilestoneMutation();
@@ -186,11 +197,80 @@ export function TaskboardPage() {
         </p>
       </PageSection>
 
+      <PageSection className="paper">
+        <SectionHeading
+          title="指导课题"
+          description="老师接受志愿后形成的指导关系会在这里作为任务看板上下文。"
+        />
+
+        {assignmentsQuery.isLoading ? (
+          <div style={{ marginTop: 22 }}>
+            <EmptyState title="正在加载指导关系" description="系统正在同步已确认的选题关系。" />
+          </div>
+        ) : assignmentsQuery.isError ? (
+          <div style={{ marginTop: 22 }}>
+            <EmptyState title="指导关系加载失败" description="暂时无法获取师生课题关系。" />
+          </div>
+        ) : selectedAssignment ? (
+          <div className="detail-card" style={{ marginTop: 22 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 16,
+                alignItems: "flex-start",
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <h3>{selectedAssignment.topicTitle ?? selectedAssignment.topicId}</h3>
+                <p className="muted small" style={{ marginTop: 10, lineHeight: 1.9 }}>
+                  学生：{selectedAssignment.studentName ?? selectedAssignment.studentId} · 状态：
+                  {selectedAssignment.status === "active" ? "已确认指导" : "已取消"}
+                </p>
+                <p className="muted small" style={{ marginTop: 8, lineHeight: 1.9 }}>
+                  当前任务列表按学生 ID {selectedAssignment.studentId} 查询。
+                </p>
+              </div>
+
+              {assignments.length > 1 ? (
+                <div className="field" style={{ minWidth: 260 }}>
+                  <label htmlFor="assignment-selector">切换指导关系</label>
+                  <select
+                    id="assignment-selector"
+                    className="upload-select"
+                    value={selectedAssignment.id}
+                    onChange={(event) => setSelectedAssignmentId(event.target.value)}
+                  >
+                    {assignments.map((assignment) => (
+                      <option key={assignment.id} value={assignment.id}>
+                        {assignment.topicTitle ?? assignment.topicId}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginTop: 22 }}>
+            <EmptyState
+              title="暂无指导关系"
+              description="接受学生志愿后，任务看板会自动按对应学生查看毕业过程任务。"
+            />
+          </div>
+        )}
+      </PageSection>
+
       <div className="grid-3">
         <div className="detail-card">
           <p style={{ fontWeight: 600 }}>总任务</p>
           <p className="muted small" style={{ marginTop: 10 }}>
-            {summary.total} 项，来自当前用户的里程碑列表。
+            {summary.total} 项，来自
+            {selectedAssignment
+              ? selectedAssignment.studentName ?? selectedAssignment.studentId
+              : "当前用户"}
+            的里程碑列表。
           </p>
         </div>
         <div className="detail-card">
