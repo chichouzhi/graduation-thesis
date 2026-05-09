@@ -210,6 +210,39 @@ describe("TopicsPage", () => {
     expect(container.textContent).toContain("跨前端、后端与异步任务");
   });
 
+  it("shows a single active workflow hint when switching between teacher and student modes", async () => {
+    const { TopicsPage } = await import("@/pages/topics/topics-page");
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <StrictMode>
+          <TopicsPage />
+        </StrictMode>,
+      );
+    });
+
+    const teacherButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("老师分析"),
+    );
+
+    await act(async () => {
+      teacherButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain("当前只展示老师分析工作区");
+
+    const studentButton = Array.from(container.querySelectorAll("button")).find((button) =>
+      button.textContent?.includes("学生推荐"),
+    );
+
+    await act(async () => {
+      studentButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain("当前只展示学生推荐工作区");
+  });
+
   it("shows an application button in browse mode for the selected topic", async () => {
     const { TopicsPage } = await import("@/pages/topics/topics-page");
     const root = createRoot(container);

@@ -123,10 +123,6 @@ export function DocumentsPage() {
 
   useEffect(() => {
     if (!tasks.length) {
-      if (selectedTaskId !== null && selectedTaskId !== preferredTaskId) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setSelectedTaskId(null);
-      }
       return;
     }
 

@@ -46,6 +46,21 @@ import { getErrorMessage } from "@/lib/api-error";
 
 type TopicsMode = "browse" | "teacher" | "student";
 
+const modeGuidance: Record<TopicsMode, { title: string; description: string }> = {
+  browse: {
+    title: "当前只展示题目浏览工作区",
+    description: "先查看题目，再切到老师分析或学生推荐，避免把两个工作流放在同一屏里。",
+  },
+  teacher: {
+    title: "当前只展示老师分析工作区",
+    description: "这里用于录题、生成画像和处理学生志愿，和学生推荐保持分离。",
+  },
+  student: {
+    title: "当前只展示学生推荐工作区",
+    description: "这里用于填写学生画像、生成推荐结果和发起志愿申请。",
+  },
+};
+
 const initialTeacherDraft: TeacherTopicDraft = {
   title: "",
   summary: "",
@@ -484,10 +499,10 @@ export function TopicsPage() {
           老师先录入题目并生成结构化分析，学生再输入兴趣、技能和目标做推荐试算。当前页面先用前端演示逻辑落地这条闭环，后续可以直接切到真实大模型接口。
         </p>
 
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 22 }}>
-          <Button variant={mode === "browse" ? "default" : "outline"} onClick={() => setMode("browse")}>
-            题目浏览
-          </Button>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 22 }}>
+        <Button variant={mode === "browse" ? "default" : "outline"} onClick={() => setMode("browse")}>
+          题目浏览
+        </Button>
           <Button
             variant={mode === "teacher" ? "default" : "outline"}
             onClick={() => setMode("teacher")}
@@ -498,9 +513,23 @@ export function TopicsPage() {
             variant={mode === "student" ? "default" : "outline"}
             onClick={() => setMode("student")}
           >
-            学生推荐
-          </Button>
-        </div>
+          学生推荐
+        </Button>
+      </div>
+
+      <div
+        className="detail-card"
+        style={{
+          marginTop: 18,
+          borderColor: "rgba(15, 76, 117, 0.18)",
+          background: "rgba(222, 239, 248, 0.55)",
+        }}
+      >
+        <p style={{ fontWeight: 600 }}>{modeGuidance[mode].title}</p>
+        <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
+          {modeGuidance[mode].description}
+        </p>
+      </div>
       </PageSection>
 
       <div className="grid-3">

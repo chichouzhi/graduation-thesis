@@ -1,5 +1,5 @@
 import { SendHorizonal } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAppStore } from "@/app/store";
 import { PageSection } from "@/components/layout/page-section";
@@ -21,6 +21,7 @@ import { getErrorMessage } from "@/lib/api-error";
 export function ChatPage() {
   const isAuthenticated = useAppStore((state) => state.isAuthenticated);
   const currentTerm = useAppStore((state) => state.currentTerm);
+  const fallbackConversationRequestedRef = useRef(false);
 
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
@@ -33,39 +34,55 @@ export function ChatPage() {
   const postMessageMutation = usePostMessageMutation(selectedConversationId);
   const chatJobQuery = useChatJobQuery(activeJobId, selectedConversationId);
 
-  useEffect(() => {
-    if (conversationsQuery.data?.items.length && !selectedConversationId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSelectedConversationId(conversationsQuery.data.items[0].id);
-    }
-  }, [conversationsQuery.data?.items, selectedConversationId]);
+  const conversations = conversationsQuery.data?.items ?? [];
+  const selectedConversation = conversations.find((item) => item.id === selectedConversationId) ?? null;
+  const createdConversationId = createConversationMutation.data?.id ?? null;
+  const createFallbackConversation = createConversationMutation.mutate;
+  const isCreatingFallbackConversation = createConversationMutation.isPending;
 
   useEffect(() => {
+    if (conversations.length && !selectedConversationId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedConversationId(conversations[0].id);
+    }
+  }, [conversations, selectedConversationId]);
+
+  useEffect(() => {
+    if (conversations.length > 0) {
+      fallbackConversationRequestedRef.current = false;
+      return;
+    }
+
     if (
-      conversationsQuery.isSuccess &&
-      conversationsQuery.data.items.length === 0 &&
-      !createConversationMutation.isPending &&
-      !createConversationMutation.data
+      !conversationsQuery.isSuccess ||
+      isCreatingFallbackConversation ||
+      createdConversationId ||
+      fallbackConversationRequestedRef.current
     ) {
-      createConversationMutation.mutate({
+      return;
+    }
+
+    fallbackConversationRequestedRef.current = true;
+    createFallbackConversation({
         term_id: currentTerm.id,
         title: "通用学术咨询",
         context_type: "general",
       });
-    }
   }, [
-    conversationsQuery.data,
+    conversations.length,
     conversationsQuery.isSuccess,
-    createConversationMutation,
+    createFallbackConversation,
+    createdConversationId,
+    isCreatingFallbackConversation,
     currentTerm.id,
   ]);
 
   useEffect(() => {
-    if (createConversationMutation.data?.id) {
+    if (createdConversationId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSelectedConversationId(createConversationMutation.data.id);
+      setSelectedConversationId(createdConversationId);
     }
-  }, [createConversationMutation.data?.id]);
+  }, [createdConversationId]);
 
   useEffect(() => {
     if (chatJobQuery.data?.status === "done" || chatJobQuery.data?.status === "failed") {
@@ -73,9 +90,6 @@ export function ChatPage() {
       setActiveJobId(null);
     }
   }, [chatJobQuery.data?.status]);
-
-  const conversations = conversationsQuery.data?.items ?? [];
-  const selectedConversation = conversations.find((item) => item.id === selectedConversationId) ?? null;
 
   const messages = useMemo(() => {
     const serverMessages = messagesQuery.data?.items ?? [];
