@@ -347,11 +347,30 @@ components:
             keywords:
               type: array
               items: { type: string }
+            difficulty_label:
+              type: string
+              nullable: true
+              enum: [basic, intermediate, advanced]
+            difficulty_reason:
+              type: string
+              nullable: true
+            required_capabilities:
+              type: array
+              items: { type: string }
+            suitable_students:
+              type: array
+              items: { type: string }
+            risks:
+              type: array
+              items: { type: string }
+            summary:
+              type: string
+              nullable: true
             extracted_at: { type: string, format: date-time, nullable: true }
         llm_keyword_job_id:
           type: string
           nullable: true
-          description: 若本次保存触发生产默认 keyword_jobs，可返回追踪 id（无则 null）
+          description: 若本次保存触发题目画像分析 keyword_jobs，可返回追踪 id（无则 null）
         llm_keyword_job_status:
           allOf:
             - $ref: "#/components/schemas/AsyncTaskStatus"
@@ -630,7 +649,25 @@ components:
         role: { type: string }
         display_name: { type: string }
         email: { type: string, nullable: true }
-        student_profile: { type: object, nullable: true, additionalProperties: true }
+        student_profile:
+          type: object
+          nullable: true
+          properties:
+            interests:
+              type: array
+              items: { type: string }
+            skills:
+              type: array
+              items: { type: string }
+            keywords:
+              type: array
+              items: { type: string }
+            goal:
+              type: string
+              nullable: true
+            weekly_hours:
+              type: integer
+              nullable: true
         teacher_profile: { type: object, nullable: true, additionalProperties: true }
 
     PatchUserMeRequest:
@@ -638,7 +675,25 @@ components:
       properties:
         display_name: { type: string }
         email: { type: string }
-        student_profile: { type: object, nullable: true }
+        student_profile:
+          type: object
+          nullable: true
+          properties:
+            interests:
+              type: array
+              items: { type: string }
+            skills:
+              type: array
+              items: { type: string }
+            keywords:
+              type: array
+              items: { type: string }
+            goal:
+              type: string
+              nullable: true
+            weekly_hours:
+              type: integer
+              nullable: true
         teacher_profile: { type: object, nullable: true }
 
     Term:
@@ -726,6 +781,19 @@ components:
               type: array
               items: { type: string }
             matched_keywords:
+              type: array
+              items: { type: string }
+            matched_capabilities:
+              type: array
+              items: { type: string }
+            difficulty_fit:
+              type: string
+              nullable: true
+            capacity_status:
+              type: string
+              nullable: true
+              enum: [available, nearly_full, full]
+            warnings:
               type: array
               items: { type: string }
             reasons:
@@ -1322,7 +1390,7 @@ paths:
                         items: { $ref: "#/components/schemas/Topic" }
     post:
       tags: [topic]
-      summary: 教师创建课题（草稿）；LLM 抽词生产路径 keyword_jobs 异步
+      summary: 教师创建课题（草稿）；LLM 题目画像分析通过 keyword_jobs 异步
       requestBody:
         required: true
         content:
@@ -1361,7 +1429,7 @@ paths:
               schema: { $ref: "#/components/schemas/Topic" }
     patch:
       tags: [topic]
-      summary: 更新草稿或被驳回课题（若触发 keyword_jobs 入队，错误码同 POST）
+      summary: 更新草稿或被驳回课题（若触发 keyword_jobs 入队并刷新题目画像，错误码同 POST）
       requestBody:
         required: true
         content:
@@ -1571,7 +1639,7 @@ paths:
   /recommendations/topics:
     get:
       tags: [recommendations]
-      summary: 学生 Top-N 推荐（同步只读；不调 LLM，符合 architecture.spec R-REC-LLM）
+      summary: 学生 Top-N 推荐（同步只读；基于学生画像与题目画像规则排序，不调 LLM）
       parameters:
         - name: top_n
           in: query
