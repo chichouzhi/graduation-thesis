@@ -33,6 +33,14 @@ Thumbs.db
 # Logs / local data
 *.log
 *.sqlite3
+*.db
+.tmp/
+instance/
+frontend/.vite/
+
+# Duplicate root-level defense drafts archived under docs/requirements/
+\# 毕业设计答辩版文本 5-6 .md
+\# 毕业设计答辩说明稿 5-6.md
 
 # Task OS 本地派发（由 auto-run.py 写入，勿提交）
 docs/tasks/queue.json
