@@ -33,6 +33,9 @@ Thumbs.db
 # Logs / local data
 *.log
 *.sqlite3
+*.db
+.tmp/
+instance/
 
 # Task OS 本地派发（由 auto-run.py 写入，勿提交）
 docs/tasks/queue.json
