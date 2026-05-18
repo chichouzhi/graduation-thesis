@@ -313,6 +313,10 @@
 
 ### 学生：推荐与志愿
 
+- **实现** 课题中心页按账号角色自动切换入口：教师进入分析工作区，学生保留选题浏览与个人信息输入表单，管理员保留浏览模式切换
+  - 依赖：登录态中的 `currentUser.role` 与课题页状态管理
+  - 优先级：P1
+
 - **实现** 课题列表页：调用 `GET /topics` 与 `GET /recommendations/topics?term_id=...`，展示 `RecommendationTopicItem.score` 与可选 `explain`  
   - 依赖：后端 topic、recommendations API  
   - 优先级：P1  

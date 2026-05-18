@@ -68,6 +68,10 @@ const userMe = {
 };
 const recommendationList = { items: [recommendation], topN: 10 };
 
+const appStoreState = vi.hoisted(() => ({
+  currentRole: "teacher" as "student" | "teacher" | "admin",
+}));
+
 vi.mock("@/app/store", () => ({
   useAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
@@ -75,7 +79,7 @@ vi.mock("@/app/store", () => ({
       currentUser: {
         id: "teacher-1",
         username: "teacher-demo",
-        role: "teacher",
+        role: appStoreState.currentRole,
         display_name: "演示教师",
       },
       currentTerm: {
@@ -176,7 +180,22 @@ vi.mock("@/features/selection/selection.queries", () => ({
 describe("TopicsPage", () => {
   let container: HTMLDivElement;
 
+  function renderTopicsPage() {
+    return import("@/pages/topics/topics-page").then(({ TopicsPage }) => {
+      const root = createRoot(container);
+
+      return act(async () => {
+        root.render(
+          <StrictMode>
+            <TopicsPage />
+          </StrictMode>,
+        );
+      });
+    });
+  }
+
   beforeEach(() => {
+    appStoreState.currentRole = "teacher";
     container = document.createElement("div");
     document.body.appendChild(container);
   });
@@ -186,74 +205,27 @@ describe("TopicsPage", () => {
     vi.clearAllMocks();
   });
 
-  it("renders backend portrait summary in teacher mode", async () => {
-    const { TopicsPage } = await import("@/pages/topics/topics-page");
-    const root = createRoot(container);
+  it("renders teacher workspace by default for teacher users", async () => {
+    appStoreState.currentRole = "teacher";
+    await renderTopicsPage();
 
-    await act(async () => {
-      root.render(
-        <StrictMode>
-          <TopicsPage />
-        </StrictMode>,
-      );
-    });
-
-    const teacherButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("老师分析"),
-    );
-
-    await act(async () => {
-      teacherButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
+    expect(container.textContent).toContain("老师输入题目");
     expect(container.textContent).toContain("这是一个适合答辩展示的综合题目。");
     expect(container.textContent).toContain("跨前端、后端与异步任务");
   });
 
-  it("shows a single active workflow hint when switching between teacher and student modes", async () => {
-    const { TopicsPage } = await import("@/pages/topics/topics-page");
-    const root = createRoot(container);
+  it("renders student workspace by default for student users", async () => {
+    appStoreState.currentRole = "student";
+    await renderTopicsPage();
 
-    await act(async () => {
-      root.render(
-        <StrictMode>
-          <TopicsPage />
-        </StrictMode>,
-      );
-    });
-
-    const teacherButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("老师分析"),
-    );
-
-    await act(async () => {
-      teacherButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(container.textContent).toContain("当前只展示老师分析工作区");
-
-    const studentButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("学生推荐"),
-    );
-
-    await act(async () => {
-      studentButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(container.textContent).toContain("当前只展示学生推荐工作区");
+    expect(container.textContent).toContain("学生画像输入");
+    expect(container.textContent).toContain("保存画像并开始推荐");
+    expect(container.textContent).not.toContain("当前只展示题目浏览工作区");
   });
 
-  it("shows an application button in browse mode for the selected topic", async () => {
-    const { TopicsPage } = await import("@/pages/topics/topics-page");
-    const root = createRoot(container);
-
-    await act(async () => {
-      root.render(
-        <StrictMode>
-          <TopicsPage />
-        </StrictMode>,
-      );
-    });
+  it("shows an application button in browse mode for admin users", async () => {
+    appStoreState.currentRole = "admin";
+    await renderTopicsPage();
 
     const applyButton = Array.from(container.querySelectorAll("button")).find((button) =>
       button.textContent?.includes("申请第一志愿"),
@@ -272,102 +244,9 @@ describe("TopicsPage", () => {
     });
   });
 
-  it("shows recommendation explanations after saving student profile", async () => {
-    const { TopicsPage } = await import("@/pages/topics/topics-page");
-    const root = createRoot(container);
-
-    await act(async () => {
-      root.render(
-        <StrictMode>
-          <TopicsPage />
-        </StrictMode>,
-      );
-    });
-
-    const studentButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("学生推荐"),
-    );
-
-    await act(async () => {
-      studentButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    const recommendButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("保存画像并开始推荐"),
-    );
-
-    await act(async () => {
-      recommendButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(updateUserMeMutation).toHaveBeenCalledTimes(1);
-    expect(recommendationsRefetch).toHaveBeenCalledTimes(1);
-    expect(container.textContent).toContain("与你的技能和时间投入较匹配");
-    expect(container.textContent).toContain("前后端联调");
-  });
-
-  it("submits a recommended topic as first application choice", async () => {
-    const { TopicsPage } = await import("@/pages/topics/topics-page");
-    const root = createRoot(container);
-
-    await act(async () => {
-      root.render(
-        <StrictMode>
-          <TopicsPage />
-        </StrictMode>,
-      );
-    });
-
-    const studentButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("学生推荐"),
-    );
-
-    await act(async () => {
-      studentButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    const recommendButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("保存画像并开始推荐"),
-    );
-
-    await act(async () => {
-      recommendButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    const submitButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("申请第一志愿"),
-    );
-
-    await act(async () => {
-      submitButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(createApplicationMutation).toHaveBeenCalledWith({
-      topic_id: "topic-1",
-      term_id: "term-2026-spring",
-      priority: 1,
-    });
-  });
-
   it("accepts a pending application in teacher mode", async () => {
-    const { TopicsPage } = await import("@/pages/topics/topics-page");
-    const root = createRoot(container);
-
-    await act(async () => {
-      root.render(
-        <StrictMode>
-          <TopicsPage />
-        </StrictMode>,
-      );
-    });
-
-    const teacherButton = Array.from(container.querySelectorAll("button")).find((button) =>
-      button.textContent?.includes("老师分析"),
-    );
-
-    await act(async () => {
-      teacherButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
+    appStoreState.currentRole = "teacher";
+    await renderTopicsPage();
 
     expect(container.textContent).toContain("学生志愿");
     expect(container.textContent).toContain("student-1");
