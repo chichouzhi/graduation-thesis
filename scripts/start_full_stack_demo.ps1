@@ -83,6 +83,26 @@ function Invoke-ApiGet {
     Invoke-RestMethod -Method Get -Uri $Url -Headers @{ Authorization = "Bearer $Token" }
 }
 
+function Get-DockerExecutable {
+    $docker = Get-Command docker -ErrorAction SilentlyContinue
+    if ($docker) {
+        return $docker.Source
+    }
+
+    $candidates = @(
+        "C:\Program Files\Docker\Docker\resources\bin\docker.exe",
+        "C:\Program Files (x86)\Docker\Docker\resources\bin\docker.exe"
+    )
+
+    foreach ($candidate in $candidates) {
+        if (Test-Path $candidate) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $frontendRoot = Join-Path $repoRoot "frontend"
 $overridePath = Join-Path $env:TEMP "gd-compose-port-$BackendPort.yml"
@@ -91,8 +111,32 @@ $frontendBaseUrl = "http://127.0.0.1:$FrontendPort"
 
 Set-Location -LiteralPath $repoRoot
 
+# Ensure Docker Compose has a non-empty project name. Some environments set
+# COMPOSE_PROJECT_NAME to an empty string which causes "project name must not be empty".
+if (-not $env:COMPOSE_PROJECT_NAME -or $env:COMPOSE_PROJECT_NAME -eq "" -or -not ($env:COMPOSE_PROJECT_NAME -match '^[a-z0-9][a-z0-9_-]*$')) {
+    if ($env:COMPOSE_PROJECT_NAME -and $env:COMPOSE_PROJECT_NAME -ne "") {
+        Write-Step "Existing COMPOSE_PROJECT_NAME '$env:COMPOSE_PROJECT_NAME' is invalid; overriding."
+    }
+    $folderName = Split-Path -Leaf $repoRoot
+    # Replace invalid chars with hyphen and lowercase. Allowed: lowercase alnum, hyphen, underscore.
+    $base = ($folderName -replace '[^A-Za-z0-9_-]','-').ToLower()
+    # Ensure it starts with a letter or number by trimming leading non-alnum chars
+    $base = $base -replace '^[^a-z0-9]+',''
+    if ([string]::IsNullOrEmpty($base)) { $base = 'gd' }
+    $safeName = "${base}_$BackendPort"
+    # Final ensure: only allowed chars
+    $safeName = ($safeName -replace '[^a-z0-9_-]','-')
+    $env:COMPOSE_PROJECT_NAME = $safeName
+    Write-Step "Using COMPOSE_PROJECT_NAME: $env:COMPOSE_PROJECT_NAME"
+}
+
 Write-Step "Checking required tools"
-docker compose version | Out-Host
+$dockerExe = Get-DockerExecutable
+if (-not $dockerExe) {
+    throw "docker was not found in this PowerShell session or in common Docker Desktop locations. Start Docker Desktop or add Docker to PATH, then rerun this script."
+}
+
+& $dockerExe compose version | Out-Host
 if (-not $SkipFrontend) {
     $npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
     if (-not $npm) {
@@ -109,7 +153,7 @@ services:
 "@ | Set-Content -Path $overridePath -Encoding utf8
 
 Write-Step "Starting compose services on backend port $BackendPort"
-docker compose -f docker-compose.yml -f $overridePath up -d postgres redis web worker
+& $dockerExe compose -f docker-compose.yml -f $overridePath up -d postgres redis web worker
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
@@ -258,7 +302,7 @@ with app.app_context():
     })
 "@
 
-$seedScript | docker compose -f docker-compose.yml -f $overridePath exec -T web python -
+$seedScript | & $dockerExe compose -f docker-compose.yml -f $overridePath exec -T web python -
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
@@ -273,20 +317,30 @@ if (-not $SkipFrontend) {
         $frontendReady = $false
     }
 
+    $viteLog = Join-Path $frontendRoot "vite-dev-$FrontendPort.log"
+
     if (-not $frontendReady) {
-        $viteCommand = "`$env:VITE_API_PROXY_TARGET='$backendBaseUrl'; npm run dev -- --host 127.0.0.1 --port $FrontendPort"
-        $process = Start-Process `
-            -FilePath powershell.exe `
-            -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", $viteCommand) `
-            -WorkingDirectory $frontendRoot `
-            -PassThru `
-            -WindowStyle Hidden
+        Write-Host "Starting Vite and logging to $viteLog"
+
+        $cmdScript = "cd /d `"$frontendRoot`" && set VITE_API_PROXY_TARGET=$backendBaseUrl && npm run dev -- --host 127.0.0.1 --port $FrontendPort --strictPort > `"$viteLog`" 2>&1"
+
+        $process = Start-Process -FilePath cmd.exe -ArgumentList @('/c', $cmdScript) -PassThru -WindowStyle Hidden
         Write-Host "Started frontend process: $($process.Id)"
     } else {
         Write-Host "Frontend already responds on $frontendBaseUrl; reusing it." -ForegroundColor Yellow
     }
 
-    Wait-HttpOk -Url "$frontendBaseUrl/login" -TimeoutSeconds 120 | Out-Null
+    try {
+        Wait-HttpOk -Url "$frontendBaseUrl/login" -TimeoutSeconds 120 | Out-Null
+    } catch {
+        Write-Step "Frontend did not become ready within timeout. Showing last 300 lines of Vite log ($viteLog) to help debugging."
+        if (Test-Path $viteLog) {
+            Get-Content $viteLog -Tail 300 | ForEach-Object { Write-Host $_ }
+        } else {
+            Write-Host "Vite log not found: $viteLog" -ForegroundColor Yellow
+        }
+        throw
+    }
 }
 
 if (-not $SkipSmoke) {
