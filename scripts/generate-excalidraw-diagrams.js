@@ -132,6 +132,10 @@ function connector(points, label, options = {}) {
   return [arrow(points, options), ...labelAlong(points, label, options)];
 }
 
+function relation(points, label, options = {}) {
+  return [line(points, options), ...labelAlong(points, label, options)];
+}
+
 function title(value) {
   return text(40, 26, value, {
     width: 1120,
@@ -321,15 +325,15 @@ const diagrams = [
         caption("学生端", 405, 115, 150),
         caption("教师端", 405, 270, 150),
         caption("管理与过程支撑", 500, 425, 200),
-        connector([student.right, useCases.profile.left]),
-        connector([student.right, [210, 240], [515, 240], useCases.recommend.bottom]),
-        connector([student.right, [210, 255], [740, 255], useCases.apply.bottom]),
-        connector([teacher.right, useCases.topic.left]),
-        connector([teacher.right, [210, 455], [515, 385], useCases.portrait.bottom]),
-        connector([teacher.right, [210, 470], [740, 385], useCases.decide.bottom]),
-        connector([admin.left, [970, 505], useCases.term.right]),
-        connector([admin.left, [970, 505], useCases.review.right]),
-        connector([admin.left, [970, 505], useCases.board.right])
+        relation([student.right, useCases.profile.left]),
+        relation([student.right, [210, 240], [515, 240], useCases.recommend.bottom]),
+        relation([student.right, [210, 255], [740, 255], useCases.apply.bottom]),
+        relation([teacher.right, useCases.topic.left]),
+        relation([teacher.right, [210, 455], [515, 385], useCases.portrait.bottom]),
+        relation([teacher.right, [210, 470], [740, 385], useCases.decide.bottom]),
+        relation([admin.left, [970, 505], useCases.term.right]),
+        relation([admin.left, [970, 505], useCases.review.right]),
+        relation([admin.left, [970, 505], useCases.board.right])
       );
     }
   },
@@ -363,13 +367,13 @@ const diagrams = [
       ];
       [...coreItems, ...assistItems, ...baseItems].forEach((item) => addAll(elements, item));
       addAll(elements,
-        connector([root.bottom, [root.bottom[0], 175], core.top]),
-        connector([root.bottom, [root.bottom[0], 175], assist.top]),
-        connector([root.bottom, [root.bottom[0], 175], baseLayer.top])
+        relation([root.bottom, [root.bottom[0], 175], core.top]),
+        relation([root.bottom, [root.bottom[0], 175], assist.top]),
+        relation([root.bottom, [root.bottom[0], 175], baseLayer.top])
       );
-      coreItems.forEach((item) => addAll(elements, connector([core.bottom, [core.bottom[0], 300], item.top])));
-      assistItems.forEach((item) => addAll(elements, connector([assist.bottom, [assist.bottom[0], 455], item.top])));
-      baseItems.forEach((item) => addAll(elements, connector([baseLayer.bottom, [baseLayer.bottom[0], 580], item.top])));
+      coreItems.forEach((item) => addAll(elements, relation([core.bottom, [core.bottom[0], 300], item.top])));
+      assistItems.forEach((item) => addAll(elements, relation([assist.bottom, [assist.bottom[0], 455], item.top])));
+      baseItems.forEach((item) => addAll(elements, relation([baseLayer.bottom, [baseLayer.bottom[0], 580], item.top])));
     }
   },
   {
@@ -470,9 +474,9 @@ const diagrams = [
         box("query/store\nTanStack / Zustand", 770, 545, 220, 50)
       ];
       [router, ...pages, ...features, ...shared].forEach((item) => addAll(elements, item));
-      pages.forEach((item) => addAll(elements, connector([router.bottom, [router.bottom[0], 205], item.top])));
-      features.forEach((item) => addAll(elements, connector([pages[2].bottom, [pages[2].bottom[0], 320], item.top])));
-      features.forEach((item, index) => addAll(elements, connector([item.bottom, [item.bottom[0], 510], shared[index % shared.length].top])));
+      pages.forEach((item) => addAll(elements, relation([router.bottom, [router.bottom[0], 205], item.top])));
+      features.forEach((item) => addAll(elements, relation([pages[2].bottom, [pages[2].bottom[0], 320], item.top])));
+      features.forEach((item, index) => addAll(elements, relation([item.bottom, [item.bottom[0], 510], shared[index % shared.length].top])));
     }
   },
   {
@@ -492,18 +496,18 @@ const diagrams = [
       const art = tableEntity("document_artifacts", ["PK id", "FK document_task_id", "artifact_type"], 610, 680, 250);
       [users, terms, topics, apps, assign, milestones, convs, msgs, jobs, doct, art].forEach((item) => addAll(elements, item));
       addAll(elements,
-        connector([terms.right, topics.left], "1:N"),
-        connector([users.bottom, topics.top], "教师"),
-        connector([users.right, [830, users.center[1]], apps.top], "学生"),
-        connector([topics.right, apps.left], "1:N"),
-        connector([apps.bottom, [apps.bottom[0], 410], assign.right], "接受后"),
-        connector([topics.bottom, assign.top], "1:N"),
-        connector([assign.left, [310, assign.center[1]], milestones.top], "1:N"),
-        connector([users.bottom, [users.bottom[0], 520], convs.top], "1:N"),
-        connector([convs.right, msgs.left], "1:N"),
-        connector([msgs.right, jobs.left], "触发"),
-        connector([users.left, [330, users.center[1]], doct.top], "上传"),
-        connector([doct.right, art.left], "1:N")
+        relation([terms.right, topics.left], "1:N"),
+        relation([users.bottom, topics.top], "教师"),
+        relation([users.right, [830, users.center[1]], apps.top], "学生"),
+        relation([topics.right, apps.left], "1:N"),
+        relation([apps.bottom, [apps.bottom[0], 410], assign.right], "接受后"),
+        relation([topics.bottom, assign.top], "1:N"),
+        relation([assign.left, [310, assign.center[1]], milestones.top], "1:N"),
+        relation([users.bottom, [users.bottom[0], 520], convs.top], "1:N"),
+        relation([convs.right, msgs.left], "1:N"),
+        relation([msgs.right, jobs.left], "触发"),
+        relation([users.left, [330, users.center[1]], doct.top], "上传"),
+        relation([doct.right, art.left], "1:N")
       );
     }
   },

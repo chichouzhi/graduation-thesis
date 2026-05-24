@@ -1111,8 +1111,8 @@
       "baseline": 15
     },
     {
-      "id": "arrow_0050",
-      "type": "arrow",
+      "id": "line_0050",
+      "type": "line",
       "x": 600,
       "y": 149,
       "width": -300,
@@ -1153,12 +1153,12 @@
       "startBinding": null,
       "endBinding": null,
       "startArrowhead": null,
-      "endArrowhead": "arrow",
+      "endArrowhead": null,
       "elbowed": true
     },
     {
-      "id": "arrow_0051",
-      "type": "arrow",
+      "id": "line_0051",
+      "type": "line",
       "x": 600,
       "y": 149,
       "width": 0,
@@ -1199,12 +1199,12 @@
       "startBinding": null,
       "endBinding": null,
       "startArrowhead": null,
-      "endArrowhead": "arrow",
+      "endArrowhead": null,
       "elbowed": true
     },
     {
-      "id": "arrow_0052",
-      "type": "arrow",
+      "id": "line_0052",
+      "type": "line",
       "x": 600,
       "y": 149,
       "width": 300,
@@ -1245,12 +1245,12 @@
       "startBinding": null,
       "endBinding": null,
       "startArrowhead": null,
-      "endArrowhead": "arrow",
+      "endArrowhead": null,
       "elbowed": true
     },
     {
-      "id": "arrow_0053",
-      "type": "arrow",
+      "id": "line_0053",
+      "type": "line",
       "x": 300,
       "y": 255,
       "width": -155,
@@ -1291,12 +1291,12 @@
       "startBinding": null,
       "endBinding": null,
       "startArrowhead": null,
-      "endArrowhead": "arrow",
+      "endArrowhead": null,
       "elbowed": true
     },
     {
-      "id": "arrow_0054",
-      "type": "arrow",
+      "id": "line_0054",
+      "type": "line",
       "x": 300,
       "y": 255,
       "width": 20,
@@ -1337,12 +1337,12 @@
       "startBinding": null,
       "endBinding": null,
       "startArrowhead": null,
-      "endArrowhead": "arrow",
+      "endArrowhead": null,
       "elbowed": true
     },
     {
-      "id": "arrow_0055",
-      "type": "arrow",
+      "id": "line_0055",
+      "type": "line",
       "x": 300,
       "y": 255,
       "width": 195,
@@ -1383,12 +1383,12 @@
       "startBinding": null,
       "endBinding": null,
       "startArrowhead": null,
-      "endArrowhead": "arrow",
+      "endArrowhead": null,
       "elbowed": true
     },
     {
-      "id": "arrow_0056",
-      "type": "arrow",
+      "id": "line_0056",
+      "type": "line",
       "x": 300,
       "y": 255,
       "width": 370,
@@ -1429,12 +1429,12 @@
       "startBinding": null,
       "endBinding": null,
       "startArrowhead": null,
-      "endArrowhead": "arrow",
+      "endArrowhead": null,
       "elbowed": true
     },
     {
-      "id": "arrow_0057",
-      "type": "arrow",
+      "id": "line_0057",
+      "type": "line",
       "x": 300,
       "y": 255,
       "width": 555,
@@ -1475,12 +1475,12 @@
       "startBinding": null,
       "endBinding": null,
       "startArrowhead": null,
-      "endArrowhead": "arrow",
+      "endArrowhead": null,
       "elbowed": true
     },
     {
-      "id": "arrow_0058",
-      "type": "arrow",
+      "id": "line_0058",
+      "type": "line",
       "x": 300,
       "y": 255,
       "width": 740,
@@ -1521,12 +1521,12 @@
       "startBinding": null,
       "endBinding": null,
       "startArrowhead": null,
-      "endArrowhead": "arrow",
+      "endArrowhead": null,
       "elbowed": true
     },
     {
-      "id": "arrow_0059",
-      "type": "arrow",
+      "id": "line_0059",
+      "type": "line",
       "x": 600,
       "y": 255,
       "width": -270,
@@ -1567,12 +1567,12 @@
       "startBinding": null,
       "endBinding": null,
       "startArrowhead": null,
-      "endArrowhead": "arrow",
+      "endArrowhead": null,
       "elbowed": true
     },
     {
-      "id": "arrow_0060",
-      "type": "arrow",
+      "id": "line_0060",
+      "type": "line",
       "x": 600,
       "y": 255,
       "width": 0,
@@ -1613,12 +1613,12 @@
       "startBinding": null,
       "endBinding": null,
       "startArrowhead": null,
-      "endArrowhead": "arrow",
+      "endArrowhead": null,
       "elbowed": true
     },
     {
-      "id": "arrow_0061",
-      "type": "arrow",
+      "id": "line_0061",
+      "type": "line",
       "x": 600,
       "y": 255,
       "width": 270,
@@ -1659,12 +1659,12 @@
       "startBinding": null,
       "endBinding": null,
       "startArrowhead": null,
-      "endArrowhead": "arrow",
+      "endArrowhead": null,
       "elbowed": true
     },
     {
-      "id": "arrow_0062",
-      "type": "arrow",
+      "id": "line_0062",
+      "type": "line",
       "x": 900,
       "y": 255,
       "width": -570,
@@ -1705,12 +1705,12 @@
       "startBinding": null,
       "endBinding": null,
       "startArrowhead": null,
-      "endArrowhead": "arrow",
+      "endArrowhead": null,
       "elbowed": true
     },
     {
-      "id": "arrow_0063",
-      "type": "arrow",
+      "id": "line_0063",
+      "type": "line",
       "x": 900,
       "y": 255,
       "width": -300,
@@ -1751,12 +1751,12 @@
       "startBinding": null,
       "endBinding": null,
       "startArrowhead": null,
-      "endArrowhead": "arrow",
+      "endArrowhead": null,
       "elbowed": true
     },
     {
-      "id": "arrow_0064",
-      "type": "arrow",
+      "id": "line_0064",
+      "type": "line",
       "x": 900,
       "y": 255,
       "width": -30,
@@ -1797,7 +1797,7 @@
       "startBinding": null,
       "endBinding": null,
       "startArrowhead": null,
-      "endArrowhead": "arrow",
+      "endArrowhead": null,
       "elbowed": true
     }
   ],
