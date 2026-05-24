@@ -50,3 +50,6 @@ docs/tasks/architecture-task-graph.json.tmp
 
 # Word 二进制（体积大、diff 不友好）；若要纳入版本库可改为 `git add -f file.doc`
 *.doc
+
+# Local Superpowers visual companion sessions
+.superpowers/
