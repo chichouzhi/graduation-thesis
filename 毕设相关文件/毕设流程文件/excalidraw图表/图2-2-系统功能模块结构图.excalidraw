@@ -1118,7 +1118,7 @@
       "width": -300,
       "height": 56,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1146,6 +1146,10 @@
         ],
         [
           -300,
+          26
+        ],
+        [
+          -300,
           56
         ]
       ],
@@ -1164,7 +1168,7 @@
       "width": 0,
       "height": 56,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1210,7 +1214,7 @@
       "width": 300,
       "height": 56,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1238,6 +1242,10 @@
         ],
         [
           300,
+          26
+        ],
+        [
+          300,
           56
         ]
       ],
@@ -1256,7 +1264,7 @@
       "width": -155,
       "height": 75,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1284,6 +1292,10 @@
         ],
         [
           -155,
+          45
+        ],
+        [
+          -155,
           75
         ]
       ],
@@ -1302,7 +1314,7 @@
       "width": 20,
       "height": 75,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1330,6 +1342,10 @@
         ],
         [
           20,
+          45
+        ],
+        [
+          20,
           75
         ]
       ],
@@ -1348,7 +1364,7 @@
       "width": 195,
       "height": 75,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1376,6 +1392,10 @@
         ],
         [
           195,
+          45
+        ],
+        [
+          195,
           75
         ]
       ],
@@ -1394,7 +1414,7 @@
       "width": 370,
       "height": 75,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1422,6 +1442,10 @@
         ],
         [
           370,
+          45
+        ],
+        [
+          370,
           75
         ]
       ],
@@ -1440,7 +1464,7 @@
       "width": 555,
       "height": 75,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1468,6 +1492,10 @@
         ],
         [
           555,
+          45
+        ],
+        [
+          555,
           75
         ]
       ],
@@ -1486,7 +1514,7 @@
       "width": 740,
       "height": 75,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1514,6 +1542,10 @@
         ],
         [
           740,
+          45
+        ],
+        [
+          740,
           75
         ]
       ],
@@ -1532,7 +1564,7 @@
       "width": -270,
       "height": 230,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1560,6 +1592,10 @@
         ],
         [
           -270,
+          200
+        ],
+        [
+          -270,
           230
         ]
       ],
@@ -1578,7 +1614,7 @@
       "width": 0,
       "height": 230,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1602,10 +1638,6 @@
         ],
         [
           0,
-          200
-        ],
-        [
-          0,
           230
         ]
       ],
@@ -1624,7 +1656,7 @@
       "width": 270,
       "height": 230,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1652,6 +1684,10 @@
         ],
         [
           270,
+          200
+        ],
+        [
+          270,
           230
         ]
       ],
@@ -1670,7 +1706,7 @@
       "width": -570,
       "height": 355,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1698,6 +1734,10 @@
         ],
         [
           -570,
+          325
+        ],
+        [
+          -570,
           355
         ]
       ],
@@ -1716,7 +1756,7 @@
       "width": -300,
       "height": 355,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1744,6 +1784,10 @@
         ],
         [
           -300,
+          325
+        ],
+        [
+          -300,
           355
         ]
       ],
@@ -1762,7 +1806,7 @@
       "width": -30,
       "height": 355,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1786,6 +1830,10 @@
         ],
         [
           0,
+          325
+        ],
+        [
+          -30,
           325
         ],
         [

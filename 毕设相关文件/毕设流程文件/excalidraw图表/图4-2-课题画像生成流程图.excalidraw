@@ -701,8 +701,8 @@
       "type": "arrow",
       "x": 205,
       "y": 180,
-      "width": 155,
-      "height": 117.5,
+      "width": 247.5,
+      "height": 95,
       "angle": 0,
       "strokeColor": "#1e1e1e",
       "backgroundColor": "transparent",
@@ -728,11 +728,15 @@
         ],
         [
           0,
-          70
+          45
         ],
         [
-          155,
-          117.5
+          247.5,
+          45
+        ],
+        [
+          247.5,
+          95
         ]
       ],
       "lastCommittedPoint": null,
@@ -857,8 +861,12 @@
           0
         ],
         [
-          0.5,
-          60
+          0,
+          50
+        ],
+        [
+          -637.5,
+          50
         ],
         [
           -637.5,

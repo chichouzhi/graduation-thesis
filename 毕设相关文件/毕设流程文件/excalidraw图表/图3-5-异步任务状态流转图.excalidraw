@@ -688,10 +688,10 @@
       "type": "arrow",
       "x": 225,
       "y": 500,
-      "width": 85,
+      "width": 15,
       "height": -270,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -718,7 +718,11 @@
           -110
         ],
         [
-          85,
+          15,
+          -110
+        ],
+        [
+          15,
           -270
         ]
       ],
@@ -801,10 +805,10 @@
       "type": "arrow",
       "x": 415,
       "y": 500,
-      "width": -105,
+      "width": -140,
       "height": -270,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -831,7 +835,11 @@
           -110
         ],
         [
-          -105,
+          -140,
+          -110
+        ],
+        [
+          -140,
           -270
         ]
       ],
@@ -917,7 +925,7 @@
       "width": -305,
       "height": -270,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -941,6 +949,10 @@
         ],
         [
           0,
+          -110
+        ],
+        [
+          -305,
           -110
         ],
         [
@@ -1027,10 +1039,10 @@
       "type": "arrow",
       "x": 820,
       "y": 500,
-      "width": -510,
+      "width": -475,
       "height": -270,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1057,7 +1069,11 @@
           -110
         ],
         [
-          -510,
+          -475,
+          -110
+        ],
+        [
+          -475,
           -270
         ]
       ],
@@ -1140,10 +1156,10 @@
       "type": "arrow",
       "x": 1020,
       "y": 500,
-      "width": -710,
+      "width": -640,
       "height": -270,
       "angle": 0,
-      "strokeColor": "#1e1e1e",
+      "strokeColor": "#4a4a4a",
       "backgroundColor": "transparent",
       "fillStyle": "solid",
       "strokeWidth": 1,
@@ -1170,7 +1186,11 @@
           -110
         ],
         [
-          -710,
+          -640,
+          -110
+        ],
+        [
+          -640,
           -270
         ]
       ],
