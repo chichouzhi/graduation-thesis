@@ -1,6 +1,6 @@
 # Excalidraw 图表清单
 
-本目录由 `scripts/generate-excalidraw-diagrams.js` 生成，覆盖论文正文中前 13 个结构/流程/ER 类图片占位。图 4-7、图 4-8、图 5-1、图 5-2、图 5-3 为截图类占位，未生成 Excalidraw 替代图。
+本目录由 `scripts/generate-excalidraw-diagrams.js` 生成。当前版本采用毕业论文正文插图风格：黑白灰配色、低手绘感、分层布局、泳道流程、表格化 E-R 图和正交连线。
 
 | 图号 | 文件 |
 | --- | --- |

@@ -26,5 +26,4 @@
 
 ## 图表风格
 
-所有文件使用标准 Excalidraw JSON 结构，包含 `type`、`version`、`source`、`elements`、`appState` 和 `files`。节点采用矩形和文本组合，连线采用箭头元素。整体使用白底、黑色描边、浅色模块背景，保证论文插图清晰、后续可编辑。
-
+所有文件使用标准 Excalidraw JSON 结构，包含 `type`、`version`、`source`、`elements`、`appState` 和 `files`。图表采用毕业论文正文插图风格：黑白灰配色、低手绘感、统一节点尺寸、正交折线箭头、边缘连接点和清晰分组。不同图型使用对应的论文图式，例如 UML 用例图、分层架构图、表格化 E-R 图、状态流转图和泳道式流程图，保证导出后可直接用于 Word 正文，同时保留 Excalidraw 可编辑性。
