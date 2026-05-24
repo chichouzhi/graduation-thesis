@@ -1,0 +1,179 @@
+3 系统总体设计
+
+3.1 系统设计目标
+
+本章在需求分析的基础上，对智能化毕业设计选题双向选择系统进行总体设计。根据任务书中对选题推荐、智能问答、文档辅助、过程管理和系统集成的要求，并结合当前项目代码结构，本系统的设计目标可以概括为三个方面。
+
+第一，系统应形成围绕毕业设计选题的完整业务闭环。传统毕业设计管理系统多强调题目发布、志愿填报和过程材料提交，而本课题更关注选题阶段的信息辅助和互选决策支持。因此，系统需要覆盖教师录入课题、题目画像生成、学生画像维护、智能推荐、学生志愿提交、教师处理志愿、指导关系生成以及后续过程看板跟踪等环节，使选题流程由单纯的信息浏览转变为具有画像分析、可解释推荐和双向确认的业务流程。
+
+第二，系统应合理引入 AI 能力，而不是将业务决策完全交给生成式模型。当前项目中，题目画像、聊天问答和文档处理等功能通过 Adapter 和异步 Worker 进行封装；推荐接口则由 app.recommendations.service.recommend_service 中的 RecommendService 基于学生画像和题目画像进行只读打分。该设计使系统能够利用文本分析和大模型能力辅助理解题目、处理文档和回答问题，同时保持推荐结果的可解释性和可测试性。
+
+第三，系统应具备清晰的工程结构和可演示能力。后端项目以 app 目录为核心，按照 identity、terms、topic、recommendations、selection、taskboard、chat、document 等领域包组织业务代码，并进一步划分 api、service、model 等子层。前端项目位于 frontend 目录，使用 React、TypeScript、Vite、React Router、TanStack Query、Zustand、Axios 和 Tailwind CSS 构建单页应用。系统通过 Docker Compose 组织 web、worker、postgres 和 redis 服务，并通过 scripts/start_full_stack_demo.ps1 支持本地完整联调。该结构能够支撑毕业设计答辩中的功能演示，也便于论文中对架构、流程和实现细节进行说明。
+
+3.2 系统总体架构
+
+本系统采用前后端分离的 B/S 架构。用户通过浏览器访问前端页面，前端通过 HTTP 请求调用后端 /api/v1 路径下的 RESTful API。后端由 Flask 应用提供接口服务，负责身份认证、权限校验、业务处理、数据持久化和异步任务入队。数据库层采用 PostgreSQL 保存业务数据，Redis 作为任务队列 broker，Worker 进程负责消费聊天、文档、题目画像和对账等后台任务。
+
+从部署形态看，项目根目录下的 docker-compose.yml 定义了 web、worker、postgres 和 redis 四类服务。web 服务基于 python:3.11-slim 镜像运行 Flask API，worker 服务通过 app.worker.run_once 循环消费队列任务，postgres 服务保存系统业务数据，redis 服务作为队列和部分运行时能力的支撑。前端并未放入同一个容器内运行，而是通过 Vite 开发服务器启动，并将 /api/v1 请求代理到后端服务。README.md 和 docs/requirements/2026-05-09-compose-full-stack-integration.md 中记录了完整联调方式，默认后端访问地址为 http://127.0.0.1:5051，前端访问地址为 http://127.0.0.1:5189。
+
+从运行过程看，系统包含 API 进程和 Worker 进程两类后端进程。API 进程主要处理用户请求、参数校验、业务受理和状态查询，不在请求线程中同步等待大模型生成结果。Worker 进程负责消费 Redis 队列中的任务，并在后台调用 Use Cases 层和 Adapter 层完成具体处理。该设计与 docs/architecture/system-architecture.md 中的 PROC_API 和 PROC_WORKER 进程视图一致，有助于避免聊天生成、文档解析、题目画像等耗时任务阻塞 HTTP 请求。
+
+3.3 后端分层架构设计
+
+后端采用 Flask Application Factory 方式创建应用。app/__init__.py 中的 create_app 函数负责加载配置、初始化扩展、注册运行时客户端、导入 ORM 模型并注册各领域 Blueprint。应用根路径 / 和健康检查路径 /health 属于非业务路由，业务接口统一挂载在 /api/v1 下。该设计避免了将所有路由集中在单一文件中，有利于按照业务领域组织代码。
+
+后端分层主要包括 API 层、Service 层、Use Cases 层、Task/Worker 层、Adapter 层、Model 层和 Common 基础层。
+
+API 层位于各领域包的 api/routes.py 文件中，例如 app.chat.api.routes、app.document.api.routes、app.topic.api.routes、app.selection.api.routes 等。API 层负责接收 HTTP 请求、读取当前用户身份、解析请求参数、调用同领域 Service，并将返回值序列化为 JSON 响应。当前系统的接口包括 /auth/login、/users/me、/terms、/topics、/recommendations/topics、/applications、/assignments、/milestones、/conversations 和 /document-tasks 等。API 层不直接访问 Adapter、Use Cases、Task 或 ORM Model，这一约束由 spec/architecture.spec.md、.importlinter 和 tests/test_architecture.py 等测试与脚本共同维护。
+
+Service 层位于各领域包的 service 目录，是业务逻辑的主要入口。IdentityService 负责登录、令牌签发、刷新和当前用户信息维护；TermService 负责学期和学期级 LLM 配置；TopicService 负责课题创建、更新、审核状态流转和题目画像任务入队；RecommendService 负责推荐结果的只读计算；SelectionService 负责志愿提交、志愿撤销、教师决策和指导关系生成；MilestoneService 负责毕业设计里程碑任务管理；ChatService 和 DocumentService 分别负责聊天与文档任务的受理。Service 层承担事务处理、权限规则、Policy 检查和入队决策，是连接 HTTP 边界与内部编排逻辑的关键层。
+
+Use Cases 层位于 app/use_cases 目录，包含 chat_orchestration.py、document_pdf_parse.py、document_pipeline.py、topic_keywords.py 和 selection_reconcile.py 等文件。该层负责复杂业务流程编排，尤其是涉及外部能力调用的流程。例如聊天任务需要构造系统提示、历史上下文和用户消息；文档任务需要完成 PDF 文本提取、分块、摘要或结论生成；题目画像任务需要根据题目文本生成关键词、能力要求和风险提示。将这些流程集中在 Use Cases 层，可以避免 Service 层和 Worker 层重复维护提示词、分块策略和调用顺序。
+
+Task/Worker 层位于 app/task 和 app/worker 目录。app/task/queue.py 定义了 chat_jobs、pdf_parse、document_jobs、keyword_jobs 和 reconcile_jobs 等队列名，并提供 enqueue_chat_jobs、enqueue_pdf_parse、enqueue_document_jobs、enqueue_keyword_jobs 和 enqueue_reconcile_jobs 等入队门面。app/worker/__init__.py 中的 run_once 函数按轮询方式从队列中弹出任务，并分发给 chat_jobs、pdf_parse_jobs、document_jobs、keyword_jobs 或 reconcile_jobs 模块处理。各 job 模块负责 payload 校验、调用 Use Cases、状态回写和异常处理，不直接绕过 Use Cases 调用 Adapter。
+
+Adapter 层位于 app/adapter 目录，包含 llm、pdf、nlp 和 storage 等子模块。LLM Adapter 用于隔离大模型厂商接口，支持 mock provider 和 openai_compatible HTTP provider；PDF Adapter 用于提取 PDF 文本；NLP Adapter 使用 jieba 等工具进行中文分词；Storage Adapter 用于保存上传文件。通过 Adapter 层封装，业务代码不直接绑定具体外部服务或 SDK，便于测试环境使用 mock，也便于后续替换模型或存储实现。
+
+Model 层位于各领域包的 model 目录，负责 SQLAlchemy ORM 实体定义和契约序列化。当前系统包含 users、terms、term_llm_configs、topics、applications、assignments、reconcile_dispatch_failures、milestones、conversations、messages、chat_jobs、document_tasks 和 document_artifacts 等核心表。Model 层的 to_* 方法将数据库对象转换为接口契约需要的 JSON 结构，避免前端直接感知数据库字段细节。
+
+Common 基础层包括 app/common、app/config.py 和 app/extensions.py。config.py 负责读取数据库、队列、JWT、LLM 和上传大小等配置，并在生产配置下校验 SECRET_KEY、JWT_SECRET_KEY、BROKER_URL、LLM_PROVIDER 等关键环境变量。extensions.py 负责初始化 SQLAlchemy、Flask-Migrate 和 JWTManager，并注册 PolicyGateway 与 LLM 运行时客户端。统一的 ErrorEnvelope 和 PolicyDenied 机制用于规范错误响应和入队前策略检查。
+
+3.4 前端总体架构设计
+
+前端项目位于 frontend 目录，采用 React 和 TypeScript 实现单页应用。frontend/src/app/app.tsx 中通过 AppProviders 包裹 RouterProvider，为页面提供全局状态、请求缓存和路由能力。frontend/src/routes/index.tsx 定义了系统主要路由：根路径重定向到 /login，登录后进入 /app，受保护路由下包含 dashboard、chat、documents、topics 和 taskboard 等页面。
+
+前端按照 app、routes、pages、features、components、lib 和 types 等目录组织代码。pages 目录存放页面级组件，包括 DashboardPage、TopicsPage、ChatPage、DocumentsPage、TaskboardPage 和 LoginPage。features 目录按业务域拆分 API、queries、types、utils 和 mock 文件，例如 features/topics、features/selection、features/chat、features/documents、features/taskboard、features/users 和 features/auth。components 目录存放共享布局组件、通用 UI 组件和状态展示组件。lib 目录封装 Axios、API 错误适配和工具函数。
+
+前端数据请求通过 TanStack Query 管理，认证态通过 Zustand 和本地存储维护，HTTP 请求通过 Axios 统一封装。项目约定接口 DTO 使用 snake_case，与后端契约保持一致；页面模型使用 camelCase，便于 React 组件内部使用。前端页面并不只做普通后台管理，而是围绕毕业设计选题互选流程组织信息。Dashboard 展示选题闭环和聚合状态；Topics 是题目画像、推荐、志愿和教师决策的核心页面；Chat 和 Documents 展示异步 AI 辅助能力；Taskboard 展示选题后过程管理。
+
+3.5 数据库与核心数据模型设计
+
+系统数据模型围绕“用户—学期—题目—画像—志愿—指导关系—过程支撑”展开。用户表 users 保存用户身份、角色、认证相关字段和学生画像。学生画像以结构化字段保存兴趣、技能、关键词、目标和每周投入时间，是推荐计算的重要输入。学期表 terms 用于组织毕业设计批次，term_llm_configs 用于维护学期级模型配置。
+
+课题表 topics 保存题目标题、简介、要求、技术关键词、容量、已选人数、教师、学期和状态等字段。题目状态包括草稿、待审核、已发布、被驳回、已关闭等业务状态。topics 中的 portrait_json 用于保存题目画像，包括关键词、难度标签、难度原因、所需能力、适合学生类型、风险提示和提取时间等信息。TopicService 在创建或更新题目时，会先通过 NLP 分词生成同步画像，并在文本变化时触发 keyword_jobs 队列，便于后续通过后台任务补充更完整的画像。
+
+志愿表 applications 记录学生对题目的申请，包括 student_id、term_id、topic_id、priority 和 status 等字段。priority 只允许第一志愿或第二志愿，status 记录 pending、accepted、rejected、withdrawn、superseded 等业务状态。指导关系表 assignments 记录最终形成的学生、教师、题目、学期和来源申请，是后续教师查看学生过程看板的重要依据。SelectionService 在教师接受志愿时，会在事务中更新 application 状态、创建 assignment、更新 topic.selected_count，并将同学期其他待处理志愿置为 superseded。
+
+聊天模块包含 conversations、messages 和 chat_jobs。Conversation 记录会话所属学期、标题和上下文类型；Message 记录 user、assistant 和 system 等角色消息，其中 assistant 消息支持 pending、running、done 和 failed 等异步状态；ChatJob 记录生成任务的 job_id、消息关联、重试次数、错误信息、模型名称和使用量等运行时信息。
+
+文档模块包含 document_tasks 和 document_artifacts。DocumentTask 记录上传文件、任务类型、语言、状态、处理阶段、进度、结果和错误信息；DocumentArtifact 记录 PDF 解析或分析过程中产生的工件。里程碑模块使用 milestones 表记录学生毕业设计任务，包括标题、计划时间、状态和是否逾期等信息。
+
+3.6 接口契约与异步任务契约设计
+
+系统以 spec/contract.yaml 作为接口与任务契约真源。契约采用 OpenAPI 3.0.3 描述，统一声明了 identity、terms、taskboard、chat、document、topic、selection 和 recommendations 等标签。HTTP 基路径为 /api/v1，前端与后端均围绕该路径组织请求和代理。
+
+系统错误响应统一采用 ErrorEnvelope 结构，包含 error.code、error.message 和可选 details。错误码包括 QUEUE_UNAVAILABLE、POLICY_QUEUE_DEPTH、LLM_RATE_LIMITED、TOPIC_NOT_FOUND、APPLICATION_NOT_FOUND、ROLE_FORBIDDEN、VALIDATION_ERROR、NOT_FOUND、RESOURCE_CONFLICT、CAPACITY_EXCEEDED、UNAUTHORIZED、SSE_NOT_ENABLED 和 DOMAIN_ERROR 等。统一错误结构使前端能够用一致方式展示校验错误、权限错误、资源不存在和队列异常。
+
+异步任务统一使用 AsyncTaskStatus 枚举，状态包括 pending、running、done 和 failed。聊天发送消息和文档上传均采用 202 受理模式，接口只返回任务或消息占位信息，后续由 Worker 回写结果。队列契约包括 chat_jobs、pdf_parse、document_jobs、keyword_jobs 和 reconcile_jobs。chat_jobs 用于聊天生成，pdf_parse 用于 PDF 解析，document_jobs 用于文档分析，keyword_jobs 用于题目画像增强，reconcile_jobs 用于指导关系和题目计数对账。
+
+这种契约设计能够把 HTTP 接口、数据库状态、前端轮询和 Worker 消费统一起来。前端只需要根据 pending、running、done 和 failed 判断是否继续轮询；后端只需要保证任务状态按约定流转，并在异常情况下写入错误码和错误信息。
+
+3.7 系统核心流程设计
+
+本系统的核心流程包括用户认证流程、题目画像流程、智能推荐流程、志愿双向选择流程、聊天问答流程、文档处理流程和过程看板流程。
+
+1）用户认证流程。用户在 /login 页面提交用户名和密码，前端调用 POST /api/v1/auth/login。IdentityService 校验用户凭据后签发 access token，并根据刷新策略设置 refresh token cookie。前端保存认证态，后续通过受保护路由访问 /app 下的业务页面。进入业务页面后，前端调用 GET /api/v1/users/me 获取当前用户、角色和学生画像，并据此展示学生、教师或管理员可操作内容。
+
+2）题目画像流程。教师在 Topics 页面创建或更新课题，前端调用 POST /api/v1/topics 或 PATCH /api/v1/topics/{topic_id}。TopicService 校验用户角色、学期、容量和题目文本后，先使用 NLP Adapter 对标题、简介、要求和技术关键词进行同步分词，生成基础 portrait_json。若题目文本发生变化，Service 层在 PolicyGateway 检查通过后写入 topics 行，提交事务，并调用 enqueue_keyword_jobs 将题目画像任务写入 keyword_jobs 队列。Worker 消费该任务后调用 topic_keywords 相关 Use Case，对题目文本进行进一步分析，并将画像结果回写到 topics.portrait_json 和任务状态字段。
+
+3）智能推荐流程。学生在 Topics 页面维护个人画像后，前端调用 GET /api/v1/recommendations/topics。RecommendService 首先校验当前用户必须为 student，然后读取当前学期已发布题目。服务将学生画像中的 skills、keywords、interests 和 goal 归一化为词集，将课题 tech_keywords 与 portrait_json.keywords 合并为课题侧词集，并使用 Jaccard 相似度进行基础打分。同时，系统根据题目所需能力、学生画像文本、题目容量和每周投入时间生成解释字段。推荐结果包含 topic_id、title、score 和 explain，explain 中包含 matched_skills、matched_keywords、matched_capabilities、difficulty_fit、capacity_status、warnings 和 reasons 等信息。该流程不调用 LLM，也不写入数据库，保证推荐结果稳定、可解释。
+
+4）志愿双向选择流程。学生选择题目后提交第一或第二志愿，前端调用 POST /api/v1/applications。SelectionService 校验学生身份、题目状态、学期一致性和选题窗口后创建 Application。学生可通过 PATCH /api/v1/applications/{application_id} 调整志愿优先级，也可通过 DELETE /api/v1/applications/{application_id} 撤销待处理志愿。教师在题目相关页面查看志愿列表，并通过 POST /api/v1/applications/{application_id}/decisions 接受或拒绝申请。若教师拒绝申请，系统在事务中将申请状态更新为 rejected。若教师接受申请，系统在同一事务中将申请状态置为 accepted，创建 Assignment，更新题目 selected_count，并将该学生同学期其他 pending 志愿置为 superseded。主事务提交后，系统调用 enqueue_reconcile_jobs 触发内部对账任务；若对账任务入队失败，系统记录 ReconcileDispatchFailure，但不回滚已完成的主业务结果。
+
+5）智能问答流程。学生或教师创建会话后发送消息，前端调用 POST /api/v1/conversations/{conversation_id}/messages。ChatService 创建用户消息、assistant 占位消息和 ChatJob，并在事务提交后将任务写入 chat_jobs 队列。接口返回 202，前端立即展示用户消息和 pending 状态的 assistant 占位消息，并通过 GET /api/v1/chat/jobs/{job_id} 或消息列表轮询状态。Worker 消费 chat_jobs 后调用 chat_orchestration Use Case，构造上下文并通过 LLM Adapter 调用 mock 或 openai_compatible 模型。生成成功后，Worker 将 assistant 消息内容和 ChatJob 状态更新为 done；失败时写入 failed、error_code 和 error_message。
+
+6）文档处理流程。用户上传 PDF 文献时，前端调用 POST /api/v1/document-tasks。DocumentService 校验用户、学期、文件名、任务类型和语言，必要时通过 Storage Adapter 保存文件，并创建 pending 状态的 DocumentTask。事务提交后，系统调用 enqueue_pdf_parse 写入 pdf_parse 队列。Worker 消费 pdf_parse 后调用 document_pdf_parse Use Case 提取 PDF 文本，并保存解析工件；随后根据任务类型触发 document_jobs，对文本进行摘要、结论提取或对比分析。前端 Documents 页面根据任务状态轮询 GET /api/v1/document-tasks/{task_id}，当状态进入 done 或 failed 后停止轮询。
+
+7）过程看板流程。指导关系形成后，学生可在 Taskboard 页面创建里程碑任务，前端调用 POST /api/v1/milestones。MilestoneService 保存任务标题、日期、状态和说明。学生可更新或删除自己的里程碑；教师查询学生任务时，需要通过 Assignment 校验指导关系。该流程将选题结果延伸到毕业设计过程管理，使系统不止停留在选题阶段，而是继续支撑开题、开发、测试、论文撰写和答辩准备等后续环节。
+
+4 系统详细设计与实现
+
+4.1 身份认证与用户画像模块实现
+
+身份认证模块对应 app.identity 领域包，主要由 app.identity.api.routes、app.identity.service.identity_service 和 app.identity.model 组成。路由层提供 /auth/login、/auth/refresh、/auth/logout、/users/me 和 PATCH /users/me 等接口。IdentityService 负责用户加载、密码校验、access token 签发、refresh token 签发与吊销、当前用户信息读取和学生画像更新。
+
+在实现上，用户登录成功后，服务端返回访问令牌，并设置 refresh token cookie。配置项 REFRESH_TOKEN_COOKIE_NAME、REFRESH_TOKEN_COOKIE_PATH、REFRESH_TOKEN_COOKIE_SAMESITE 和 REFRESH_TOKEN_COOKIE_SECURE 在 app/config.py 中定义，便于在开发和生产环境中调整。Refresh token 的吊销信息可结合 Redis broker 保存；当没有 Redis 可用时，系统也保留本地回退机制，满足演示和测试需求。
+
+学生画像保存在 users 表的 student_profile 字段中，前端通过 GET /users/me 读取并通过 PATCH /users/me 更新。画像字段主要包括兴趣、技能、关键词、目标和每周投入时间。该模块不直接完成推荐计算，但为 RecommendService 提供输入数据。通过把用户身份、角色和画像统一放在当前用户接口中，前端能够在 Topics 页面直接完成画像维护和推荐请求。
+
+4.2 课题管理与题目画像模块实现
+
+课题管理模块对应 app.topic 领域包。API 层提供 /topics 列表、创建、详情、更新、删除或撤回、提交审核和管理员审核等接口。TopicService 是该模块的核心实现，负责教师或管理员权限校验、题目字段校验、状态流转、同步画像生成和 keyword_jobs 入队。
+
+教师创建课题时，系统要求 title、summary、requirements、term_id 和 capacity 等字段合法，且 capacity 不小于 1。Service 层会调用 _sync_portrait 方法，将题目标题、摘要和要求输入 NLP Adapter，合并教师手动填写的 tech_keywords 和分词结果，生成基础 portrait_json。该画像至少包含 keywords 和 extracted_at 字段，可立即用于题目展示和推荐计算。
+
+当题目文本发生变化时，TopicService 会创建新的 keyword_job_id，并将 llm_keyword_job_status 设置为 pending。随后，Service 层通过 PolicyGateway 检查 keyword_jobs 队列是否可入队，提交数据库事务，再调用 queue_mod.enqueue_keyword_jobs 写入任务。若入队失败，系统将题目画像任务状态更新为 failed，并抛出 QUEUE_UNAVAILABLE 相关错误。该实现保证题目保存不直接等待大模型结果，符合异步任务设计。
+
+题目审核流程相对独立。教师可将 draft 或 rejected 状态的题目提交为 pending_review，管理员可将 pending_review 状态的题目审核为 published 或 rejected。只有已发布题目才会参与学生浏览、推荐和志愿填报。该状态机设计使题目内容维护与选题开放流程分离，有助于保证选题数据质量。
+
+4.3 智能推荐模块实现
+
+智能推荐模块对应 app.recommendations 领域包。API 层提供 GET /recommendations/topics，Service 层由 RecommendService 实现。该模块的特点是只读、可解释、不调用 LLM。
+
+RecommendService 首先通过 IdentityService 加载当前用户，并要求用户角色为 student。随后，根据 term_id 查询已发布题目。对于学生侧数据，服务从 student_profile 中抽取 skills、keywords、interests 和 goal，并归一化为小写词集；对于题目侧数据，服务将 Topic.tech_keywords 与 portrait_json.keywords 合并为题目词集。基础得分采用 Jaccard 相似度，即学生词集与题目词集交集数量除以并集数量。
+
+在解释生成方面，RecommendService 会分别计算 matched_skills、matched_keywords 和 matched_capabilities。系统内置了能力项与画像文本信号之间的简单映射，例如“前端实现与交互设计”对应 React、前端、UI、界面、交互等信号，“后端接口与数据建模”对应 Flask、Python、后端、接口、数据库、API 等信号。系统还根据题目容量生成 available、nearly_full 或 full 状态，并根据题目难度与学生每周投入时间生成 difficulty_fit。最终结果按 score 和 topic_id 排序后返回 Top-N。
+
+该实现没有使用复杂机器学习模型，而是采用透明的规则匹配方法。对于本科毕业设计系统而言，这种方案便于解释、调试和测试，也能清楚说明推荐结果不是黑箱输出。大模型或 NLP 能力主要用于生成题目画像，推荐模块则负责基于已有画像进行稳定排序。
+
+4.4 志愿填报、教师决策与指导关系模块实现
+
+志愿和指导关系模块对应 app.selection 领域包。API 层提供 /applications 和 /assignments 相关接口，Service 层由 SelectionService 实现。该模块是“双向选择”从推荐走向实际结果的关键。
+
+学生提交志愿时，SelectionService 校验当前用户必须为 student，题目必须存在且处于 published 状态，题目所属 term_id 必须与请求一致，学期必须处于 selection_start_at 和 selection_end_at 定义的选题窗口内，priority 必须为 1 或 2。系统通过数据库唯一约束限制同一学生在同一学期对同一题目的重复申请，以及同一学生在同一学期的志愿优先级冲突。
+
+教师处理志愿时，SelectionService 要求当前用户为 teacher 或 admin。普通教师只能处理自己题目下的申请。对于 reject 操作，系统只将申请状态更新为 rejected。对于 accept 操作，系统首先检查题目 selected_count 是否小于 capacity，防止超容量录取；然后创建 Assignment，将申请状态更新为 accepted，将题目 selected_count 加 1，并将该学生同学期其他 pending 志愿更新为 superseded。上述变更在同一数据库事务中提交，保证指导关系、申请状态和题目计数一致。
+
+主事务提交后，系统调用 enqueue_reconcile_jobs 创建 reconcile_jobs 内部任务。该任务用于后续对 assignments 和 topics.selected_count 等派生数据进行对账。若对账任务入队失败，系统会写入 reconcile_dispatch_failures 表，并记录错误日志。该处理方式表明对账任务属于增强一致性的后台机制，不影响已经完成的教师接受结果。
+
+4.5 智能问答模块实现
+
+智能问答模块对应 app.chat 领域包和 app.use_cases.chat_orchestration。API 层提供会话列表、创建会话、会话详情、删除会话、消息列表、发送消息、查询 ChatJob 和可选 SSE stream 等接口。ChatService 负责会话和消息的业务受理。
+
+用户发送消息时，ChatService 不直接调用 LLM。它首先校验会话归属和消息内容，随后创建 user 消息、assistant 占位消息和 ChatJob。assistant 占位消息的 content 可以为空，status 为 pending。ChatJob 保存 conversation_id、user_message_id、assistant_message_id、retry_count、max_attempts 等字段。数据库事务提交后，Service 层调用 enqueue_chat_jobs，将 job_id、conversation_id、message_id、term_id 和上下文信息写入队列。接口返回 202，前端可立即展示占位消息。
+
+Worker 消费 chat_jobs 后进入 chat_jobs.run，再调用 chat_orchestration 相关逻辑。Use Case 会根据会话历史、上下文类型和配置中的 CHAT_CONTEXT_TOKEN_BUDGET 构造输入消息，随后通过 LLM Adapter 调用模型。当前系统支持 mock provider，用于测试和演示；生产配置下要求 LLM_PROVIDER 为 openai_compatible，并提供 LLM_HTTP_API_KEY、LLM_HTTP_BASE_URL 和 LLM_HTTP_MODEL。生成成功后，Worker 回写 assistant 消息内容和 ChatJob 终态；失败时记录错误码和错误信息。
+
+4.6 文档处理模块实现
+
+文档处理模块对应 app.document 领域包、app.use_cases.document_pdf_parse 和 app.use_cases.document_pipeline。API 层提供创建文档任务、任务列表和任务详情接口。DocumentService 负责上传任务受理。
+
+创建文档任务时，系统要求用户、学期、文件名、任务类型和语言合法。文件名必须以 .pdf 结尾，任务类型限定为 summary、conclusions 或 compare，语言限定为 zh 或 en。若请求中包含文件二进制内容，DocumentService 会通过 Storage Adapter 将文件保存到以用户 ID 和 UUID 组织的相对路径中；否则使用传入的 storage_path。随后系统创建 DocumentTask，状态为 pending，并在事务提交后调用 enqueue_pdf_parse。
+
+Worker 首先消费 pdf_parse 队列，调用 PDF Adapter 提取文本并保存 DocumentArtifact。PDF 解析成功后，系统再触发 document_jobs，由 document_pipeline 对文本进行分块和分析。配置项 DOCUMENT_CHUNK_MAX_PARALLEL 控制同级分块摘要的并行度上界，避免一次性发起过多模型调用。处理完成后，DocumentTask 状态更新为 done；若解析或模型调用失败，则更新为 failed 并记录错误信息。
+
+前端 Documents 页面与该状态模型对应。任务列表和详情展示 pending、running、done 和 failed 状态；当任务尚未结束时，前端进行状态驱动轮询；当任务进入终态后停止轮询。这样既减少了前端复杂度，也与聊天模块形成统一的异步交互模式。
+
+4.7 过程看板模块实现
+
+过程看板模块对应 app.taskboard 领域包。API 层提供 /milestones 的查询、创建、详情、更新和删除接口，Service 层由 MilestoneService 实现。
+
+学生可以创建自己的里程碑任务，记录任务标题、开始日期、结束日期、状态和描述。系统对日期字段进行解析，对状态字段进行枚举校验，并在 Model 层通过 compute_is_overdue 判断任务是否逾期。学生只能维护自己的里程碑任务。
+
+教师查看里程碑时，MilestoneService 会通过 Assignment 校验教师与学生之间是否存在指导关系。也就是说，教师不能任意查看所有学生任务，只能查看自己已确认指导的学生任务。前端 Taskboard 页面在存在指导关系时，会默认按指导学生查询任务，并允许学生更新任务状态。该模块将选题双向选择结果转化为后续过程管理依据，使系统具备从选题到执行跟踪的连续性。
+
+4.8 前端页面实现
+
+前端页面围绕业务闭环进行组织。LoginPage 负责登录入口和认证态保存；ProtectedLayout 负责受保护页面布局；DashboardPage 聚合题目、志愿、指导关系、聊天、文档和里程碑信息，展示系统整体状态；TopicsPage 是选题核心页面，包含题目浏览、教师题目分析、学生画像维护、推荐结果展示、志愿提交和教师处理志愿；ChatPage 展示会话、消息和异步 job 状态；DocumentsPage 展示文档任务列表、状态和结果；TaskboardPage 展示毕业过程任务。
+
+前端每个业务域均在 features 目录下维护 API 请求、查询 hooks、类型和工具函数。例如 topics.api.ts 封装题目相关请求，topics.queries.ts 组织 TanStack Query 调用，topics.types.ts 定义前端类型，topics.utils.ts 处理展示转换。selection、chat、documents 和 taskboard 等领域也采用类似结构。该组织方式使页面组件不直接拼接大量 HTTP 细节，有利于测试和维护。
+
+在用户体验上，前端将异步任务状态作为重要展示内容。Chat 和 Documents 页面根据 pending、running、done 和 failed 决定轮询与展示；Dashboard 汇总任务状态；Topics 页面展示推荐解释而不仅是分数。该设计与后端契约保持一致，也符合本课题强调“可解释选题辅助”的定位。
+
+4.9 系统部署与运行实现
+
+系统提供脚本化联调能力。根目录 README.md 说明可通过 scripts/start_full_stack_demo.ps1 启动完整演示环境。该脚本会启动 Docker Compose 中的 PostgreSQL、Redis、Flask web 和 worker，初始化演示数据，并启动 Vite 前端。默认演示账号包括学生 api-login-user、教师 teacher-demo 和管理员 admin-demo。
+
+docker-compose.yml 中 web 服务通过 python -m flask --app wsgi:app run 启动 Flask 应用，worker 服务通过 create_app 创建应用上下文，并循环调用 app.worker.run_once 消费队列。PostgreSQL 使用 postgres:16-alpine 镜像，Redis 使用 redis:7-alpine 镜像。环境变量包括 DATABASE_URL、BROKER_URL、LLM_PROVIDER、LLM_HTTP_BASE_URL、LLM_HTTP_MODEL、LLM_HTTP_API_KEY 和 LLM_HTTP_TIMEOUT_S 等。默认 LLM_PROVIDER 为 mock，便于在没有外部模型 API 的情况下完成演示和测试。
+
+4.10 测试与架构约束实现
+
+当前项目包含较完整的测试结构。后端 tests 目录覆盖身份认证、学期、题目、推荐、志愿、指导关系、任务看板、聊天、文档、适配器、队列和架构约束等模块。tests/arch 目录进一步验证 API 层不得直接访问 Adapter、Task 或 Use Cases，Task 层不得跳过 Use Cases 直接访问 Adapter，Policy 拒绝时不得入队，异步任务必须通过 queue + worker 路径执行等规则。
+
+前端测试位于 frontend/src 中的 *.test.ts 和 *.test.tsx 文件，覆盖登录、布局、Dashboard、Topics、Documents、Chat、Taskboard、类型映射、工具函数和轮询判断等内容。frontend/package.json 中定义了 npm run lint、npm run build 和 npm run test 等命令，用于静态检查、构建和单元测试。
+
+架构约束方面，项目使用 spec/architecture.spec.md、.importlinter、scripts/ci 和测试共同维护分层边界。该设计使系统不只是在文档中声称分层，而是通过可执行检查约束代码结构。对于毕业设计而言，这种“文档契约、代码结构和测试用例相互对应”的方式，能够增强系统实现与论文描述的一致性。
+
+4.11 本章小结
+
+本章结合当前项目代码结构，对系统总体架构、后端分层、前端组织、数据模型、接口契约、异步任务和核心业务流程进行了设计说明，并进一步阐述了身份认证、课题画像、智能推荐、志愿双向选择、智能问答、文档处理和过程看板等模块的实现方式。系统采用前后端分离架构，以 Flask 提供后端 API，以 React 构建前端工作台，以 PostgreSQL 保存业务数据，以 Redis 和 Worker 支撑异步任务处理。通过 API、Service、Use Cases、Task/Worker、Adapter 和 Model 等层次划分，系统将 HTTP 边界、业务事务、任务编排、外部能力和数据持久化分离，实现了较清晰的工程结构。通过题目画像、学生画像、可解释推荐、志愿确认和指导关系生成，系统形成了围绕毕业设计选题双向选择的核心闭环；通过聊天、文档和任务看板，系统进一步支撑选题后的毕业设计过程。
