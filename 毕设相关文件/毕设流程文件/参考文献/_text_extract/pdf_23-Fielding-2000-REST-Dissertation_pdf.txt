@@ -1,0 +1,1890 @@
+UNIVERSITY OF CALIFORNIA,
+IRVINE
+Architectural Styles and the Design of Network-based Software Architectures
+DISSERTATION
+submitted in partial satisfaction of the requirements for the degree of
+DOCTOR OF PHILOSOPHY
+in Information and Computer Science
+by
+Roy Thomas Fielding
+Dissertation Committee:
+Professor Richard N. Taylor, Chair
+Professor Mark S. Ackerman
+Professor David S. Rosenblum
+2000
+© Roy Thomas Fielding, 2000.
+All rights reserved.
+ii
+The dissertation of Roy Thomas Fielding is approved
+and is acceptable in quality and form
+for publication on microfilm:
+____________________________________
+____________________________________
+____________________________________
+Committee Chair
+University of California, Irvine
+2000
+iii
+DEDICA TION
+To
+my parents,
+Pete and Kathleen Fielding,
+who made all of this possible,
+for their endless encouragement and patience.
+And also to
+Tim Berners-Lee,
+for making the World Wide Web an open, collaborative project.
+What is life?
+It is the flash of a firefly in the night.
+It is the breath of a buffalo in the wintertime.
+It is the little shadow which runs across the grass
+and loses itself in the sunset.
+— Crowfoot's last words (1890), Blackfoot warrior and orator.
+Almost everybody feels at peace with nature: listening to the ocean
+waves against the shore, by a still lake, in a field of grass, on a
+windblown heath. One day, when we have learned the timeless way
+again, we shall feel the same about our towns, and we shall feel as
+much at peace in them, as we do today walking by the ocean, or
+stretched out in the long grass of a meadow.
+— Christopher Alexander, The Timeless Way of Building (1979)
+iv
+TABLE OF CONTENTS
+Page
+LIST OF FIGURES .......................................................................................vi
+LIST OF TABLES........................................................................................vii
+ACKNOWLEDGMENTS ...........................................................................viii
+CURRICULUM VITAE .................................................................................x
+ABSTRACT OF THE DISSERTATION ....................................................xvi
+INTRODUCTION ..........................................................................................1
+CHAPTER 1: Software Architecture ..............................................................5
+1.1 Run-time Abstraction............................................................................................5
+1.2 Elements................................................................................................................7
+1.3 Configurations ....................................................................................................12
+1.4 Properties ............................................................................................................12
+1.5 Styles...................................................................................................................13
+1.6 Patterns and Pattern Languages ..........................................................................16
+1.7 Views ..................................................................................................................17
+1.8 Related Work ......................................................................................................18
+1.9 Summary.............................................................................................................23
+CHAPTER 2: Network-based Application Architectures.............................24
+2.1 Scope...................................................................................................................24
+2.2 Evaluating the Design of Application Architectures ..........................................26
+2.3 Architectural Properties of Key Interest .............................................................28
+2.4 Summary.............................................................................................................37
+v
+CHAPTER 3: Network-based Architectural Styles ......................................38
+3.1 Classification Methodology................................................................................38
+3.2 Data-flow Styles .................................................................................................41
+3.3 Replication Styles ...............................................................................................43
+3.4 Hierarchical Styles..............................................................................................45
+3.5 Mobile Code Styles.............................................................................................50
+3.6 Peer-to-Peer Styles..............................................................................................55
+3.7 Limitations ..........................................................................................................59
+3.8 Related Work ......................................................................................................60
+3.9 Summary.............................................................................................................64
+CHAPTER 4: Designing the Web Architecture: Problems and Insights......66
+4.1 WWW Application Domain Requirements ........................................................66
+4.2 Problem...............................................................................................................71
+4.3 Approach.............................................................................................................72
+4.4 Summary.............................................................................................................75
+CHAPTER 5: Representational State Transfer (REST)................................76
+5.1 Deriving REST ...................................................................................................76
+5.2 REST Architectural Elements.............................................................................86
+5.3 REST Architectural Views .................................................................................97
+5.4 Related Work ....................................................................................................103
+5.5 Summary...........................................................................................................105
+CHAPTER 6: Experience and Evaluation ..................................................107
+6.1 Standardizing the Web......................................................................................107
+6.2 REST Applied to URI.......................................................................................109
+6.3 REST Applied to HTTP....................................................................................116
+6.4 Technology Transfer.........................................................................................134
+6.5 Architectural Lessons .......................................................................................138
+6.6 Summary...........................................................................................................147
+CONCLUSIONS.........................................................................................148
+REFERENCES............................................................................................152
+vi
+LIST OF FIGURES
+Page
+Figure 5-1. Null Style 77
+Figure 5-2. Client-Server 78
+Figure 5-3. Client-Stateless-Server 78
+Figure 5-4. Client-Cache-Stateless-Server 80
+Figure 5-5. Early WWW Architecture Diagram 81
+Figure 5-6. Uniform-Client-Cache-Stateless-Server 82
+Figure 5-7. Uniform-Layered-Client-Cache-Stateless-Server 83
+Figure 5-8. REST 84
+Figure 5-9. REST Derivation by Style Constraints 85
+Figure 5-10. Process View of a REST-based Architecture 98
+vii
+LIST OF TABLES
+Page
+Table 3-1. Evaluation of Data-flow Styles for Network-based Hypermedia 41
+Table 3-2. Evaluation of Replication Styles for Network-based Hypermedia 43
+Table 3-3. Evaluation of Hierarchical Styles for Network-based Hypermedia 45
+Table 3-4. Evaluation of Mobile Code Styles for Network-based Hypermedia 51
+Table 3-5. Evaluation of Peer-to-Peer Styles for Network-based Hypermedia 55
+Table 3-6. Evaluation Summary 65
+Table 5-1. REST Data Elements 88
+Table 5-2. REST Connectors 93
+Table 5-3. REST Components 96
+viii
+ACKNOWLEDGMENTS
+It has been a great pleasure working with the faculty, staff, and students at the University
+of California, Irvine, during my tenure as a doctoral student. This work would never have
+been possible if it were not for the freedom I was given to pursue my own research
+interests, thanks in large part to the kindness and considerable mentoring provided by
+Dick Taylor, my long-time advisor and committee chair. Mark Ackerman also deserves a
+great deal of thanks, for it was his class on distributed information services in 1993 that
+introduced me to the Web developer community and led to all of the design work
+described in this dissertation. Likewise, it was David Rosenblum’s work on Internet-scale
+software architectures that convinced me to think of my own research in terms of
+architecture, rather than simply hypermedia or application-layer protocol design.
+The Web ’s architectural style was developed iteratively over a six year period, but
+primarily during the first six months of 1995. It has been influenced by countless
+discussions with researchers at UCI, staff at the World Wide Web Consortium (W3C), and
+engineers within the HTTP and URI working groups of the Internet Engineering
+Taskforce (IETF). I would particularly like to thank Tim Berners-Lee, Henrik Frystyk
+Nielsen, Dan Connolly, Dave Raggett, Rohit Khare, Jim Whitehead, Larry Masinter, and
+Dan LaLiberte for many thoughtful conversations regarding the nature and goals of the
+WWW architecture. I ’d also like to thank Ken Anderson for his insight into the open
+hypertext community and for trailblazing the path for hypermedia research at UCI. Thanks
+also to my fellow architecture researchers at UCI, all of whom finished before me,
+including Peyman Oreizy, Neno Medvidovic, Jason Robbins, and David Hilbert.
+The Web architecture is based on the collaborative work of dozens of volunteer software
+developers, many of whom rarely receive the credit they deserve for pioneering the Web
+before it became a commercial phenomenon. In addition to the W3C folks above,
+recognition should go to the server developers that enabled much of the Web ’s rapid
+growth in 1993-1994 (more so, I believe, than did the browsers). That includes
+Rob McCool (NCSA httpd), Ari Luotonen (CERN httpd/proxy), and Tony Sanders
+(Plexus). Thanks also to “Mr. Content”, Kevin Hughes, for being the first to implement
+most of the interesting ways to show information on the Web beyond hypertext. The early
+client developers also deserve thanks: Nicola Pellow (line-mode), Pei Wei (Viola),
+Tony Johnson (Midas), Lou Montulli (Lynx), Bill Perry (W3), and Marc Andreessen and
+Eric Bina (Mosaic for X). Finally, my personal thanks go to my libwww-perl
+collaborators, Oscar Nierstrasz, Martijn Koster, and Gisle Aas. Cheers!
+ix
+The modern Web architecture is still defined more by the work of individual volunteers
+than by any single company. Chief among them are the members of the Apache Software
+Foundation. Special thanks go to Robert S. Thau for the incredibly robust Shambhala
+design that led to Apache 1.0, as well as for many discussions on desirable (and
+undesirable) Web extensions, to Dean Gaudet for teaching me more about detailed system
+performance evaluation than I thought I needed to know, and to Alexei Kosut for being the
+first to implement most of HTTP/1.1 in Apache. Additional thanks to the rest of the
+Apache Group founders, including Brian Behlendorf, Rob Hartill, David Robinson,
+Cliff Skolnick, Randy Terbush, and Andrew Wilson, for building a community that we
+can all be proud of and changing the world one more time.
+I’d also like to thank all of the people at eBuilt who have made it such a great place to
+work. Particular thanks go to the four technical founders — Joe Lindsay, Phil Lindsay,
+Jim Hayes, and Joe Manna — for creating (and defending) a culture that makes
+engineering fun. Thanks also to Mike Dewey, Jeff Lenardson, Charlie Bunten, and
+Ted Lavoie, for making it possible to earn money while having fun. And special thanks to
+Linda Dailing, for being the glue that holds us all together.
+Thanks and good luck go out to the team at Endeavors Technology, including
+Greg Bolcer, Clay Cover, Art Hitomi, and Peter Kammer. Finally, I ’d like to thank my
+three muses—Laura, Nikki, and Ling—for their inspiration while writing this dissertation.
+In large part, my dissertation research has been sponsored by the Defense Advanced
+Research Projects Agency, and Airforce Research Laboratory, Air Force Materiel
+Command, USAF, under agreement number F30602-97-2-0021. The U.S. Government is
+authorized to reproduce and distribute reprints for Governmental purposes
+notwithstanding any copyright annotation thereon. The views and conclusions contained
+herein are those of the authors and should not be interpreted as necessarily representing
+the official policies or endorsements, either expressed or implied, of the Defense
+Advanced Research Projects Agency, Airforce Research Laboratory or the U.S.
+Government.
+x
+CURRICULUM VITAE
+Roy Thomas Fielding
+Education
+Doctor of Philosophy (2000)
+University of California, Irvine
+Information and Computer Science
+Institute of Software Research
+Advisor: Dr. Richard N. Taylor
+Dissertation: Architectural Styles and
+the Design of Network-based Software Architectures
+Master of Science (1993) 
+University of California, Irvine
+Information and Computer Science
+Major Emphasis: Software
+Bachelor of Science (1988) 
+University of California, Irvine
+Information and Computer Science
+Professional Experience
+12/99 - Chief Scientist, eBuilt, Inc., Irvine, California
+3/99 - Chairman, The Apache Software Foundation
+4/92 - 12/99 Graduate Student Researcher, Institute for Software Research
+University of California, Irvine
+6/95 - 9/95 Visiting Scholar, World Wide Web Consortium (W3C)
+MIT Laboratory of Computer Science, Cambridge, Massachusetts
+9/91 - 3/92 Teaching Assistant
+ICS 121 - Introduction to Software Engineering
+ICS 125A - Project in Software Engineering
+University of California, Irvine
+11/89 - 6/91 Software Engineer
+ADC Kentrox, Inc., Portland, Oregon
+7/88 - 8/89 Professional Staff (Software Engineer)
+PRC Public Management Services, Inc., San Francisco, California
+10/86 - 6/88 Programmer/Analyst
+Megadyne Information Systems, Inc., Santa Ana, California
+6/84 - 9/86 Programmer/Analyst
+TRANSMAX, Inc., Santa Ana, California
+xi
+Publications
+Refereed Journal Articles
+[1] R. T. Fielding, E. J. Whitehead, Jr., K. M. Anderson, G. A. Bolcer, P. Oreizy, and 
+R. N. Taylor. Web-based Development of Complex Information Products. 
+Communications of the ACM, 41(8), August 1998, pp. 84-92.
+[2] R. T. Fielding. Maintaining Distributed Hypertext Infostructures: Welcome to 
+MOMspider’s Web. Computer Networks and ISDN Systems, 27(2), November 1994, 
+pp. 193-204. (Revision of [7] after special selection by referees.)
+Refereed Conference Publications
+[3] R. T. Fielding and R. N. Taylor. Principled Design of the Modern Web Architecture. 
+In Proceedings of the 2000 International Conference on Software Engineering 
+(ICSE 2000), Limerick, Ireland, June 2000, pp. 407-416.
+[4] A. Mockus, R. T. Fielding, and J. Herbsleb. A Case Study of Open Source Software 
+Development: The Apache Server. In Proceedings of the 2000 International 
+Conference on Software Engineering (ICSE 2000), Limerick, Ireland, June 2000, pp. 
+263-272.
+[5] E. J. Whitehead, Jr., R. T. Fielding, and K. M. Anderson. Fusing WWW and Link 
+Server Technology: One Approach. In Proceedings of the 2nd Workshop on Open 
+Hypermedia Systems, Hypertext’96, Washington, DC, March, 1996, pp. 81-86.
+[6] M. S. Ackerman and R. T. Fielding. Collection Maintenance in the Digital Library. 
+In Proceedings of Digital Libraries ’ 95, Austin, Texas, June 1995, pp. 39-48.
+[7] R. T. Fielding. Maintaining Distributed Hypertext Infostructures: Welcome to 
+MOMspider’s Web. In Proceedings of the First International World Wide Web 
+Conference, Geneva, Switzerland, May 1994, pp. 147-156.
+Industry Standards
+[8] R. T. Fielding, J. Gettys, J. C. Mogul, H. F. Nielsen, L. Masinter, P. Leach, and 
+T. Berners-Lee. Hypertext Transfer Protocol — HTTP/1.1. Internet Draft Standard 
+RFC 2616, June 1999. [Obsoletes RFC 2068, January 1997.]
+[9] T. Berners-Lee, R. T. Fielding, and L. Masinter. Uniform Resource Identifiers 
+(URI): Generic Syntax. Internet Draft Standard RFC 2396, August 1998.
+[10] J. Mogul, R. T. Fielding, J. Gettys, and H. F. Frystyk. Use and Interpretation of 
+HTTP Version Numbers. Internet Informational RFC 2145, May 1997.
+[11] T. Berners-Lee, R. T. Fielding, and H. F. Nielsen. Hypertext Transfer Protocol — 
+HTTP/1.0. Internet Informational RFC 1945, May 1996.
+[12] R. T. Fielding. Relative Uniform Resource Locators. Internet Proposed Standard 
+RFC 1808, June 1995.
+xii
+Industry Articles
+[13] R. T. Fielding. The Secrets to Apache ’s Success. Linux Magazine, 1(2), June 1999, 
+pp. 29-71.
+[14] R. T. Fielding. Shared Leadership in the Apache Project. Communications of the 
+ACM, 42(4), April 1999, pp. 42-43.
+[15] R. T. Fielding and G. E. Kaiser. The Apache HTTP Server Project. IEEE Internet 
+Computing, 1(4), July-August 1997, pp. 88-90.
+Non-Refereed Publications
+[16] R. T. Fielding. Architectural Styles for Network-based Applications. Phase II 
+Survey Paper, Department of Information and Computer Science, University of 
+California, Irvine, July 1999.
+[17] J. Grudin and R. T. Fielding. Working Group on Design Methods and Processes. In 
+Proceedings of the ICSE’ 94 Workshop on SE-HCI: Joint Research Issues, Sorrento, 
+Italy, May 1994. Published in “Software Engineering and Human-Computer 
+Interaction,” Springer-Verlag LNCS, vol. 896, 1995, pp. 4-8.
+[18] R. T. Fielding. Conditional GET Proposal for HTTP Caching. Published on the 
+WWW, January 1994.
+Published Software Packages
+[19] Apache httpd. The Apache HTTP server is the world's most popular Web server 
+software, used by more than 65% of all public Internet sites as of July 2000.
+[20] libwww-perl. A library of Perl4 packages that provides a simple and consistent 
+programming interface to the World Wide Web.
+[21] Onions. A library of Ada95 packages that provides an efficient stackable streams 
+capability for network and file system I/O.
+[22] MOMspider. MOMspider is a web robot for providing multi-owner maintenance of 
+distributed hypertext infostructures.
+[23] wwwstat. A set of utilities for searching and summarizing WWW httpd server access 
+logs and assisting other webmaster tasks.
+Formal Presentations
+[1] State of Apache. O’Reilly Open Source Software Convention, Monterey, CA, July 
+2000.
+[2] Principled Design of the Modern Web Architecture. 2000 International Conference 
+on Software Engineering, Limerick, Ireland, June 2000.
+[3] HTTP and Apache. ApacheCon 2000, Orlando, FL, March 2000.
+xiii
+[4] Human Communication and the Design of the Modern Web Architecture. WebNet 
+World Conference on the WWW and the Internet (WebNet 99), Honolulu, HI, 
+October 1999.
+[5] The Apache Software Foundation. Computer & Communications Industry 
+Association, Autumn Members Meeting, Dallas, TX, September 1999.
+[6] Uniform Resource Identifiers. The Workshop on Internet-scale Technology 
+(TWIST 99), Irvine, CA, August 1999.
+[7] Apache: Past, Present, and Future. Web Design World, Seattle, W A, July 1999.
+[8] Progress Report on Apache. ZD Open Source Forum, Austin, TX, June 1999.
+[9] Open Source, Apache-style: Lessons Learned from Collaborative Software 
+Development. Second Open Source and Community Licensing Summit, San Jose, 
+CA, March 1999.
+[10] The Apache HTTP Server Project: Lessons Learned from Collaborative Software. 
+AT&T Labs — Research, Folsom Park, NJ, October 1998.
+[11] Collaborative Software Development: Joining the Apache Project. ApacheCon ‘98, 
+San Francisco, CA, October 1998.
+[12] Representational State Transfer: An Architectural Style for Distributed Hypermedia 
+Interaction. Microsoft Research, Redmond, W A, May 1998.
+[13] The Apache Group: A Case Study of Internet Collaboration and Virtual 
+Communities. UC Irvine Social Sciences WWW Seminar, Irvine, CA, May 1997.
+[14] WebSoft: Building a Global Software Engineering Environment. Workshop on 
+Software Engineering (on) the World Wide Web, 1997 International Conference on 
+Software Engineering (ICSE 97), Boston, MA, May 1997.
+[15] Evolution of the Hypertext Transfer Protocol. ICS Research Symposium, Irvine, 
+CA, January 1997.
+[16] World Wide Web Infrastructure and Evolution. IRUS SETT Symposium on 
+WIRED: World Wide Web and the Internet, Irvine, CA, May 1996.
+[17] HTTP Caching. Fifth International World Wide Web Conference (WWW5), Paris, 
+France, May 1996.
+[18] The Importance of World Wide Web Infrastructure. California Software Symposium 
+(CSS ‘96), Los Angeles, CA, April 1996.
+[19] World Wide Web Software: An Insider’ s View. IRUS Bay Area Roundtable (BART), 
+Palo Alto, CA, January 1996.
+[20] libwww-Perl4 and libwww-Ada95. Fourth International World Wide Web 
+Conference, Boston, MA, December 1995.
+[21] Hypertext Transfer Protocol — HTTP/1.x. Fourth International World Wide Web 
+Conference, Boston, MA, December 1995.
+xiv
+[22] Hypertext Transfer Protocol — HTTP/1.x. HTTP Working Group, 34th Internet 
+Engineering Taskforce Meeting, Dallas, TX, December 1995.
+[23] Hypertext Transfer Protocol — HTTP/1.0 and HTTP/1.1. HTTP Working Group, 
+32nd Internet Engineering Taskforce Meeting, Danvers, MA, April 1995.
+[24] WWW Developer Starter Kits for Perl. WebWorld Conference, Orlando, FL, 
+January 1995, and Santa Clara, CA, April 1995.
+[25] Relative Uniform Resource Locators. URI Working Group, 31st Internet 
+Engineering Taskforce Meeting, San Jose, CA, December 1994.
+[26] Hypertext Transfer Protocol — HTTP/1.0. HTTP BOF, 31st Internet Engineering 
+Taskforce Meeting, San Jose, CA, December 1994.
+[27] Behind the Curtains: How the Web was/is/will be created. UC Irvine Social Sciences 
+World Wide Web Seminar, Irvine, CA, October 1995.
+[28] Maintaining Distributed Hypertext Infostructures: Welcome to MOMspider’s Web. 
+First International World Wide Web Conference, Geneva, Switzerland, May 1994.
+Professional Activities
+ Webmaster, 1997 International Conference on Software Engineering (ICSE’97), 
+Boston, May 1997.
+ HTTP Session Chair, Fifth International World Wide Web Conference (WWW5), 
+Paris, France, May 1996.
+ Birds-of-a-Feather Chair and Session Chair, Fourth International World Wide Web 
+Conference (WWW4), Boston, December 1995.
+ Student V olunteer, 17th International Conference on Software Engineering (ICSE 17), 
+Seattle, June 1995.
+ Student V olunteer, Second International World Wide Web Conference (WWW2), 
+Chicago, October 1994.
+ Student V olunteer, 16th International Conference on Software Engineering (ICSE 16), 
+Sorrento, Italy, April 1994.
+ Co-founder and member, The Apache Group, 1995-present.
+ Founder and chief architect, libwww-perl collaborative project, 1994-95.
+ ICS Representative, Associated Graduate Students Council, 1994-95.
+Professional Associations
+ The Apache Software Foundation
+ Association for Computing Machinery (ACM)
+ ACM Special Interest Groups on Software Engineering (SIGSOFT), 
+Data Communications (SIGCOMM), and Groupware (SIGGROUP)
+xv
+Honors, Awards, Fellowships
+2000 Appaloosa Award for Vision, O ’Reilly Open Source 2000
+2000 Outstanding Graduate Student, UCI Alumni Association
+1999 ACM Software System Award
+1999 TR100: Top 100 young innovators, MIT Technology Review
+1991 Regent ’s Fellowship, University of California
+1988 Golden Key National Honor Society
+1987 Dean ’s Honor List
+xvi
+ABSTRACT OF THE DISSERTATION
+Architectural Styles and the Design of Network-based Software Architectures
+by
+Roy Thomas Fielding
+Doctor of Philosophy in Information and Computer Science
+University of California, Irvine, 2000
+Professor Richard N. Taylor, Chair
+The World Wide Web has succeeded in large part because its software architecture has
+been designed to meet the needs of an Internet-scale distributed hypermedia system. The
+Web has been iteratively developed over the past ten years through a series of
+modifications to the standards that define its architecture. In order to identify those aspects
+of the Web that needed improvement and avoid undesirable modifications, a model for the
+modern Web architecture was needed to guide its design, definition, and deployment.
+Software architecture research investigates methods for determining how best to
+partition a system, how components identify and communicate with each other, how
+information is communicated, how elements of a system can evolve independently, and
+how all of the above can be described using formal and informal notations. My work is
+motivated by the desire to understand and evaluate the architectural design of network-
+based application software through principled use of architectural constraints, thereby
+obtaining the functional, performance, and social properties desired of an architecture. An
+architectural style is a named, coordinated set of architectural constraints.
+xvii
+This dissertation defines a framework for understanding software architecture via
+architectural styles and demonstrates how styles can be used to guide the architectural
+design of network-based application software. A survey of architectural styles for
+network-based applications is used to classify styles according to the architectural
+properties they induce on an architecture for distributed hypermedia. I then introduce the
+Representational State Transfer (REST) architectural style and describe how REST has
+been used to guide the design and development of the architecture for the modern Web.
+REST emphasizes scalability of component interactions, generality of interfaces,
+independent deployment of components, and intermediary components to reduce
+interaction latency, enforce security, and encapsulate legacy systems. I describe the
+software engineering principles guiding REST and the interaction constraints chosen to
+retain those principles, contrasting them to the constraints of other architectural styles.
+Finally, I describe the lessons learned from applying REST to the design of the Hypertext
+Transfer Protocol and Uniform Resource Identifier standards, and from their subsequent
+deployment in Web client and server software.
+1
+INTRODUCTION
+Excuse me ... did you say ‘knives’?
+— City Gent #1 (Michael Palin), The Architects Sketch [111]
+As predicted by Perry and Wolf [105], software architecture has been a focal point for
+software engineering research in the 1990s. The complexity of modern software systems
+have necessitated a greater emphasis on componentized systems, where the
+implementation is partitioned into independent components that communicate to perform
+a desired task. Software architecture research investigates methods for determining how
+best to partition a system, how components identify and communicate with each other,
+how information is communicated, how elements of a system can evolve independently,
+and how all of the above can be described using formal and informal notations.
+A good architecture is not created in a vacuum. All design decisions at the
+architectural level should be made within the context of the functional, behavioral, and
+social requirements of the system being designed, which is a principle that applies equally
+to both software architecture and the traditional field of building architecture. The
+guideline that “form follows function” comes from hundreds of years of experience with
+failed building projects, but is often ignored by software practitioners. The funny bit
+within the Monty Python sketch, cited above, is the absurd notion that an architect, when
+faced with the goal of designing an urban block of flats (apartments), would present a
+building design with all the components of a modern slaughterhouse. It might very well be
+the best slaughterhouse design ever conceived, but that would be of little comfort to the
+prospective tenants as they are whisked along hallways containing rotating knives.
+2
+The hyperbole of The Architects Sketch may seem ridiculous, but consider how often
+we see software projects begin with adoption of the latest fad in architectural design, and
+only later discover whether or not the system requirements call for such an architecture.
+Design-by-buzzword is a common occurrence. At least some of this behavior within the
+software industry is due to a lack of understanding of why a given set of architectural
+constraints is useful. In other words, the reasoning behind good software architectures is
+not apparent to designers when those architectures are selected for reuse.
+This dissertation explores a junction on the frontiers of two research disciplines in
+computer science: software and networking. Software research has long been concerned
+with the categorization of software designs and the development of design methodologies,
+but has rarely been able to objectively evaluate the impact of various design choices on
+system behavior. Networking research, in contrast, is focused on the details of generic
+communication behavior between systems and improving the performance of particular
+communication techniques, often ignoring the fact that changing the interaction style of an
+application can have more impact on performance than the communication protocols used
+for that interaction. My work is motivated by the desire to understand and evaluate the
+architectural design of network-based application software through principled use of
+architectural constraints, thereby obtaining the functional, performance, and social
+properties desired of an architecture. When given a name, a coordinated set of
+architectural constraints becomes an architectural style.
+The first three chapters of this dissertation define a framework for understanding
+software architecture via architectural styles, revealing how styles can be used to guide the
+architectural design of network-based application software. Common architectural styles
+3
+are surveyed and classified according to the architectural properties they induce when
+applied to an architecture for network-based hypermedia. This classification is used to
+identify a set of architectural constraints that could be used to improve the architecture of
+the early World Wide Web.
+Architecting the Web requires an understanding of its requirements, as we shall
+discuss in Chapter 4. The Web is intended to be an Internet-scale distributed hypermedia
+system, which means considerably more than just geographical dispersion. The Internet is
+about interconnecting information networks across organizational boundaries. Suppliers
+of information services must be able to cope with the demands of anarchic scalability and
+the independent deployment of software components. Distributed hypermedia provides a
+uniform means of accessing services through the embedding of action controls within the
+presentation of information retrieved from remote sites. An architecture for the Web must
+therefore be designed with the context of communicating large-grain data objects across
+high-latency networks and multiple trust boundaries.
+Chapter 5 introduces and elaborates the Representational State Transfer (REST)
+architectural style for distributed hypermedia systems. REST provides a set of
+architectural constraints that, when applied as a whole, emphasizes scalability of
+component interactions, generality of interfaces, independent deployment of components,
+and intermediary components to reduce interaction latency, enforce security, and
+encapsulate legacy systems. I describe the software engineering principles guiding REST
+and the interaction constraints chosen to retain those principles, contrasting them to the
+constraints of other architectural styles.
+4
+Over the past six years, the REST architectural style has been used to guide the design
+and development of the architecture for the modern Web, as presented in Chapter 6. This
+work was done in conjunction with my authoring of the Internet standards for the
+Hypertext Transfer Protocol (HTTP) and Uniform Resource Identifiers (URI), the two
+specifications that define the generic interface used by all component interactions on the
+Web.
+Like most real-world systems, not all components of the deployed Web architecture
+obey every constraint present in its architectural design. REST has been used both as a
+means to define architectural improvements and to identify architectural mismatches.
+Mismatches occur when, due to ignorance or oversight, a software implementation is
+deployed that violates the architectural constraints. While mismatches cannot be avoided
+in general, it is possible to identify them before they become standardized. Several
+mismatches within the modern Web architecture are summarized in Chapter 6, along with
+analyses of why they arose and how they deviate from REST.
+In summary, this dissertation makes the following contributions to software research
+within the field of Information and Computer Science:
+• a framework for understanding software architecture through architectural styles, 
+including a consistent set of terminology for describing software architecture;
+ a classification of architectural styles for network-based application software by 
+the architectural properties they would induce when applied to the architecture for 
+a distributed hypermedia system;
+ REST, a novel architectural style for distributed hypermedia systems; and,
+ application and evaluation of the REST architectural style in the design and 
+deployment of the architecture for the modern World Wide Web.
+5
+CHAPTER 1
+Software Architecture
+In spite of the interest in software architecture as a field of research, there is little
+agreement among researchers as to what exactly should be included in the definition of
+architecture. In many cases, this has led to important aspects of architectural design being
+overlooked by past research. This chapter defines a self-consistent terminology for
+software architecture based on an examination of existing definitions within the literature
+and my own insight with respect to network-based application architectures. Each
+definition, highlighted within a box for ease of reference, is followed by a discussion of
+how it is derived from, or compares to, related research.
+1.1 Run-time Abstraction
+At the heart of software architecture is the principle of abstraction: hiding some of the
+details of a system through encapsulation in order to better identify and sustain its
+properties [117]. A complex system will contain many levels of abstraction, each with its
+own architecture. An architecture represents an abstraction of system behavior at that
+level, such that architectural elements are delineated by the abstract interfaces they
+provide to other elements at that level [9]. Within each element may be found another
+architecture, defining the system of sub-elements that implement the behavior represented
+A software architecture is an abstraction of the run-time elements of a 
+software system during some phase of its operation. A system may be 
+composed of many levels of abstraction and many phases of operation, 
+each with its own software architecture.
+6
+by the parent element’s abstract interface. This recursion of architectures continues down
+to the most basic system elements: those that cannot be decomposed into less abstract
+elements.
+In addition to levels of architecture, a software system will often have multiple
+operational phases, such as start-up, initialization, normal processing, re-initialization, and
+shutdown. Each operational phase has its own architecture. For example, a configuration
+file will be treated as a data element during the start-up phase, but won’t be considered an
+architectural element during normal processing, since at that point the information it
+contained will have already been distributed throughout the system. It may, in fact, have
+defined the normal processing architecture. An overall description of a system architecture
+must be capable of describing not only the operational behavior of the system ’s
+architecture during each phase, but also the architecture of transitions between phases.
+Perry and Wolf [105] define processing elements as “transformers of data, ” while
+Shaw et al. [118] describe components as “the locus of computation and state. ” This is
+further clarified in Shaw and Clements [122]: “A component is a unit of software that
+performs some function at run-time. Examples include programs, objects, processes, and
+filters.” This raises an important distinction between software architecture and what is
+typically referred to as software structure: the former is an abstraction of the run-time
+behavior of a software system, whereas the latter is a property of the static software source
+code. Although there are advantages to having the modular structure of the source code
+match the decomposition of behavior within a running system, there are also advantages to
+having independent software components be implemented using parts of the same code
+(e.g., shared libraries). We separate the view of software architecture from that of the
+7
+source code in order to focus on the software ’s run-time characteristics independent of a
+given component ’s implementation. Therefore, architectural design and source code
+structural design, though closely related, are separate design activities. Unfortunately,
+some descriptions of software architecture fail to make this distinction (e.g., [9]).
+1.2 Elements
+A comprehensive examination of the scope and intellectual basis for software architecture
+can be found in Perry and Wolf [105]. They present a model that defines a software
+architecture as a set of architectural elements that have a particular form, explicated by a
+set of rationale. Architectural elements include processing, data, and connecting elements.
+Form is defined by the properties of the elements and the relationships among the
+elements — that is, the constraints on the elements. The rationale provides the underlying
+basis for the architecture by capturing the motivation for the choice of architectural style,
+the choice of elements, and the form.
+My definitions for software architecture are an elaborated version of those within the
+Perry and Wolf [105] model, except that I exclude rationale. Although rationale is an
+important aspect of software architecture research and of architectural description in
+particular, including it within the definition of software architecture would imply that
+design documentation is part of the run-time system. The presence or absence of rationale
+can influence the evolution of an architecture, but, once constituted, the architecture is
+independent of its reasons for being. Reflective systems [80] can use the characteristics of
+A software architecture is defined by a configuration of architectural 
+elements—components, connectors, and data—constrained in their 
+relationships in order to achieve a desired set of architectural properties.
+8
+past performance to change future behavior, but in doing so they are replacing one lower-
+level architecture with another lower-level architecture, rather than encompassing
+rationale within those architectures.
+As an illustration, consider what happens to a building if its blueprints and design
+plans are burned. Does the building immediately collapse? No, since the properties by
+which the walls sustain the weight of the roof remain intact. An architecture has, by
+design, a set of properties that allow it to meet or exceed the system requirements.
+Ignorance of those properties may lead to later changes which violate the architecture, just
+as the replacement of a load-bearing wall with a large window frame may violate the
+structural stability of a building. Thus, instead of rationale, our definition of software
+architecture includes architectural properties. Rationale explicates those properties, and
+lack of rationale may result in gradual decay or degradation of the architecture over time,
+but the rationale itself is not part of the architecture.
+A key feature of the model in Perry and Wolf [105] is the distinction of the various
+element types. Processing elements are those that perform transformations on data, data
+elements are those that contain the information that is used and transformed, and
+connecting elements  are the glue that holds the different pieces of the architecture
+together. I use the more prevalent terms of components and connectors to refer to
+processing and connecting elements, respectively.
+Garlan and Shaw [53] describe an architecture of a system as a collection of
+computational components together with a description of the interactions between these
+components—the connectors. This model is expanded upon in Shaw et al. [118]: The
+architecture of a software system defines that system in terms of components and of
+9
+interactions among those components. In addition to specifying the structure and topology
+of the system, the architecture shows the intended correspondence between the system
+requirements and elements of the constructed system. Further elaboration of this definition
+can be found in Shaw and Garlan [121].
+What is surprising about the Shaw et al. [118] model is that, rather than defining the
+software’s architecture as existing within the software, it is defining a description of the
+software’s architecture as if that were the architecture. In the process, software
+architecture as a whole is reduced to what is commonly found in most informal
+architecture diagrams: boxes (components) and lines (connectors). Data elements, along
+with many of the dynamic aspects of real software architectures, are ignored. Such a
+model is incapable of adequately describing network-based software architectures, since
+the nature, location, and movement of data elements within the system is often the single
+most significant determinant of system behavior.
+1.2.1 Components
+Components are the most easily recognized aspect of software architecture. Perry and
+Wolf’s [105] processing elements are defined as those components that supply the
+transformation on the data elements. Garlan and Shaw [53] describe components simply
+as the elements that perform computation. Our definition attempts to be more precise in
+making the distinction between components and the software within connectors.
+A component is an abstract unit of software instructions and internal state that
+provides a transformation of data via its interface. Example transformations include
+A component is an abstract unit of software instructions and internal 
+state that provides a transformation of data via its interface.
+10
+loading into memory from secondary storage, performing some calculation, translating to
+a different format, encapsulation with other data, etc. The behavior of each component is
+part of the architecture insofar as that behavior can be observed or discerned from the
+point of view of another component [9]. In other words, a component is defined by its
+interface and the services it provides to other components, rather than by its
+implementation behind the interface. Parnas [101] would define this as the set of
+assumptions that other architectural elements can make about the component.
+1.2.2 Connectors
+Perry and Wolf [105] describe connecting elements vaguely as the glue that holds the
+various pieces of the architecture together. A more precise definition is provided by Shaw
+and Clements [122]: A connector is an abstract mechanism that mediates communication,
+coordination, or cooperation among components. Examples include shared
+representations, remote procedure calls, message-passing protocols, and data streams.
+Perhaps the best way to think about connectors is to contrast them with components.
+Connectors enable communication between components by transferring data elements
+from one interface to another without changing the data. Internally, a connector may
+consist of a subsystem of components that transform the data for transfer, perform the
+transfer, and then reverse the transformation for delivery. However, the external
+behavioral abstraction captured by the architecture ignores those details. In contrast, a
+component may, but not always will, transform data from the external perspective.
+A connector is an abstract mechanism that mediates communication, 
+coordination, or cooperation among components.
+11
+1.2.3 Data
+As noted above, the presence of data elements is the most significant distinction between
+the model of software architecture defined by Perry and Wolf [105] and the model used by
+much of the research labelled software architecture [1, 5, 9, 53, 56, 117-122, 128].
+Boasson [24] criticizes current software architecture research for its emphasis on
+component structures and architecture development tools, suggesting that more focus
+should be placed on data-centric architectural modeling. Similar comments are made by
+Jackson [67].
+A datum is an element of information that is transferred from a component, or received
+by a component, via a connector. Examples include byte-sequences, messages, marshalled
+parameters, and serialized objects, but do not include information that is permanently
+resident or hidden within a component. From the architectural perspective, a “file” is a
+transformation that a file system component might make from a “file name ” datum
+received on its interface to a sequence of bytes recorded within an internally hidden
+storage system. Components can also generate data, as in the case of a software
+encapsulation of a clock or sensor.
+The nature of the data elements within a network-based application architecture will
+often determine whether or not a given architectural style is appropriate. This is
+particularly evident in the comparison of mobile code design paradigms [50], where the
+choice must be made between interacting with a component directly or transforming the
+component into a data element, transferring it across a network, and then transforming it
+A datum is an element of information that is transferred from a 
+component, or received by a component, via a connector.
+12
+back to a component that can be interacted with locally. It is impossible to evaluate such
+an architecture without considering data elements at the architectural level.
+1.3 Configurations
+Abowd et al. [1] define architectural description as supporting the description of systems
+in terms of three basic syntactic classes: components, which are the locus of computation;
+connectors, which define the interactions between components; and configurations, which
+are collections of interacting components and connectors. Various style-specific concrete
+notations may be used to represent these visually, facilitate the description of legal
+computations and interactions, and constrain the set of desirable systems.
+Strictly speaking, one might think of a configuration as being equivalent to a set of
+specific constraints on component interaction. For example, Perry and Wolf [105] include
+topology in their definition of architectural form relationships. However, separating the
+active topology from more general constraints allows an architect to more easily
+distinguish the active configuration from the potential domain of all legitimate
+configurations. Additional rationale for distinguishing configurations within architectural
+description languages is presented in Medvidovic and Taylor [86].
+1.4 Properties
+The set of architectural properties of a software architecture includes all properties that
+derive from the selection and arrangement of components, connectors, and data within the
+system. Examples include both the functional properties achieved by the system and non-
+A configuration is the structure of architectural relationships among 
+components, connectors, and data during a period of system run-time.
+13
+functional properties, such as relative ease of evolution, reusability of components,
+efficiency, and dynamic extensibility, often referred to as quality attributes [9].
+Properties are induced by the set of constraints within an architecture. Constraints are
+often motivated by the application of a software engineering principle [58] to an aspect of
+the architectural elements. For example, the uniform pipe-and-filter  style obtains the
+qualities of reusability of components and configurability of the application by applying
+generality to its component interfaces — constraining the components to a single interface
+type. Hence, the architectural constraint is “uniform component interface,” motivated by
+the generality principle, in order to obtain two desirable qualities that will become the
+architectural properties of reusable and configurable components when that style is
+instantiated within an architecture.
+The goal of architectural design is to create an architecture with a set of architectural
+properties that form a superset of the system requirements. The relative importance of the
+various architectural properties depends on the nature of the intended system. Section 2.3
+examines the properties that are of particular interest to network-based application
+architectures.
+1.5 Styles
+Since an architecture embodies both functional and non-functional properties, it can be
+difficult to directly compare architectures for different types of systems, or for even the
+An architectural style is a coordinated set of architectural constraints 
+that restricts the roles/features of architectural elements and the allowed 
+relationships among those elements within any architecture that 
+conforms to that style.
+14
+same type of system set in different environments. Styles are a mechanism for
+categorizing architectures and for defining their common characteristics [38]. Each style
+provides an abstraction for the interactions of components, capturing the essence of a
+pattern of interaction by ignoring the incidental details of the rest of the architecture [117].
+Perry and Wolf [105] define architectural style as an abstraction of element types and
+formal aspects from various specific architectures, perhaps concentrating on only certain
+aspects of an architecture. An architectural style encapsulates important decisions about
+the architectural elements and emphasizes important constraints on the elements and their
+relationships. This definition allows for styles that focus only on the connectors of an
+architecture, or on specific aspects of the component interfaces.
+In contrast, Garlan and Shaw [53], Garlan et al. [56], and Shaw and Clements [122] all
+define style in terms of a pattern of interactions among typed components. Specifically, an
+architectural style determines the vocabulary of components and connectors that can be
+used in instances of that style, together with a set of constraints on how they can be
+combined [53]. This restricted view of architectural styles is a direct result of their
+definition of software architecture — thinking of architecture as a formal description,
+rather than as a running system, leads to abstractions based only in the shared patterns of
+box and line diagrams. Abowd et al. [1] go further and define this explicitly as viewing the
+collection of conventions that are used to interpret a class of architectural descriptions as
+defining an architectural style.
+New architectures can be defined as instances of specific styles [38]. Since
+architectural styles may address different aspects of software architecture, a given
+15
+architecture may be composed of multiple styles. Likewise, a hybrid style can be formed
+by combining multiple basic styles into a single coordinated style.
+Some architectural styles are often portrayed as “silver bullet” solutions for all forms
+of software. However, a good designer should select a style that matches the needs of the
+particular problem being solved [119]. Choosing the right architectural style for a
+network-based application requires an understanding of the problem domain [67] and
+thereby the communication needs of the application, an awareness of the variety of
+architectural styles and the particular concerns they address, and the ability to anticipate
+the sensitivity of each interaction style to the characteristics of network-based
+communication [133].
+Unfortunately, using the term style to refer to a coordinated set of constraints often
+leads to confusion. This usage differs substantially from the etymology of style, which
+would emphasize personalization of the design process. Loerke [76] devotes a chapter to
+denigrating the notion that personal stylistic concerns have any place in the work of a
+professional architect. Instead, he describes styles as the critics’ view of past architecture,
+where the available choice of materials, the community culture, or the ego of the local
+ruler were responsible for the architectural style, not the designer. In other words, Loerke
+views the real source of style in traditional building architecture to be the set of constraints
+applied to the design, and attaining or copying a specific style should be the least of the
+designer’s goals. Since referring to a named set of constraints as a style makes it easier to
+communicate the characteristics of common constraints, we use architectural styles as a
+method of abstraction, rather than as an indicator of personalized design.
+16
+1.6 Patterns and Pattern Languages
+In parallel with the software engineering research in architectural styles, the object-
+oriented programming community has been exploring the use of design patterns and
+pattern languages to describe recurring abstractions in object-based software
+development. A design pattern is defined as an important and recurring system construct.
+A pattern language is a system of patterns organized in a structure that guides the patterns’
+application [70]. Both concepts are based on the writings of Alexander et al. [3, 4] with
+regard to building architecture.
+The design space of patterns includes implementation concerns specific to the
+techniques of object-oriented programming, such as class inheritance and interface
+composition, as well as the higher-level design issues addressed by architectural styles
+[51]. In some cases, architectural style descriptions have been recast as architectural
+patterns [120]. However, a primary benefit of patterns is that they can describe relatively
+complex protocols of interactions between objects as a single abstraction [91], thus
+including both constraints on behavior and specifics of the implementation. In general, a
+pattern, or pattern language in the case of multiple integrated patterns, can be thought of as
+a recipe for implementing a desired set of interactions among objects. In other words, a
+pattern defines a process for solving a problem by following a path of design and
+implementation choices [34].
+Like software architectural styles, the software patterns research has deviated
+somewhat from its origin in building architecture. Indeed, Alexander ’s notion of patterns
+centers not on recurring arrangements of architectural elements, but rather on the recurring
+pattern of events—human activity and emotion —that take place within a space, with the
+17
+understanding that a pattern of events cannot be separated from the space where it occurs
+[3]. Alexander’s design philosophy is to identify patterns of life that are common to the
+target culture and determine what architectural constraints are needed to differentiate a
+given space such that it enables the desired patterns to occur naturally. Such patterns exist
+at multiple levels of abstraction and at all scales.
+As an element in the world, each pattern is a relationship between a certain
+context, a certain system of forces which occurs repeatedly in that context, and
+a certain spatial configuration which allows these forces to resolve themselves.
+As an element of language, a pattern is an instruction, which shows how
+this spatial configuration can be used, over and over again, to resolve the
+given system of forces, wherever the context makes it relevant.
+The pattern is, in short, at the same time a thing, which happens in the
+world, and the rule which tells us how to create that thing, and when we must
+create it. It is both a process and a thing; both a description of a thing which is
+alive, and a description of the process which will generate that thing. [3]
+In many ways, Alexander ’s patterns have more in common with software architectural
+styles than the design patterns of OOPL research. An architectural style, as a coordinated
+set of constraints, is applied to a design space in order to induce the architectural
+properties that are desired of the system. By applying a style, an architect is differentiating
+the software design space in the hope that the result will better match the forces inherent in
+the application, thus leading to system behavior that enhances the natural pattern rather
+than conflicting with it.
+1.7 Views
+An architectural viewpoint is often application-specific and varies widely
+based on the application domain. ... we have seen architectural viewpoints that
+address a variety of issues, including: temporal issues, state and control
+approaches, data representation, transaction life cycle, security safeguards,
+and peak demand and graceful degradation. No doubt there are many more
+possible viewpoints. [70]
+18
+In addition to the many architectures within a system, and the many architectural styles
+from which the architectures are composed, it is also possible to view an architecture from
+many different perspectives. Perry and Wolf [105] describe three important views in
+software architecture: processing, data, and connection views. A process view emphasizes
+the data flow through the components and some aspects of the connections among the
+components with respect to the data. A data view emphasizes the processing flow, with
+less emphasis on the connectors. A connection view emphasizes the relationship between
+components and the state of communication.
+Multiple architectural views are common within case studies of specific architectures
+[9]. One architectural design methodology, the 4+1 View Model [74], organizes the
+description of a software architecture using five concurrent views, each of which
+addresses a specific set of concerns.
+1.8 Related Work
+I include here only those areas of research that define software architecture or describe
+software architectural styles. Other areas for software architecture research include
+architectural analysis techniques, architecture recovery and re-engineering, tools and
+environments for architectural design, architecture refinement from specification to
+implementation, and case studies of deployed software architectures [55]. Related work in
+the areas of style classification, distributed process paradigms, and middleware are
+discussed in Chapter 3.
+19
+1.8.1 Design Methodologies
+Most early research on software architecture was concentrated on design methodologies.
+For example, object-oriented design [25] advocates a way to structure problems that leads
+naturally to an object-based architecture (or, more accurately, does not lead naturally to
+any other form of architecture). One of the first design methodologies to emphasize design
+at the architectural level is Jackson System Development [30]. JSD intentionally
+structures the analysis of a problem so that it leads to a style of architecture that combines
+pipe-and-filter (data flow) and process control constraints. These design methodologies
+tend to produce only one style of architecture.
+There has been some initial work investigating methodologies for the analysis and
+development of architectures. Kazman et al. have described design methods for eliciting
+the architectural aspects of a design through scenario-based analysis with SAAM [68] and
+architectural trade-off analysis via ATAM [69]. Shaw [119] compares a variety of box-
+and-arrow designs for an automobile cruise control system, each done using a different
+design methodology and encompassing several architectural styles.
+1.8.2 Handbooks for Design, Design Patterns, and Pattern Languages
+Shaw [117] advocates the development of architectural handbooks along the same lines as
+traditional engineering disciplines. The object-oriented programming community has
+taken the lead in producing catalogs of design patterns, as exemplified by the “Gang of
+Four” book [51] and the essays edited by Coplien and Schmidt [33].
+Software design patterns tend to be more problem-oriented than architectural styles.
+Shaw [120] presents eight example architectural patterns based on the architectural styles
+20
+described in [53], including information on the kinds of problems best suited to each
+architecture. Buschmann et al. [28] provide a comprehensive examination of the
+architectural patterns common to object-based development. Both references are purely
+descriptive and make no attempt to compare or illustrate the differences among
+architectural patterns.
+Tepfenhart and Cusick [129] use a two dimensional map to differentiate among
+domain taxonomies, domain models, architectural styles, frameworks, kits, design
+patterns, and applications. In the topology, design patterns are predefined design
+structures used as building blocks for a software architecture, whereas architectural styles
+are sets of operational characteristics that identify an architectural family independent of
+application domain. However, they fail to define architecture itself.
+1.8.3 Reference Models and Domain-specific Software Architectures (DSSA)
+Reference models are developed to provide conceptual frameworks for describing
+architectures and showing how components are related to each other [117]. The Object
+Management Architecture (OMA), developed by the OMG [96] as a reference model for
+brokered distributed object architectures, specifies how objects are defined and created,
+how client applications invoke objects, and how objects can be shared and reused. The
+emphasis is on management of distributed objects, rather than efficient application
+interaction.
+Hayes-Roth et al. [62] define domain-specific software architecture (DSSA) as
+comprising: a) a reference architecture, which describes a general computational
+framework for a significant domain of applications, b) a component library, which
+21
+contains reusable chunks of domain expertise, and c) an application configuration method
+for selecting and configuring components within the architecture to meet particular
+application requirements. Tracz [130] provides a general overview of DSSA.
+DSSA projects have been successful at transferring architectural decisions to running
+systems by restricting the software development space to a specific architectural style that
+matches the domain requirements [88]. Examples include ADAGE [10] for avionics, AIS
+[62] for adaptive intelligent systems, and MetaH [132] for missile guidance, navigation,
+and control systems. DSSA emphasize reuse of components within a common
+architectural domain, rather than selecting an architectural style that is specific to each
+system.
+1.8.4 Architecture Description Languages (ADL)
+Most of the recent published work regarding software architectures is in the area of
+architecture description languages (ADL). An ADL is, according to Medvidovic and
+Taylor [86], a language that provides features for the explicit specification and modeling
+of a software system ’s conceptual architecture, including at a minimum: components,
+component interfaces, connectors, and architectural configurations.
+Darwin is a declarative language which is intended to be a general purpose notation
+for specifying the structure of systems composed of diverse components using diverse
+interaction mechanisms [81]. Darwin ’s interesting qualities are that it allows the
+specification of distributed architectures and dynamically composed architectures [82].
+UniCon [118] is a language and associated toolset for composing an architecture from
+a restricted set of component and connector examples. Wright [5] provides a formal basis
+22
+for specifying the interactions between architectural components by specifying connector
+types by their interaction protocols.
+Like design methodologies, ADLs often introduce specific architectural assumptions
+that may impact their ability to describe some architectural styles, and may conflict with
+the assumptions in existing middleware [38]. In some cases, an ADL is designed
+specifically for a single architectural style, thus improving its capacity for specialized
+description and analysis at the cost of generality. For example, C2SADEL [88] is an ADL
+designed specifically to describe architectures developed in the C2 style [128]. In contrast,
+ACME [57] is an ADL that attempts to be as generic as possible, but with the trade-off
+being that it doesn’t support style-specific analysis and the building of actual applications;
+rather, its focus is on the interchange among analysis tools.
+1.8.5 Formal Architectural Models
+Abowd et al. [1] claim that architectural styles can be described formally in terms of a
+small set of mappings from the syntactic domain of architectural descriptions (box-and-
+line diagrams) to the semantic domain of architectural meaning. However, this assumes
+that the architecture is the description, rather than an abstraction of a running system.
+Inverardi and Wolf [65] use the Chemical Abstract Machine (CHAM) formalism to
+model software architecture elements as chemicals whose reactions are controlled by
+explicitly stated rules. It specifies the behavior of components according to how they
+transform available data elements and uses composition rules to propagate the individual
+transformations into an overall system result. While this is an interesting model, it is
+23
+unclear as to how CHAM could be used to describe any form of architecture whose
+purpose goes beyond transforming a data stream.
+Rapide [78] is a concurrent, event-based simulation language specifically designed for
+defining and simulating system architectures. The simulator produces a partially-ordered
+set of events that can be analyzed for conformance to the architectural constraints on
+interconnection. Le M étayer [75] presents a formalism for the definition of architectures
+in terms of graphs and graph grammars.
+1.9 Summary
+This chapter examined the background for this dissertation. Introducing and formalizing a
+consistent set of terminology for software architecture concepts is necessary to avoid the
+confusion between architecture and architecture description that is common in the
+literature, particularly since much of the prior research on architecture excludes data as an
+important architectural element. I concluded with a survey of other research related to
+software architecture and architectural styles.
+The next two chapters continue our discussion of background material by focusing on
+network-based application architectures and describing how styles can be used to guide
+their architectural design, followed by a survey of common architectural styles using a
+classification methodology that highlights the architectural properties induced when the
+styles are applied to an architecture for network-based hypermedia.
+24
+CHAPTER 2
+Network-based Application Architectures
+This chapter continues our discussion of background material by focusing on network-
+based application architectures and describing how styles can be used to guide their
+architectural design.
+2.1 Scope
+Architecture is found at multiple levels within software systems. This dissertation
+examines the highest level of abstraction in software architecture, where the interactions
+among components are capable of being realized in network communication. We limit our
+discussion to styles for network-based application architectures in order to reduce the
+dimensions of variance among the styles studied.
+2.1.1 Network-based vs. Distributed
+The primary distinction between network-based architectures and software architectures
+in general is that communication between components is restricted to message passing [6],
+or the equivalent of message passing if a more efficient mechanism can be selected at run-
+time based on the location of components [128].
+Tanenbaum and van Renesse [127] make a distinction between distributed systems
+and network-based systems: a distributed system is one that looks to its users like an
+ordinary centralized system, but runs on multiple, independent CPUs. In contrast,
+network-based systems are those capable of operation across a network, but not
+25
+necessarily in a fashion that is transparent to the user. In some cases it is desirable for the
+user to be aware of the difference between an action that requires a network request and
+one that is satisfiable on their local system, particularly when network usage implies an
+extra transaction cost [133]. This dissertation covers network-based systems by not
+limiting the candidate styles to those that preserve transparency for the user.
+2.1.2 Application Software vs. Networking Software
+Another restriction on the scope of this dissertation is that we limit our discussion to
+application architectures, excluding the operating system, networking software, and some
+architectural styles that would only use a network for system support (e.g., process control
+styles [53]). Applications represent the “business-aware” functionality of a system [131].
+Application software architecture is an abstraction level of an overall system, in which
+the goals of a user action are representable as functional architectural properties. For
+example, a hypermedia application must be concerned with the location of information
+pages, performing requests, and rendering data streams. This is in contrast to a networking
+abstraction, where the goal is to move bits from one location to another without regard to
+why those bits are being moved. It is only at the application level that we can evaluate
+design trade-offs based on the number of interactions per user action, the location of
+application state, the effective throughput of all data streams (as opposed to the potential
+throughput of a single data stream), the extent of communication being performed per user
+action, etc.
+26
+2.2 Evaluating the Design of Application Architectures
+One of the goals of this dissertation is to provide design guidance for the task of selecting
+or creating the most appropriate architecture for a given application domain, keeping in
+mind that an architecture is the realization of an architectural design and not the design
+itself. An architecture can be evaluated by its run-time characteristics, but we would
+obviously prefer an evaluation mechanism that could be applied to the candidate
+architectural designs before having to implement all of them. Unfortunately, architectural
+designs are notoriously hard to evaluate and compare in an objective manner. Like most
+artifacts of creative design, architectures are normally presented as a completed work, as if
+the design simply sprung fully-formed from the architect ’s mind. In order to evaluate an
+architectural design, we need to examine the design rationale behind the constraints it
+places on a system, and compare the properties derived from those constraints to the target
+application’s objectives.
+The first level of evaluation is set by the application ’s functional requirements. For
+example, it makes no sense to evaluate the design of a process control architecture against
+the requirements of a distributed hypermedia system, since the comparison is moot if the
+architecture would not function. Although this will eliminate some candidates, in most
+cases there will remain many other architectural designs that are capable of meeting the
+application’s functional needs. The remainder differ by their relative emphasis on the non-
+functional requirements—the degree to which each architecture would support the various
+non-functional architectural properties that have been identified as necessary for the
+system. Since properties are created by the application of architectural constraints, it is
+possible to evaluate and compare different architectural designs by identifying the
+27
+constraints within each architecture, evaluating the set of properties induced by each
+constraint, and comparing the cumulative properties of the design to those properties
+required of the application.
+As described in the previous chapter, an architectural style is a coordinated set of
+architectural constraints that has been given a name for ease of reference. Each
+architectural design decision can be seen as an application of a style. Since the addition of
+a constraint may derive a new style, we can think of the space of all possible architectural
+styles as a derivation tree, with its root being the null style (empty set of constraints).
+When their constraints do not conflict, styles can be combined to form hybrid styles,
+eventually culminating in a hybrid style that represents a complete abstraction of the
+architectural design. An architectural design can therefore be analyzed by breaking-down
+its set of constraints into a derivation tree and evaluating the cumulative effect of the
+constraints represented by that tree. If we understand the properties induced by each basic
+style, then traversing the derivation tree gives us an understanding of the overall design ’s
+architectural properties. The specific needs of an application can then be matched against
+the properties of the design. Comparison becomes a relatively simple matter of identifying
+which architectural design satisfies the most desired properties for that application.
+Care must be taken to recognize when the effects of one constraint may counteract the
+benefits of some other constraint. Nevertheless, it is possible for an experienced software
+architect to build such a derivation tree of architectural constraints for a given application
+domain, and then use the tree to evaluate many different architectural designs for
+applications within that domain. Thus, building a derivation tree provides a mechanism
+for architectural design guidance.
+28
+The evaluation of architectural properties within a tree of styles is specific to the needs
+of a particular application domain because the impact of a given constraint is often
+dependent on the application characteristics. For example, the pipe-and-filter style enables
+several positive architectural properties when used within a system that requires data
+transformations between components, whereas it would add nothing but overhead to a
+system that consists only of control messages. Since it is rarely useful to compare
+architectural designs across different application domains, the simplest means of ensuring
+consistency is to make the tree domain-specific.
+Design evaluation is frequently a question of choosing between trade-offs. Perry and
+Wolf [105] describe a method of recognizing trade-offs explicitly by placing a numeric
+weight against each property to indicate its relative importance to the architecture, thus
+providing a normalized metric for comparing candidate designs. However, in order to be a
+meaningful metric, each weight would have to be carefully chosen using an objective
+scale that is consistent across all properties. In practice, no such scale exists. Rather than
+having the architect fiddle with weight values until the result matches their intuition, I
+prefer to present all of the information to the architect in a readily viewable form, and let
+the architect’s intuition be guided by the visual pattern. This will be demonstrated in the
+next chapter.
+2.3 Architectural Properties of Key Interest
+This section describes the architectural properties used to differentiate and classify
+architectural styles in this dissertation. It is not intended to be a comprehensive list. I have
+included only those properties that are clearly influenced by the restricted set of styles
+29
+surveyed. Additional properties, sometimes referred to as software qualities, are covered
+by most textbooks on software engineering (e.g., [58]). Bass et al. [9] examine qualities in
+regards to software architecture.
+2.3.1 Performance
+One of the main reasons to focus on styles for network-based applications is because
+component interactions can be the dominant factor in determining user-perceived
+performance and network efficiency. Since the architectural style influences the nature of
+those interactions, selection of an appropriate architectural style can make the difference
+between success and failure in the deployment of a network-based application.
+The performance of a network-based application is bound first by the application
+requirements, then by the chosen interaction style, followed by the realized architecture,
+and finally by the implementation of each component. In other words, software cannot
+avoid the basic cost of achieving the application needs; e.g., if the application requires that
+data be located on system A and processed on system B, then the software cannot avoid
+moving that data from A to B. Likewise, an architecture cannot be any more efficient than
+its interaction style allows; e.g., the cost of multiple interactions to move the data from A
+to B cannot be any less than that of a single interaction from A to B. Finally, regardless of
+the quality of an architecture, no interaction can take place faster than a component
+implementation can produce data and its recipient can consume data.
+2.3.1.1 Network Performance
+Network performance measures are used to describe some attributes of communication.
+Throughput is the rate at which information, including both application data and
+30
+communication overhead, is transferred between components. Overhead can be separated
+into initial setup overhead and per-interaction overhead, a distinction which is useful for
+identifying connectors that can share setup overhead across multiple interactions
+(amortization). Bandwidth is a measure of the maximum available throughput over a
+given network link. Usable bandwidth  refers to that portion of bandwidth which is
+actually available to the application.
+Styles impact network performance by their influence on the number of interactions
+per user action and the granularity of data elements. A style that encourages small,
+strongly typed interactions will be efficient in an application involving small data transfers
+among known components, but will cause excessive overhead within applications that
+involve large data transfers or negotiated interfaces. Likewise, a style that involves the
+coordination of multiple components arranged to filter a large data stream will be out of
+place in an application that primarily requires small control messages.
+2.3.1.2 User-perceived Performance
+User-perceived performance differs from network performance in that the performance of
+an action is measured in terms of its impact on the user in front of an application rather
+than the rate at which the network moves information. The primary measures for user-
+perceived performance are latency and completion time.
+Latency is the time period between initial stimulus and the first indication of a
+response. Latency occurs at several points in the processing of a network-based
+application action: 1) the time needed for the application to recognize the event that
+initiated the action; 2) the time required to setup the interactions between components; 3)
+the time required to transmit each interaction to the components; 4) the time required to
+31
+process each interaction on those components; and, 5) the time required to complete
+sufficient transfer and processing of the result of the interactions before the application is
+able to begin rendering a usable result. It is important to note that, although only (3) and
+(5) represent actual network communication, all five points can be impacted by the
+architectural style. Furthermore, multiple component interactions per user action are
+additive to latency unless they take place in parallel.
+Completion is the amount of time taken to complete an application action. Completion
+time is dependent upon all of the aforementioned measures. The difference between an
+action’s completion time and its latency represents the degree to which the application is
+incrementally processing the data being received. For example, a Web browser that can
+render a large image while it is being received provides significantly better user-perceived
+performance than one that waits until the entire image is completely received prior to
+rendering, even though both experience the same network performance.
+It is important to note that design considerations for optimizing latency will often have
+the side-effect of degrading completion time, and vice versa. For example, compression of
+a data stream can produce a more efficient encoding if the algorithm samples a significant
+portion of the data before producing the encoded transformation, resulting in a shorter
+completion time to transfer the encoded data across the network. However, if this
+compression is being performed on-the-fly in response to a user action, then buffering a
+large sample before transfer may produce an unacceptable latency. Balancing these trade-
+offs can be difficult, particularly when it is unknown whether the recipient cares more
+about latency (e.g., Web browsers) or completion (e.g., Web spiders).
+32
+2.3.1.3 Network Efficiency
+An interesting observation about network-based applications is that the best application
+performance is obtained by not using the network. This essentially means that the most
+efficient architectural styles for a network-based application are those that can effectively
+minimize use of the network when it is possible to do so, through reuse of prior
+interactions (caching), reduction of the frequency of network interactions in relation to
+user actions (replicated data and disconnected operation), or by removing the need for
+some interactions by moving the processing of data closer to the source of the data
+(mobile code).
+The impact of the various performance issues is often related to the scope of
+distribution for the application. The benefits of a style under local conditions may become
+drawbacks when faced with global conditions. Thus, the properties of a style must be
+framed in relation to the interaction distance: within a single process, across processes on
+a single host, inside a local-area network (LAN), or spread across a wide-area network
+(W AN). Additional concerns become evident when interactions across a W AN, where a
+single organization is involved, are compared to interactions across the Internet, involving
+multiple trust boundaries.
+2.3.2 Scalability
+Scalability refers to the ability of the architecture to support large numbers of components,
+or interactions among components, within an active configuration. Scalability can be
+improved by simplifying components, by distributing services across many components
+(decentralizing the interactions), and by controlling interactions and configurations as a
+33
+result of monitoring. Styles influence these factors by determining the location of
+application state, the extent of distribution, and the coupling between components.
+Scalability is also impacted by the frequency of interactions, whether the load on a
+component is distributed evenly over time or occurs in peaks, whether an interaction
+requires guaranteed delivery or a best-effort, whether a request involves synchronous or
+asynchronous handling, and whether the environment is controlled or anarchic (i.e., can
+you trust the other components?).
+2.3.3 Simplicity
+The primary means by which architectural styles induce simplicity is by applying the
+principle of separation of concerns to the allocation of functionality within components. If
+functionality can be allocated such that the individual components are substantially less
+complex, then they will be easier to understand and implement. Likewise, such separation
+eases the task of reasoning about the overall architecture. I have chosen to lump the
+qualities of complexity, understandability, and verifiability under the general property of
+simplicity, since they go hand-in-hand for a network-based system.
+Applying the principle of generality to architectural elements also improves
+simplicity, since it decreases variation within an architecture. Generality of connectors
+leads to middleware [22].
+2.3.4 Modifiability
+Modifiability is about the ease with which a change can be made to an application
+architecture. Modifiability can be further broken down into evolvability, extensibility,
+customizability, configurability, and reusability, as described below. A particular concern
+34
+of network-based systems is dynamic modifiability [98], where the modification is made
+to a deployed application without stopping and restarting the entire system.
+Even if it were possible to build a software system that perfectly matches the
+requirements of its users, those requirements will change over time just as society changes
+over time. Because the components participating in a network-based application may be
+distributed across multiple organizational boundaries, the system must be prepared for
+gradual and fragmented change, where old and new implementations coexist, without
+preventing the new implementations from making use of their extended capabilities.
+2.3.4.1 Evolvability
+Evolvability represents the degree to which a component implementation can be changed
+without negatively impacting other components. Static evolution of components generally
+depends on how well the architectural abstraction is enforced by the implementation, and
+thus is not something unique to any particular architectural style. Dynamic evolution,
+however, can be influenced by the style if it includes constraints on the maintenance and
+location of application state. The same techniques used to recover from partial failure
+conditions in a distributed system [133] can be used to support dynamic evolution.
+2.3.4.2 Extensibility
+Extensibility is defined as the ability to add functionality to a system [108]. Dynamic
+extensibility implies that functionality can be added to a deployed system without
+impacting the rest of the system. Extensibility is induced within an architectural style by
+reducing the coupling between components, as exemplified by event-based integration.
+35
+2.3.4.3 Customizability
+Customizability refers to the ability to temporarily specialize the behavior of an
+architectural element, such that it can then perform an unusual service. A component is
+customizable if it can be extended by one client of that component ’s services without
+adversely impacting other clients of that component [50]. Styles that support
+customization may also improve simplicity and scalability, since service components can
+be reduced in size and complexity by directly implementing only the most frequent
+services and allowing infrequent services to be defined by the client. Customizability is a
+property induced by the remote evaluation and code-on-demand styles.
+2.3.4.4 Configurability
+Configurability is related to both extensibility and reusability in that it refers to post-
+deployment modification of components, or configurations of components, such that they
+are capable of using a new service or data element type. The pipe-and-filter and code-on-
+demand styles are two examples that induce configurability of configurations and
+components, respectively.
+2.3.4.5 Reusability
+Reusability is a property of an application architecture if its components, connectors, or
+data elements can be reused, without modification, in other applications. The primary
+mechanisms for inducing reusability within architectural styles is reduction of coupling
+(knowledge of identity) between components and constraining the generality of
+component interfaces. The uniform pipe-and-filter style exemplifies these types of
+constraints.
+36
+2.3.5 Visibility
+Styles can also influence the visibility of interactions within a network-based application
+by restricting interfaces via generality or providing access to monitoring. Visibility in this
+case refers to the ability of a component to monitor or mediate the interaction between two
+other components. Visibility can enable improved performance via shared caching of
+interactions, scalability through layered services, reliability through reflective monitoring,
+and security by allowing the interactions to be inspected by mediators (e.g., network
+firewalls). The mobile agent style is an example where the lack of visibility may lead to
+security concerns.
+This usage of the term visibility differs from that in Ghezzi et al. [58], where they are
+referring to visibility into the development process rather than the product.
+2.3.6 Portability
+Software is portable if it can run in different environments [58]. Styles that induce
+portability include those that move code along with the data to be processed, such as the
+virtual machine and mobile agent styles, and those that constrain the data elements to a set
+of standardized formats.
+2.3.7 Reliability
+Reliability, within the perspective of application architectures, can be viewed as the
+degree to which an architecture is susceptible to failure at the system level in the presence
+of partial failures within components, connectors, or data. Styles can improve reliability
+by avoiding single points of failure, enabling redundancy, allowing monitoring, or
+reducing the scope of failure to a recoverable action.
+37
+2.4 Summary
+This chapter examined the scope of the dissertation by focusing on network-based
+application architectures and describing how styles can be used to guide their architectural
+design. It also defined the set of architectural properties that will be used throughout the
+rest of the dissertation for the comparison and evaluation of architectural styles.
+The next chapter presents a survey of common architectural styles for network-based
+application software within a classification framework that evaluates each style according
+to the architectural properties it would induce if applied to an architecture for a
+prototypical network-based hypermedia system.
+38
+CHAPTER 3
+Network-based Architectural Styles
+This chapter presents a survey of common architectural styles for network-based
+application software within a classification framework that evaluates each style according
+to the architectural properties it would induce if applied to an architecture for a
+prototypical network-based hypermedia system.
+3.1 Classification Methodology
+The purpose of building software is not to create a specific topology of interactions or use
+a particular component type — it is to create a system that meets or exceeds the
+application needs. The architectural styles chosen for a system ’s design must conform to
+those needs, not the other way around. Therefore, in order to provide useful design
+guidance, a classification of architectural styles should be based on the architectural
+properties induced by those styles.
+3.1.1 Selection of Architectural Styles for Classification
+The set of architectural styles included in the classification is by no means comprehensive
+of all possible network-based application styles. Indeed, a new style can be formed merely
+by adding an architectural constraint to any one of the styles surveyed. My goal is to
+describe a representative sample of styles, particularly those already identified within the
+software architecture literature, and provide a framework by which other styles can be
+added to the classification as they are developed.
+39
+I have intentionally excluded styles that do not enhance the communication or
+interaction properties when combined with one of the surveyed styles to form a network-
+based application. For example, the blackboard architectural style [95] consists of a
+central repository and a set of components (knowledge sources) that operate
+opportunistically upon the repository. A blackboard architecture can be extended to a
+network-based system by distributing the components, but the properties of such an
+extension are entirely based on the interaction style chosen to support the distribution —
+notifications via event-based integration, polling a la client-server, or replication of the
+repository. Thus, there would be no added value from including it in the classification,
+even though the hybrid style is network-capable.
+3.1.2 Style-induced Architectural Properties
+My classification uses relative changes in the architectural properties induced by each
+style as a means of illustrating the effect of each architectural style when applied to a
+system for distributed hypermedia. Note that the evaluation of a style for a given property
+depends on the type of system interaction being studied, as described in Section 2.2. The
+architectural properties are relative in the sense that adding an architectural constraint may
+improve or reduce a given property, or simultaneously improve one aspect of the property
+and reduce some other aspect of the property. Likewise, improving one property may lead
+to the reduction of another.
+Although our discussion of architectural styles will include those applicable to a wide
+range of network-based systems, our evaluation of each style will be based on its impact
+upon an architecture for a single type of software: network-based hypermedia systems.
+40
+Focusing on a particular type of software allows us to identify the advantages of one style
+over another in the same way that a designer of a system would evaluate those advantages.
+Since we do not intend to declare any single style as being universally desirable for all
+types of software, restricting the focus of our evaluation simply reduces the dimensions
+over which we need to evaluate. Evaluating the same styles for other types of application
+software is an open area for future research.
+3.1.3 Visualization
+I use a table of style versus architectural properties as the primary visualization for this
+classification. The table values indicate the relative influence that the style for a given row
+has on a column ’s property. Minus ( −) symbols accumulate for negative influences and
+plus ( +) symbols for positive, with plus-minus ( ±) indicating that it depends on some
+aspect of the problem domain. Although this is a gross simplification of the details
+presented in each section, it does indicate the degree to which a style has addressed (or
+ignored) an architectural property.
+An alternative visualization would be a property-based derivation graph for
+classifying architectural styles. The styles would be classified according to how they are
+derived from other styles, with the arcs between styles illustrated by architectural
+properties gained or lost. The starting point of the graph would be the null style (no
+constraints). It is possible to derive such a graph directly from the descriptions.
+41
+3.2 Data-flow Styles
+3.2.1 Pipe and Filter (PF)
+In a pipe and filter style, each component (filter) reads streams of data on its inputs and
+produces streams of data on its outputs, usually while applying a transformation to the
+input streams and processing them incrementally so that output begins before the input is
+completely consumed [53]. This style is also referred to as a one-way data flow network
+[6]. The constraint is that a filter must be completely independent of other filters (zero
+coupling): it must not share state, control thread, or identity with the other filters on its
+upstream and downstream interfaces [53].
+Abowd et al. [1] provide an extensive formal description of the pipe and filter style
+using the Z language. The Khoros software development environment for image
+processing [112] provides a good example of using the pipe and filter style to build a
+range of applications.
+Garlan and Shaw [53] describe the advantageous properties of the pipe and filter style
+as follows. First, PF allows the designer to understand the overall input/output of the
+system as a simple composition of the behaviors of the individual filters (simplicity).
+Second, PF supports reuse: any two filters can be hooked together, provided they agree on
+the data that is being transmitted between them (reusability). Third, PF systems can be
+easily maintained and enhanced: new filters can be added to existing systems
+Style Derivation
+Net Perform.
+UP Perform.
+Efficiency
+Scalability
+Simplicity
+Evolvability
+Extensibility
+Customiz.
+Configur.
+Reusability
+Visibility
+Portability
+Reliability
+PF ± +++ ++
+UPF PF − ± ++ + + ++ ++ +
+Table 3-1. Evaluation of Data-flow Styles for Network-based Hypermedia
+42
+(extensibility) and old filters can be replaced by improved ones (evolvability). Fourth,
+they permit certain kinds of specialized analysis (verifiability), such as throughput and
+deadlock analysis. Finally, they naturally support concurrent execution (user-perceived
+performance).
+Disadvantages of the PF style include: propagation delay is added through long
+pipelines, batch sequential processing occurs if a filter cannot incrementally process its
+inputs, and no interactivity is allowed. A filter cannot interact with its environment
+because it cannot know that any particular output stream shares a controller with any
+particular input stream. These properties decrease user-perceived performance if the
+problem being addressed does not fit the pattern of a data flow stream.
+One aspect of PF styles that is rarely mentioned is that there is an implied “invisible
+hand” that arranges the configuration of filters in order to establish the overall application.
+A network of filters is typically arranged just prior to each activation, allowing the
+application to specify the configuration of filter components based on the task at hand and
+the nature of the data streams (configurability). This controller function is considered a
+separate operational phase of the system, and hence a separate architecture, even though
+one cannot exist without the other.
+3.2.2 Uniform Pipe and Filter (UPF)
+The uniform pipe and filter style adds the constraint that all filters must have the same
+interface. The primary example of this style is found in the Unix operating system, where
+filter processes have an interface consisting of one input data stream of characters (stdin)
+and two output data streams of characters (stdout and stderr). Restricting the interface
+43
+allows independently developed filters to be arranged at will to form new applications. It
+also simplifies the task of understanding how a given filter works.
+A disadvantage of the uniform interface is that it may reduce network performance if
+the data needs to be converted to or from its natural format.
+3.3 Replication Styles
+3.3.1 Replicated Repository (RR)
+Systems based on the replicated repository style [6] improve the accessibility of data and
+scalability of services by having more than one process provide the same service. These
+decentralized servers interact to provide clients the illusion that there is just one,
+centralized service. Distributed filesystems, such as XMS [49], and remote versioning
+systems, like CVS [www.cyclic.com], are the primary examples.
+Improved user-perceived performance is the primary advantage, both by reducing the
+latency of normal requests and enabling disconnected operation in the face of primary
+server failure or intentional roaming off the network. Simplicity remains neutral, since the
+complexity of replication is offset by the savings of allowing network-unaware
+components to operate transparently on locally replicated data. Maintaining consistency is
+the primary concern.
+Style Derivation
+Net Perform.
+UP Perform.
+Efficiency
+Scalability
+Simplicity
+Evolvability
+Extensibility
+Customiz.
+Configur.
+Reusability
+Visibility
+Portability
+Reliability
+RR ++ + +
+$R R ++++
+Table 3-2. Evaluation of Replication Styles for Network-based Hypermedia
+44
+3.3.2 Cache ($)
+A variant of replicated repository is found in the cache style: replication of the result of an
+individual request such that it may be reused by later requests. This form of replication is
+most often found in cases where the potential data set far exceeds the capacity of any one
+client, as in the WWW [20], or where complete access to the repository is unnecessary.
+Lazy replication occurs when data is replicated upon a not-yet-cached response for a
+request, relying on locality of reference and commonality of interest to propagate useful
+items into the cache for later reuse. Active replication can be performed by pre-fetching
+cacheable entries based on anticipated requests.
+Caching provides slightly less improvement than the replicated repository style in
+terms of user-perceived performance, since more requests will miss the cache and only
+recently accessed data will be available for disconnected operation. On the other hand,
+caching is much easier to implement, doesn’t require as much processing and storage, and
+is more efficient because data is transmitted only when it is requested. The cache style
+becomes network-based when it is combined with a client-stateless-server style.
+45
+3.4 Hierarchical Styles
+3.4.1 Client-Server (CS)
+The client-server style is the most frequently encountered of the architectural styles for
+network-based applications. A server component, offering a set of services, listens for
+requests upon those services. A client component, desiring that a service be performed,
+sends a request to the server via a connector. The server either rejects or performs the
+request and sends a response back to the client. A variety of client-server systems are
+surveyed by Sinha [123] and Umar [131].
+Andrews [6] describes client-server components as follows: A client is a triggering
+process; a server is a reactive process. Clients make requests that trigger reactions from
+servers. Thus, a client initiates activity at times of its choosing; it often then delays until its
+request has been serviced. On the other hand, a server waits for requests to be made and
+then reacts to them. A server is usually a non-terminating process and often provides
+service to more than one client.
+Style Derivation
+Net Perform.
+UP Perform.
+Efficiency
+Scalability
+Simplicity
+Evolvability
+Extensibility
+Customiz.
+Configur.
+Reusability
+Visibility
+Portability
+Reliability
+CS +++
+LS −++ ++
+LCS CS+LS −+ + + + + + +
+CSS CS −+ + + + + +
+C$SS CSS+$ −++ + + ++ + +
+LC$SS LCS+C$SS −±+ + + + + + + + ++++
+RS CS +−++ −
+RDA CS +−− + −
+Table 3-3. Evaluation of Hierarchical Styles for Network-based Hypermedia
+46
+Separation of concerns is the principle behind the client-server constraints. A proper
+separation of functionality should simplify the server component in order to improve
+scalability. This simplification usually takes the form of moving all of the user interface
+functionality into the client component. The separation also allows the two types of
+components to evolve independently, provided that the interface doesn’t change.
+The basic form of client-server does not constrain how application state is partitioned
+between client and server components. It is often referred to by the mechanisms used for
+the connector implementation, such as remote procedure call [23] or message-oriented
+middleware [131].
+3.4.2 Layered System (LS) and Layered-Client-Server (LCS)
+A layered system is organized hierarchically, each layer providing services to the layer
+above it and using services of the layer below it [53]. Although layered system is
+considered a “pure” style, its use within network-based systems is limited to its
+combination with the client-server style to provide layered-client-server.
+Layered systems reduce coupling across multiple layers by hiding the inner layers
+from all except the adjacent outer layer, thus improving evolvability and reusability.
+Examples include the processing of layered communication protocols, such as the TCP/IP
+and OSI protocol stacks [138], and hardware interface libraries. The primary disadvantage
+of layered systems is that they add overhead and latency to the processing of data,
+reducing user-perceived performance [32].
+Layered-client-server adds proxy and gateway components to the client-server style. A
+proxy [116] acts as a shared server for one or more client components, taking requests and
+47
+forwarding them, with possible translation, to server components. A gateway component
+appears to be a normal server to clients or proxies that request its services, but is in fact
+forwarding those requests, with possible translation, to its “inner-layer” servers. These
+additional mediator components can be added in multiple layers to add features like load
+balancing and security checking to the system.
+Architectures based on layered-client-server are referred to as two-tiered, three-tiered,
+or multi-tiered architectures in the information systems literature [131].
+LCS is also a solution to managing identity in a large scale distributed system, where
+complete knowledge of all servers would be prohibitively expensive. Instead, servers are
+organized in layers such that rarely used services are handled by intermediaries rather than
+directly by each client [6].
+3.4.3 Client-Stateless-Server (CSS)
+The client-stateless-server style derives from client-server with the additional constraint
+that no session state  is allowed on the server component. Each request from client to
+server must contain all of the information necessary to understand the request, and cannot
+take advantage of any stored context on the server. Session state is kept entirely on the
+client.
+These constraints improve the properties of visibility, reliability, and scalability.
+Visibility is improved because a monitoring system does not have to look beyond a single
+request datum in order to determine the full nature of the request. Reliability is improved
+because it eases the task of recovering from partial failures [133]. Scalability is improved
+48
+because not having to store state between requests allows the server component to quickly
+free resources and further simplifies implementation.
+The disadvantage of client-stateless-server is that it may decrease network
+performance by increasing the repetitive data (per-interaction overhead) sent in a series of
+requests, since that data cannot be left on the server in a shared context.
+3.4.4 Client-Cache-Stateless-Server (C$SS)
+The client-cache-stateless-server style derives from the client-stateless-server and cache
+styles via the addition of cache components. A cache acts as a mediator between client and
+server in which the responses to prior requests can, if they are considered cacheable, be
+reused in response to later requests that are equivalent and likely to result in a response
+identical to that in the cache if the request were to be forwarded to the server. An example
+system that makes effective use of this style is Sun Microsystems’ NFS [115].
+The advantage of adding cache components is that they have the potential to partially
+or completely eliminate some interactions, improving efficiency and user-perceived
+performance.
+3.4.5 Layered-Client-Cache-Stateless-Server (LC$SS)
+The layered-client-cache-stateless-server style derives from both layered-client-server and
+client-cache-stateless-server through the addition of proxy and/or gateway components.
+An example system that uses an LC$SS style is the Internet domain name system (DNS).
+The advantages and disadvantages of LC$SS are simply a combination of those for
+LCS and C$SS. However, note that we don’t count the contributions of the CS style twice,
+since the benefits are not additive if they come from the same ancestral derivation.
+49
+3.4.6 Remote Session (RS)
+The remote session style is a variant of client-server that attempts to minimize the
+complexity, or maximize the reuse, of the client components rather than the server
+component. Each client initiates a session on the server and then invokes a series of
+services on the server, finally exiting the session. Application state is kept entirely on the
+server. This style is typically used when it is desired to access a remote service using a
+generic client (e.g., TELNET [106]) or via an interface that mimics a generic client (e.g.,
+FTP [107]).
+The advantages of the remote session style are that it is easier to centrally maintain the
+interface at the server, reducing concerns about inconsistencies in deployed clients when
+functionality is extended, and improves efficiency if the interactions make use of extended
+session context on the server. The disadvantages are that it reduces scalability of the
+server, due to the stored application state, and reduces visibility of interactions, since a
+monitor would have to know the complete state of the server.
+3.4.7 Remote Data Access (RDA)
+The remote data access style [131] is a variant of client-server that spreads the application
+state across both client and server. A client sends a database query in a standard format,
+such as SQL, to a remote server. The server allocates a workspace and performs the query,
+which may result in a very large data set. The client can then make further operations upon
+the result set (such as table joins) or retrieve the result one piece at a time. The client must
+know about the data structure of the service to build structure-dependent queries.
+50
+The advantages of remote data access are that a large data set can be iteratively
+reduced on the server side without transmitting it across the network, improving
+efficiency, and visibility is improved by using a standard query language. The
+disadvantages are that the client needs to understand the same database manipulation
+concepts as the server implementation (lacking simplicity) and storing application context
+on the server decreases scalability. Reliability also suffers, since partial failure can leave
+the workspace in an unknown state. Transaction mechanisms (e.g., two-phase commit)
+can be used to fix the reliability problem, though at a cost of added complexity and
+interaction overhead.
+3.5 Mobile Code Styles
+Mobile code styles use mobility in order to dynamically change the distance between the
+processing and source of data or destination of results. These styles are comprehensively
+examined in Fuggetta et al. [50]. A site abstraction is introduced at the architectural level,
+as part of the active configuration, in order to take into account the location of the different
+components. Introducing the concept of location makes it possible to model the cost of an
+interaction between components at the design level. In particular, an interaction between
+components that share the same location is considered to have negligible cost when
+compared to an interaction involving communication through the network. By changing
+its location, a component may improve the proximity and quality of its interaction,
+reducing interaction costs and thereby improving efficiency and user-perceived
+performance.
+51
+In all of the mobile code styles, a data element is dynamically transformed into a
+component. Fuggetta et al. [50] use an analysis that compares the code ’s size as a data
+element to the savings in normal data transfer in order to determine whether mobility is
+desirable for a given action. This would be impossible to model from an architectural
+standpoint if the definition of software architecture excludes data elements.
+3.5.1 Virtual Machine (VM)
+Underlying all of the mobile code styles is the notion of a virtual machine, or interpreter,
+style [53]. The code must be executed in some fashion, preferably within a controlled
+environment to satisfy security and reliability concerns, which is exactly what the virtual
+machine style provides. It is not, in itself, a network-based style, but it is commonly used
+as such when combined with a component in the client-server style (REV and COD
+styles).
+Virtual machines are commonly used as the engine for scripting languages, including
+general purpose languages like Perl [134] and task-specific languages like PostScript [2].
+The primary benefits are the separation between instruction and implementation on a
+particular platform (portability) and ease of extensibility. Visibility is reduced because it is
+hard to know what an executable will do simply by looking at the code. Simplicity is
+Style Derivation
+Net Perform.
+UP Perform.
+Efficiency
+Scalability
+Simplicity
+Evolvability
+Extensibility
+Customiz.
+Configur.
+Reusability
+Visibility
+Portability
+Reliability
+VM ±+ − +
+REV CS+VM +−± ++ −+−
+COD CS+VM + + + ±++−
+LCODC$SS LC$SS+COD − + + + + + 4 + + ± + + + + ++±++
+MA REV+COD ++ + ± + ++ + − +
+Table 3-4. Evaluation of Mobile Code Styles for Network-based Hypermedia
+52
+reduced due to the need to manage the evaluation environment, but that may be
+compensated in some cases as a result of simplifying the static functionality.
+3.5.2 Remote Evaluation (REV)
+In the remote evaluation style [50], derived from the client-server and virtual machine
+styles, a client component has the know-how necessary to perform a service, but lacks the
+resources (CPU cycles, data source, etc.) required, which happen to be located at a remote
+site. Consequently, the client sends the know-how to a server component at the remote
+site, which in turn executes the code using the resources available there. The results of that
+execution are then sent back to the client. The remote evaluation style assumes that the
+provided code will be executed in a sheltered environment, such that it won’t impact other
+clients of the same server aside from the resources being used.
+The advantages of remote evaluation include the ability to customize the server
+component’s services, which provides for improved extensibility and customizability, and
+better efficiency when the code can adapt its actions to the environment inside the server
+(as opposed to the client making a series of interactions to do the same). Simplicity is
+reduced due to the need to manage the evaluation environment, but that may be
+compensated in some cases as a result of simplifying the static server functionality.
+Scalability is reduced; this can be improved with the server ’s management of the
+execution environment (killing long-running or resource-intensive code when resources
+are tight), but the management function itself leads to difficulties regarding partial failure
+and reliability. The most significant limitation, however, is the lack of visibility due to the
+53
+client sending code instead of standardized queries. Lack of visibility leads to obvious
+deployment problems if the server cannot trust the clients.
+3.5.3 Code on Demand (COD)
+In the code-on-demand style [50], a client component has access to a set of resources, but
+not the know-how on how to process them. It sends a request to a remote server for the
+code representing that know-how, receives that code, and executes it locally.
+The advantages of code-on-demand include the ability to add features to a deployed
+client, which provides for improved extensibility and configurability, and better user-
+perceived performance and efficiency when the code can adapt its actions to the client ’s
+environment and interact with the user locally rather than through remote interactions.
+Simplicity is reduced due to the need to manage the evaluation environment, but that may
+be compensated in some cases as a result of simplifying the client ’s static functionality.
+Scalability of the server is improved, since it can off-load work to the client that would
+otherwise have consumed its resources. Like remote evaluation, the most significant
+limitation is the lack of visibility due to the server sending code instead of simple data.
+Lack of visibility leads to obvious deployment problems if the client cannot trust the
+servers.
+3.5.4 Layered-Code-on-Demand-Client-Cache-Stateless-Server (LCODC$SS)
+As an example of how some architectures are complementary, consider the addition of
+code-on-demand to the layered-client-cache-stateless-server style discussed above. Since
+the code can be treated as just another data element, this does not interfere with the
+54
+advantages of the LC$SS style. An example is the HotJava Web browser [java.sun.com],
+which allows applets and protocol extensions to be downloaded as typed media.
+The advantages and disadvantages of LCODC$SS are just a combination of those for
+COD and LC$SS. We could go further and discuss the combination of COD with other CS
+styles, but this survey is not intended to be exhaustive (nor exhausting).
+3.5.5 Mobile Agent (MA)
+In the mobile agent style [50], an entire computational component is moved to a remote
+site, along with its state, the code it needs, and possibly some data required to perform the
+task. This can be considered a derivation of the remote evaluation and code-on-demand
+styles, since the mobility works both ways.
+The primary advantage of the mobile agent style, beyond those already described for
+REV and COD, is that there is greater dynamism in the selection of when to move the
+code. An application can be in the midst of processing information at one location when it
+decides to move to another location, presumably in order to reduce the distance between it
+and the next set of data it wishes to process. In addition, the reliability problem of partial
+failure is reduced because the application state is in one location at a time [50].
+55
+3.6 Peer-to-Peer Styles
+3.6.1 Event-based Integration (EBI)
+The event-based integration style, also known as the implicit invocation or event system
+style, reduces coupling between components by removing the need for identity on the
+connector interface. Instead of invoking another component directly, a component can
+announce (or broadcast) one or more events. Other components in a system can register
+interest in that type of event and, when the event is announced, the system itself invokes
+all of the registered components [53]. Examples include the Model-View-Controller
+paradigm in Smalltalk-80 [72] and the integration mechanisms of many software
+engineering environments, including Field [113], SoftBench [29], and Polylith [110].
+The event-based integration style provides strong support for extensibility through the
+ease of adding new components that listen for events, for reuse by encouraging a general
+event interface and integration mechanism, and for evolution by allowing components to
+be replaced without affecting the interfaces of other components [53]. Like pipe-and-filter
+systems, a higher-level configuring architecture is needed for the “invisible hand” that
+places components on the event interface. Most EBI systems also include explicit
+invocation as a complementary form of interaction [53]. For applications that are
+Style Derivation
+Net Perform.
+UP Perform.
+Efficiency
+Scalability
+Simplicity
+Evolvability
+Extensibility
+Customiz.
+Configur.
+Reusability
+Visibility
+Portability
+Reliability
+EBI + −  − ±++ ++− −
+C2 EBI+LCS −+ + + + + + + + ±+±
+DO CS+CS − + ++ ++− −
+BDO DO+LCS − − ++ + + ++ − +
+Table 3-5. Evaluation of Peer-to-Peer Styles for Network-based Hypermedia
+56
+dominated by data monitoring, rather than data retrieval, EBI can improve efficiency by
+removing the need for polling interactions.
+The basic form of EBI system consists of one event bus to which all components listen
+for events of interest to them. Of course, this immediately leads to scalability issues with
+regard to the number of notifications, event storms as other components broadcast as a
+result of events caused by that notification, and a single point of failure in the notification
+delivery system. This can be ameliorated though the use of layered systems and filtering
+of events, at the cost of simplicity.
+Other disadvantages of EBI systems are that it can be hard to anticipate what will
+happen in response to an action (poor understandability) and event notifications are not
+suitable for exchanging large-grain data [53]. Also, there is no support for recovery from
+partial failure.
+3.6.2 C2
+The C2 architectural style [128] is directed at supporting large-grain reuse and flexible
+composition of system components by enforcing substrate independence. It does so by
+combining event-based integration with layered-client-server. Asynchronous notification
+messages going down, and asynchronous request messages going up, are the sole means
+of intercomponent communication. This enforces loose coupling of dependency on higher
+layers (service requests may be ignored) and zero coupling with lower levels (no
+knowledge of notification usage), improving control over the system without losing most
+of the advantages of EBI.
+57
+Notifications are announcements of a state change within a component. C2 does not
+constrain what should be included with a notification: a flag, a delta of state change, or a
+complete state representation are all possibilities. A connector ’s primary responsibility is
+the routing and broadcasting of messages; its secondary responsibility is message filtering.
+The introduction of layered filtering of messages solves the EBI problems with scalability,
+while improving evolvability and reusability as well. Heavyweight connectors that include
+monitoring capabilities can be used to improve visibility and reduce the reliability
+problems of partial failure.
+3.6.3 Distributed Objects
+The distributed objects style organizes a system as a set of components interacting as
+peers. An object is an entity that encapsulates some private state information or data, a set
+of associated operations or procedures that manipulate the data, and possibly a thread of
+control, so that collectively they can be considered a single unit [31]. In general, an
+object’s state is completely hidden and protected from all other objects. The only way it
+can be examined or modified is by making a request or invocation on one of the object ’s
+publicly accessible operations. This creates a well-defined interface for each object,
+enabling the specification of an object ’s operations to be made public while at the same
+time keeping the implementation of its operations and the representation of its state
+information private, thus improving evolvability. 
+An operation may invoke other operations, possibly on other objects. These operations
+may in turn make invocations on others, and so on. A chain of related invocations is
+referred to as an action [31]. State is distributed among the objects. This can be
+58
+advantageous in terms of keeping the state where it is most likely to be up-to-date, but has
+the disadvantage in that it is difficult to obtain an overall view of system activity (poor
+visibility).
+In order for one object to interact with another, it must know the identity of that other
+object. When the identity of an object changes, it is necessary to modify all other objects
+that explicitly invoke it [53]. There must be some controller object that is responsible for
+maintaining the system state in order to complete the application requirements. Central
+issues for distributed object systems include: object management, object interaction
+management, and resource management [31].
+Object systems are designed to isolate the data being processed. As a consequence,
+data streaming is not supported in general. However, this does provide better support for
+object mobility when combined with the mobile agent style.
+3.6.4 Brokered Distributed Objects
+In order to reduce the impact of identity, modern distributed object systems typically use
+one or more intermediary styles to facilitate communication. This includes event-based
+integration and brokered client/server [28]. The brokered distributed object style
+introduces name resolver components whose purpose is to answer client object requests
+for general service names with the specific name of an object that will satisfy the request.
+Although improving reusability and evolvability, the extra level of indirection requires
+additional network interactions, reducing efficiency and user-perceived performance.
+59
+Brokered distributed object systems are currently dominated by the industrial
+standards development of CORBA within the OMG [97] and the international standards
+development of Open Distributed Processing (ODP) within ISO/IEC [66].
+In spite of all the interest associated with distributed objects, they fare poorly when
+compared to most other network-based architectural styles. They are best used for
+applications that involve the remote invocation of encapsulated services, such as hardware
+devices, where the efficiency and frequency of network interactions is less a concern.
+3.7 Limitations
+Each architectural style promotes a certain type of interaction among components. When
+components are distributed across a wide-area network, use or misuse of the network
+drives application usability. By characterizing styles by their influence on architectural
+properties, and particularly on the network-based application performance of a distributed
+hypermedia system, we gain the ability to better choose a software design that is
+appropriate for the application. There are, however, a couple limitations with the chosen
+classification.
+The first limitation is that the evaluation is specific to the needs of distributed
+hypermedia. For example, many of the good qualities of the pipe-and-filter style disappear
+if the communication is fine-grained control messages, and are not applicable at all if the
+communication requires user interactivity. Likewise, layered caching only adds to latency,
+without any benefit, if none of the responses to client requests are cacheable. This type of
+distinction does not appear in the classification, and is only addressed informally in the
+discussion of each style. I believe this limitation can be overcome by creating separate
+60
+classification tables for each type of communication problem. Example problem areas
+would include, among others, large grain data retrieval, remote information monitoring,
+search, remote control systems, and distributed processing.
+A second limitation is with the grouping of architectural properties. In some cases, it is
+better to identify the specific aspects of, for example, understandability and verifiability
+induced by an architectural style, rather than lumping them together under the rubric of
+simplicity. This is particularly the case for styles which might improve verifiability at the
+expense of understandability. However, the more abstract notion of a property also has
+value as a single metric, since we do not want to make the classification so specific that no
+two styles impact the same category. One solution would be a classification that presented
+both the specific properties and a summary property.
+Regardless, this initial survey and classification is a necessary prerequisite to any
+further classifications that might address its limitations.
+3.8 Related Work
+3.8.1 Classification of Architectural Styles and Patterns
+The area of research most directly related to this chapter is the identification and
+classification of architectural styles and architecture-level patterns.
+Shaw [117] describes a few architectural styles, later expanded in Garlan and Shaw
+[53]. A preliminary classification of these styles is presented in Shaw and Clements [122]
+and repeated in Bass et al. [9], in which a two-dimensional, tabular classification strategy
+is used with control and data issues as the primary axes, organized by the following
+categories of features: which kinds of components and connectors are used in the style;
+61
+how control is shared, allocated, and transferred among the components; how data is
+communicated through the system; how data and control interact; and, what type of
+reasoning is compatible with the style. The primary purpose of the taxonomy is to identify
+style characteristics, rather than to assist in their comparison. It concludes with a small set
+of “rules of thumb” as a form of design guidance
+Unlike this chapter, the Shaw and Clements [122] classification does not assist in
+evaluating designs in a way that is useful to an application designer. The problem is that
+the purpose of building software is not to build a specific shape, topology or component
+type, so organizing the classification in that fashion does not help a designer find a style
+that corresponds to their needs. It also mixes the essential differences among styles with
+other issues which have only incidental significance, and obscures the derivation
+relationships among styles. Furthermore, it does not focus on any particular type of
+architecture, such as network-based applications. Finally, it does not describe how styles
+can be combined, nor the effect of their combination.
+Buschmann and Meunier [27] describe a classification scheme that organizes patterns
+according to granularity of abstraction, functionality, and structural principles. The
+granularity of abstraction separates patterns into three categories: architectural
+frameworks (templates for architectures), design patterns, and idioms. Their classification
+addresses some of the same issues as this dissertation, such as separation of concerns and
+structural principles that lead to architectural properties, but only covers two of the
+architectural styles described here. Their classification is considerably expanded in
+Buschmann et al. [28] with more extensive discussion of architectural patterns and their
+relation to software architecture.
+62
+Zimmer [137] organizes design patterns using a graph based on their relationships,
+making it easier to understand the overall structure of the patterns in the Gamma et al. [51]
+catalog. However, the patterns classified are not architectural patterns, and the
+classification is based exclusively on derivation or uses relationships rather than on
+architectural properties.
+3.8.2 Distributed Systems and Programming Paradigms
+Andrews [6] surveys how processes in a distributed program interact via message passing.
+He defines concurrent programs, distributed programs, kinds of processes in a distributed
+program (filters, clients, servers, peers), interaction paradigms, and communication
+channels. Interaction paradigms represent the communication aspects of software
+architectural styles. He describes paradigms for one-way data flow through networks of
+filters (pipe-and-filter), client-server, heartbeat, probe/echo, broadcast, token passing,
+replicated servers, and replicated workers with bag of tasks. However, the presentation is
+from the perspective of multiple processes cooperating on a single task, rather than
+general network-based architectural styles.
+Sullivan and Notkin [126] provide a survey of implicit invocation research and
+describe its application to improving the evolution quality of software tool suites. Barrett
+et al. [8] present a survey of event-based integration mechanisms by building a framework
+for comparison and then seeing how some systems fit within that framework. Rosenblum
+and Wolf [114] investigate a design framework for Internet-scale event notification. All
+are concerned with the scope and requirements of an EBI style, rather than providing
+solutions for network-based systems.

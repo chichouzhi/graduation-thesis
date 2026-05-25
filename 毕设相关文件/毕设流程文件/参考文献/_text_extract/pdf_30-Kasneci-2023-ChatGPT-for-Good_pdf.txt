@@ -1,0 +1,838 @@
+                                                                                                                               A Position Paper
+
+
+
+
+ChatGPT for Good? On Opportunities and
+Challenges of Large Language Models for Education
+Enkelejda Kasneci1 *, Kathrin Sessler1 , Stefan Küchemann2 , Maria Bannert1 , Daryna
+Dementieva1 , Frank Fischer2 , Urs Gasser1 , Georg Groh1 , Stephan Günnemann1 , Eyke
+Hüllermeier2 , Stephan Krusche1 , Gitta Kutyniok2 , Tilman Michaeli1 , Claudia Nerdel1 , Jürgen
+Pfeffer1 , Oleksandra Poquet1 , Michael Sailer2 , Albrecht Schmidt2 , Tina Seidel1 , Matthias
+Stadler2 , Jochen Weller2 , Jochen Kuhn2 , Gjergji Kasneci3
+
+  Abstract
+  Large language models represent a significant advancement in the field of AI. The underlying technology is key
+  to further innovations and, despite critical views and even bans within communities and regions, large language
+  models are here to stay. This position paper presents the potential benefits and challenges of educational
+  applications of large language models, from student and teacher perspectives. We briefly discuss the current
+  state of large language models and their applications. We then highlight how these models can be used to create
+  educational content, improve student engagement and interaction, and personalize learning experiences. With
+  regard to challenges, we argue that large language models in education require teachers and learners to develop
+  sets of competencies and literacies necessary to both understand the technology as well as their limitations and
+  unexpected brittleness of such systems. In addition, a clear strategy within educational systems and a clear
+  pedagogical approach with a strong focus on critical thinking and strategies for fact checking are required to
+  integrate and take full advantage of large language models in learning settings and teaching curricula. Other
+  challenges such as the potential bias in the output, the need for continuous human oversight, and the potential
+  for misuse are not unique to the application of AI in education. But we believe that, if handled sensibly, these
+  challenges can offer insights and opportunities in education scenarios to acquaint students early on with potential
+  societal biases, criticalities, and risks of AI applications. We conclude with recommendations for how to address
+  these challenges and ensure that such models are used in a responsible and ethical manner in education.
+  Keywords
+  Large language models — Artificial Intelligence — Education — Educational Technologies
+ 1 Technical University of Munich, Germany
+ 2 Ludwig-Maximilians-Universität München, Germany
+ 3 University of Tübingen, Germany
+
+ *Corresponding author: Enkelejda.Kasneci@tum.de
+
+
+
+
+                          1. Introduction                                          range dependencies in natural-language texts. The transformer
+                                                                                   architecture, introduced in [4], uses the self-attention mecha-
+Large language models, such as GPT-3 [1], have made signifi-
+                                                                                   nism to determine the relevance of different parts of the input
+cant advancements in natural language processing (NLP) in
+                                                                                   when generating predictions. This allows the model to better
+recent years. These models are trained on massive amounts
+                                                                                   understand the relationships between words in a sentence, re-
+of text data and are able to generate human-like text, answer
+                                                                                   gardless of their position.
+questions, and complete other language-related tasks with
+                                                                                       Another important development is the use of pre-training,
+high accuracy.
+                                                                                   where a model is first trained on a large dataset before being
+    One key development in the area is the use of trans-
+                                                                                   fine-tuned on a specific task. This has proven to be an effec-
+former architectures [2, 3] and the underlying attention mech-
+                                                                                   tive technique for improving performance on a wide range of
+anism [4], which have greatly improved the ability of auto-
+                                                                                   language tasks [5]. For example, BERT [2] is a pre-trained
+regressive1 self-supervised2 language models to handle long-
+                                                                                   transformer-based encoder model that can be fine-tuned on
+    1 Auto-regressive because the model uses its previous predictions as input
+                                                                                   various NLP tasks, such as sentence classification, question
+for new predictions.
+                                                                                   answering and named entity recognition. In fact, the so-called
+    2 Self-supervised because they learn from the data itself, rather than being   few-shot learning capability of large language models to be
+explicitly provided with correct answers as in supervised learning.
+                ChatGPT for Good? On Opportunities and Challenges of Large Language Models for Education — 2/13
+
+
+
+efficiently adapted to down-stream tasks or even other seem-         large language models can also assist in the development of
+ingly unrelated tasks (e.g., as in transfer learning) has been       problem-solving skills by providing students with explana-
+empirically observed and studied for various natural-language        tions, step-by-step solutions, and interesting related questions
+tasks [6], e.g., more recently in the context of generating          to problems, which can help them to understand the reasoning
+synthetic and yet realistic heterogeneous tabular data [7].          behind the solutions and develop analytical and out-of-the-box
+     Recent advancements also include GPT-3 [1] and Chat-            thinking.
+GPT [8], which were trained on a much larger datasets, i.e.,              For university students, large language models can assist
+texts from a very large web corpus, and have demonstrated            in the research and writing tasks, as well as in the development
+state-of-the-art performance on a wide range of natural-language     of critical thinking and problem-solving skills. These models
+tasks ranging from translation to question answering, writ-          can be used to generate summaries and outlines of texts, which
+ing coherent essays, and computer programs. Additionally,            can help students to quickly understand the main points of a
+extensive research has been conducted on fine-tuning these           text and to organize their thoughts for writing. Additionally,
+models on smaller datasets and applying transfer learning to         large language models can also assist in the development of
+new problems. This allows for improved performance on                research skills by providing students with information and re-
+specific tasks with smaller amount of data.                          sources on a particular topic and hinting at unexplored aspects
+     While large language models have made great strides in          and current research topics, which can help them to better
+recent years, there are still many limitations that need to be       understand and analyze the material.
+addressed. One major limitation is the lack of interpretabil-             For group & remote learning, large language models
+ity, as it is difficult to understand the reasoning behind the       can be used to facilitate group discussions and debates by
+model’s predictions. There are ethical considerations, such          providing a discussion structure, real-time feedback and per-
+as concerns about bias and the impact of these models, e.g.,         sonalized guidance to students during the discussion. This
+on employment, risks of misuse and inadequate or unethical           can help to improve student engagement and participation. In
+deployment, loss of integrity, and many more. Overall, large         collaborative writing activities, where multiple students work
+language models will continue to push the boundaries of what         together to write a document or a project, language models
+is possible in natural language processing. However, there           can assist by providing style and editing suggestions as well
+is still much work to be done in terms of addressing their           as other integrative co-writing features. For research purposes,
+limitations and the related ethical considerations.                  such models can be used to span the range of open research
+                                                                     questions in relation to already researched topics and to au-
+1.1 Opportunities for Learning                                       tomatically assign the questions and topics to the involved
+The use of large language models in education has been iden-         team members. For remote tutoring purposes, they can be
+tified as a potential area of interest due to the diverse range of   used to automatically generate questions and provide practice
+applications they offer. Through the utilization of these mod-       problems, explanations, and assessments that are tailored to
+els, opportunities for enhancement of learning and teaching          the students’ level of knowledge so that they can learn at their
+experiences may be possible for individuals at all levels of edu-    own pace.
+cation, including primary, secondary, tertiary and professional           To empower learners with disabilities, large language
+development.                                                         models can be used in combination with speech-to-text or text-
+     For elementary school students, large language models           to-speech solutions to help people with visual impairment. In
+can assist in the development of reading and writing skills          combination with the previously mentioned group and remote
+(e.g., by suggesting syntactic and grammatical corrections), as      tutoring opportunities, language models can be used to de-
+well as in the development of writing style and critical think-      velop inclusive learning strategies with adequate support in
+ing skills. These models can be used to generate questions           tasks such as adaptive writing, translating, and highlighting
+and prompts that encourage students to think critically about        of important content in various formats. However, it is im-
+what they are reading and writing, and to analyze and inter-         portant to note that the use of large language models should
+pret the information presented to them. Additionally, large          be accompanied by the help of professionals such as speech
+language models can also assist in the development of reading        therapists, educators, and other specialists that can adapt the
+comprehension skills by providing students with summaries            technology to the specific needs of the learner’s disabilities.
+and explanations of complex texts, which can make reading                 For professional training, large language models can
+and understanding the material easier.                               assist in the development of language skills that are specific
+     For middle and high school students, large language             to a particular field of work. They can also assist in the
+models can assist in the learning of a language and of writ-         development of skills such as programming, report writing,
+ing styles for various subjects and topics, e.g., mathematics,       project management, decision making and problem-solving.
+physics, language and literature, and other subjects. These          For example, large language models can be fine-tuned on
+models can be used to generate practice problems and quizzes,        a domain-specific corpus (e.g. legal, medical, IT) in order
+which can help students to better understand, contextual-            to generate domain-specific language and assist learners in
+ize and retain the material they are learning. Additionally,         writing technical reports, legal documents, medical records etc.
+                ChatGPT for Good? On Opportunities and Challenges of Large Language Models for Education — 3/13
+
+
+
+They can also generate questions and prompts that encourage        plete research and writing tasks (e.g., in seminar works, paper
+learners to think critically about their work and to analyze and   writing, and feedback to students) more efficiently and effec-
+interpret the information presented to them.                       tively. The most basic help can happen at a syntactic level,
+    In conclusion, large language models have the potential to     i.e., identifying and correcting typos. At a semantic level,
+provide a wide range of benefits and opportunities for students    large language models can be used to highlight (potential)
+and professionals at all stages of education. They can assist      grammatical inconsistencies and suggest adequate and person-
+in the development of reading, writing, math, science, and         alized improvement strategies. Going further, these models
+language skills, as well as providing students with personal-      can be used to identify possibilities for topic-specific style
+ized practice materials, summaries and explanations, which         improvement. They can also be used to generate summaries
+can help to improve student performance and contribute to en-      and outlines of challenging texts, which can help teachers and
+hanced learning experiences. Additionally, large language          researchers to highlight the main points of a text in a way
+models can also assist in research, writing, and problem-          that is helpful for further deep dive and understanding of the
+solving tasks, and provide domain-specific language skills         content in question.
+and other skills for professional training. However, as pre-            For professional development, large language models
+viously mentioned, the use of these models should be done          can also assist teachers by providing them with resources,
+with caution, as they also have limitations such as lack of        summaries, and explanations of new teaching methodologies,
+interpretability and potential for bias, unexpected brittleness    technologies, and materials. This can help teachers stay up-to-
+in relatively simple tasks [9] which need to be addressed.         date with the latest developments and techniques in education,
+                                                                   and contribute to the effectiveness of their teaching. They can
+1.2 Opportunities for Teaching                                     be used to improve the clarity of the teaching materials, locate
+Large language models, such as ChatGPT, have the potential         information or resources that professionals may be in need for
+to revolutionize teaching and assist in teaching processes.        as they learn on the job, as well as used for on-the-job training
+Below we provide only a few examples of how these models           modules that require presentation and communication skills.
+can benefit teachers:                                                   For assessment and evaluation, teachers can use large
+    For personalized learning, teachers can use large lan-         language models to semi-automate the grading of student work
+guage models to create personalized learning experiences for       by highlighting potential strengths and weakness of the work
+their students. These models can analyze student’s writing         in question, e.g., essays, research papers, and other writing
+and responses, and provide tailored feedback and suggest ma-       assignments. This can save teachers a significant amount of
+terials that align with the student’s specific learning needs.     time for tasks related to individualized feedback to students.
+Such support can save teachers’ time and effort in creating        Furthermore, large language models can also be used to check
+personalized materials and feedback, and also allow them to        for plagiarism, which can help to prevent cheating. Hence,
+focus on other aspects of teaching, such as creating engaging      large language models can help teachers to identify areas
+and interactive lessons.                                           where students are struggling, which adds to a more accurate
+    For lesson planning, large language models can also as-        assessments of student learning development and challenges.
+sist teachers in the creation of (inclusive) lesson plans and      Targeted instruction provided by the models can be used to
+activities. Teachers can input to the models the corpus of         help students excel and to provide opportunities for further
+document based on which they want to build a course. The           development.
+output can be a course syllabus with short description of each          The acquaintance of students with AI challenges related
+topic. Language models can also generate questions and             to the potential bias in the output, the need for continuous hu-
+prompts that encourage the participation of people at different    man oversight, and the potential for misuse of large language
+knowledge and ability levels, and elicit critical thinking and     models are not unique to education. In fact, these challenges
+problem-solving. Moreover, they can be used to generate tar-       are inherent to transformative digital technologies. Thus, we
+geted and personalized practice problems and quizzes, which        believe that, if handled sensibly by the teacher, these chal-
+can help to ensure that students are mastering the material.       lenges can be insightful in learning and education scenarios to
+    For language learning, teachers of language classes can        acquaint students early on with potential societal biases, and
+use large language models in an assistive way, e.g., to high-      risks of AI application.
+light important phrases, generate summaries and translations,           In conclusion, large language models have the potential
+provide explanations of grammar and vocabulary, suggest            to revolutionize teaching from a teacher’s perspective by pro-
+grammatical or style improvements and assist in conversation       viding teachers with a wide range of tools and resources that
+practice. Language models can also provide teachers with           can assist with lesson planning, personalized content creation,
+adaptive and personalized means to assist students in their        differentiation and personalized instruction, assessment, and
+language learning journey, which can make language learning        professional development. Overall, large language models
+more engaging and effective for students.                          have the potential to be a powerful tool in education, and
+    For research and writing, large language models can            there are a number of ongoing research efforts exploring its
+assist teachers of university and high school classes to com-      potential applications in this area.
+                ChatGPT for Good? On Opportunities and Challenges of Large Language Models for Education — 4/13
+
+
+
+ 2. Current Research and Applications of                           systems, chatbots, and creative writing.
+     Language Models in Education                                       Just recently, the BigScience-community developed and
+                                                                   released the large language model BLOOM (BigScience Large
+2.1 Overview of Current Large Language Models                      Open-science Open-access Multilingual Language Model) [15]
+The GPT (Generative Pre-trained Transformer) [10] model            as on open-source joint project by HuggingFace, GENCI and
+developed by OpenAI was the first large language model that        IDRIS3 . The aim of this project was to provide a transparently
+was publicly released in 2018. GPT was able to generate            trained multi-lingual language model for the academic and
+human-like text, answer questions, and assist in tasks, such as    non-profit community. BLOOM is based on the same trans-
+translation and summarization, through human-like comple-          former architecture as the models from the GPT-family with
+tion. Based on this initial model, OpenAI later released the       only minor structural changes, but the training data was explic-
+GPT-2 and GPT-3 models with more advanced capabilities.            itly chosen to cover 46 natural languages and 13 programming
+It can be argued that the release of GPT marked a significant      languages, resulting in a data volume of 1.6TB.
+milestone in the field of NLP and has opened up many ways
+                                                                   2.2 Review of Research Applying Large Language
+for dissemination, both in research and industrial applications.
+                                                                        Models in Education
+    Another model that was released by Google Research in          In the following, we provide an overview of research works
+2018 is BERT (Bidirectional Encoder Representations from           employing large language models in education that were pub-
+Transformers [2]), which is also based on a transformer ar-        lished since the release of the first large language model in
+chitecture and is pre-trained on a massive dataset of text data    2018. These studies have been discussed in the following
+on two unsupervised tasks, namely masked language mod-             according to their target groups, i.e., learners or teachers.
+eling (to predict missing parts in a sentence and learn their
+context) and next sentence prediction (to learn plausible sub-     Learners’ perspective.      From a student’s perspective, large
+sequent sentences of a given sentence) with the aim to learn       language models can be used in multiple ways to assist the
+the broader context of words in various topics.                    learning process. One example is in the creation and design of
+                                                                   educational content. For example, researchers have used large
+    One year later in 2019, Google AI released XLNet [11],
+                                                                   language models to generate interactive educational materials
+which is trained using a process called permutation language
+                                                                   such as quizzes and flashcards, which can be used to improve
+modeling and enables XLNet to cope with tasks that involve
+                                                                   student learning and engagement [16, 17]. More specifically,
+understanding the dependencies between words in a sentence,
+                                                                   in a recent work by Dijkstra et al. [17], researchers have used
+e.g., natural language inference and question answering. An-
+                                                                   GPT-3 to generate multiple-choice questions and answers
+other model developed by Google Research was T5 (Text-to-
+                                                                   for a reading comprehension task and argue that automated
+Text Transfer Transformer) [12], which was released in 2020.
+                                                                   generation of quizzes not only reduces the burden of manual
+Like the predecessor models, T5 is also transformer-based
+                                                                   quiz design for teachers but, above all, provides a helpful tool
+model trained on a massive text dataset with the key feature
+                                                                   for students to train and test their knowledge while learning
+being its ability to perform many NLP tasks with a single
+                                                                   from textbooks and during exam preparation [17].
+pre-training and fine-tuning pipeline.
+                                                                        In another recent work, GPT-3 was employed as a ped-
+    In parallel with Open AI and Google, Facebook AI devel-
+                                                                   agogical agent to stimulate the curiosity of children and en-
+oped a large language model called RoBERTa (Robustly Opti-
+                                                                   hance question-asking skills [18]. More specifically, the au-
+mized BERT Pre-training) [13], which was released in 2019.
+                                                                   thors automated the generation of curiosity-prompting cues
+RoBERTa is a variant of the BERT model which uses dynamic
+                                                                   as an incentive for asking more and deeper questions. Ac-
+masking instead of static masking during pre-training. Addi-
+                                                                   cording to their results, large language models not only bear
+tionally, RoBERTa is trained on a much larger dataset, and
+                                                                   the potential to significantly facilitate the implementation of
+hence clearly outperformed BERT and other models such as
+                                                                   curiosity-stimulating learning but can also serve as an efficient
+GPT-2 and XLNet by the time of its release.
+                                                                   tool towards an increased curiosity expression [18].
+    Currently, the most widely used and the largest available           In computing education, a recent work by MacNeil et
+language model is GPT-3, which was also pre-trained on a           al. [19] has employed GPT-3 to generate code explanations.
+massive text dataset (including books, articles, and websites,     Despite several open research and pedagogical questions that
+among other sources) and has 175 billion parameters. As all        need to be further explored, this work has successfully demon-
+other previously described language models, GPT-3 uses a           strated the potential of GPT-3 to support learning by explain-
+transformer architecture, which allows it to efficiently process   ing aspects of a given code snippet.
+sequential data and generate more coherent and contextually             For a data science course, Bhat et al. [20] proposed a
+adjusted text. Indeed, text generated by GPT-3 is almost           pipeline for generating assessment questions based on a fine-
+indistinguishable from human-written text [14]. With the           tuned GPT3 model on text-based learning materials. The gen-
+ability to perform zero-shot learning, GPT-3 can cope with         erated questions were further evaluated with regard to their
+tasks it has not been specifically trained on, providing hence     usefulness to the learning outcome based on automated label-
+enormous opportunities for applications, from automation
+(summarizing, completing texts from bullet points), to dialog        3 https://huggingface.co/bigscience/bloom
+                ChatGPT for Good? On Opportunities and Challenges of Large Language Models for Education — 5/13
+
+
+
+ing by a trained GPT-3 model and manual reviews by human            are more likely to integrate educational AI-based tools than
+experts. The authors reported that the generated questions          teachers with transmissive orientations [33]. Furthermore, per-
+were rated favorably by human experts, promoting thus the           ceived usefulness, perceived ease of use, and perceived trust in
+usage of large language models in data science education [20].      these AI-based tools are determinants to be considered when
+     Students can learn from each other by peer-reviewing and       predicting their acceptance by the teachers. Similar results
+assessing each other’s solutions. This, of course, has the best     concerning teachers attitudes towards chatbots in education
+effect when the given feedback is comprehensive and of high         were reported in [34]: perceiving the AI chatbot as easy-to-
+quality. For example, Jia et al. [21] showed how BERT can           use and useful leads to greater acceptance of the chatbot. As
+be used to evaluate the peer assessments so that students can       for the chatbots’ features, formal language by a chatbot leads
+learn to improve their feedback.                                    to a higher intention of using it.
+     In a recent review on conversational AI in language edu-           As it seems that teachers’ perspectives on the general use
+cation, the authors found that there are five main applications     of AI in education have a lot in common with the mentioned at-
+of conversational AI during teaching [22], the most common          titude towards chatbots in particular, a responsible integration
+one being the use of large language models as a conversa-           of AI into education by involving the expertise of different
+tional partner in a written or oral form, e.g., in the context      communities is crucial [35].
+of a task-oriented dialogue that provides language practice             Recent works addressing the use of large language models
+opportunities such as pronunciation [23]. Another application       from the teacher’s perspective have focused on the automated
+is to support students when they experience foreign language        assessment of student answers, adaptive feedback, and the
+learning anxiety [24] or have a lower willingness to commu-         generation of teaching content.
+nicate [25]. In [26], the application of providing feedback, as         For example, a recent work by Moore et al. [36] employed
+a needs analyst, and evaluator when primary school students         a fine-tuned GPT-3 model to evaluate student-generated an-
+practice their vocabulary was explored. The authors of [27]         swers in a learning environment for chemistry education [36].
+found that a chatbot that is guided by a mind map is more suc-      The authors argue that large language models might (espe-
+cessful in supporting students by providing scaffolds during        cially when fine-tuned to the specific domain) be a powerful
+language learning than a conventional AI chatbot.                   tool to assist teachers in the quality and pedagogical evalua-
+     A recent work in the area of medical education by Kung et      tion of student answers [36]. In addition, the following studies
+al. [28] explored the performance of ChatGPT on the United          examined NLP-based models for generating automatic adap-
+States Medical Licensing Exam. According to the evaluation          tive feedback: Zhu et al. [37] examined an AI-based feedback
+results, the performance of ChatGPT on this test was at or          system incorporating automated scoring technologies in the
+near the passing threshold without any domain fine-tuning.          context of a high school climate activity task. The results show
+Based on these results, the authors argue that large language       that the feedback helped students revise their scientific argu-
+models might be a powerful tool to assist medical education         ments. Sailer et al. [38] used NLP-based adaptive feedback
+and eventually clinical decision-making processes [28].             in the context of diagnosing students’ learning difficulties in
+Teachers’ perspective.        As the rate of adoption of AI in      teacher education. In their experimental study, they found that
+education is still slow compared to other fields, such as indus-    pre-service teachers who received adaptive feedback were
+trial applications (e.g., finance, e-commerce, automotive) or       better able to justify their diagnoses than prospective teachers
+medicine, there are less studies considering the use of large       who received static feedback. Bernius et al. [39] used NLP-
+language models in education [29]. A recent review of oppor-        based models to generate feedback for textual student answers
+tunities and challenges of chatbots in education pointed out        in large courses, where grading effort could be reduced by
+that the studies related to chatbots in education are still in an   up to 85% with a high precision and an improved quality
+early stage, with few empirical studies investigating the use of    perceived by the students.
+effective learning designs or learning strategies [30]. There-          Large language models can not only support the assess-
+fore, we discuss first the teachers’ perspectives concerning AI     ment of student’s solutions but also assist in the automatic
+and Learning Analytics in education and transfer these on the       generation of exercises. Using few-shot learning, [40] showed
+much newer field of large language models.                          that the OpenAI Codex model is able to provide a variety of
+     In this view, a pilot study with European teachers indi-       programming tasks together with the correct solution, auto-
+cates a positive attitude towards AI for education and a high       mated tests to verify the student’s solutions, and additional
+motivation to introduce AI-related content at school. Overall,      code explanations. With regard to testing factual knowledge
+the teachers from the study seemed to have a basic level of         in general, [41] proposed a framework to automatically gen-
+digital skills but low AI-related skills [31]. Another study        erate question-answer pairs. This can be used in the creation
+with Nigerian teachers emphasized that the willingness and          of teaching materials, e.g., for reading comprehension tasks.
+readiness of teachers to promote AI are key prerequisites for       Beyond the generation of the correct answer, transformer
+the integration of AI-based technologies in education [32].         models are also able to create distractor answers, as needed
+Along the same lines, the results of a study with teachers from     for the generation of multiple choice questionnaires [42, 43].
+South Korea indicate that teachers with constructivist beliefs      Bringing language models to mathematics education, sev-
+                ChatGPT for Good? On Opportunities and Challenges of Large Language Models for Education — 6/13
+
+
+
+eral works discuss the automatic generation of math word                4. Key Challenges and Risks Related to
+problems [44, 45, 46], which combines the challenge of un-                 the Application of Large Language
+derstanding equations and putting them into the appropriate
+                                                                                 Models in Education
+context.
+     Finally, another recent work [47] investigated the capabil-      Copyright Issues.    When we train large language models on
+ity of state-of-the-art conversational agents to adequately reply     a task to produce education-related content – course syllabus,
+to a student in an educational dialogue. Both models used in          quizzes, scientific paper – the mode should be trained on
+this work (Blender and GPT-3) were capable of replying to             examples of such texts. During the generation for a new
+a student adequately and generated conversational dialogues           prompt, the answer may contain a full sentence or even a
+that conveyed the impression that these models understand the         paragraph seen in the training set, leading to copyright and
+learner (in particular Blender). They are however well behind         plagiarism issues.
+human performance when it comes to helping the student [47],              Important steps to responsibly mitigate such an issue can
+thus emphasizing the need for further research.                       be the following:
+                                                                          • Asking the authors of the original documents trans-
+         3. Opportunities for Innovative                                    parently (i.e., purpose and policy of data usage) for
+                                                                            permission to use their content for training the model
+            Educational Technologies
+Looking forward, large language models bear the potential to              • Compliance with copyright terms for open-source con-
+considerably improve digital ecosystems for education, such                 tent
+as environments based on Augmented Reality (AR), Virtual                  • Inheritance and detailed terms of use for the content
+Reality (VR) [48, 49], and other related digital experiences.               generated by the model
+Specifically, they can be used to amplify several key fac-
+tors, which are crucial for the immersive interaction of users            • Informing and raising awareness of the users about
+with digital content. For example, large language models                    these policies
+can considerably improve the natural language processing
+                                                                      Bias and fairness.      Large language models can perpetuate
+and understanding capabilities of an AR/VR system to enable
+                                                                      and amplify existing biases and unfairness in society, which
+an effective natural communication and interaction between
+                                                                      can negatively impact teaching and learning processes and
+users and the system (e.g., virtual teacher or virtual peers).
+                                                                      outcomes. For example, if a model is trained on data that
+The latter has been identified early on as a key usability aspect
+                                                                      is biased towards certain groups of people, it may produce
+for immersive educational technologies [50] and is in general
+                                                                      results that are unfair or discriminatory towards those groups
+seen as a key factor for improving the interaction between
+                                                                      (e.g., local knowledge about minorities such as small ethnic
+humans and AI systems [51].
+                                                                      groups or cultures can fade into the background). Thus, it is
+    Large language models can also be used to develop more
+                                                                      important to ensure that the training data or the data used for
+natural and sophisticated user interfaces by exploiting their
+                                                                      fine-tuning on down-stream tasks for the model is diverse and
+ability to generate contextualized, personalized, and diverse
+                                                                      representative of different groups of people. Regular monitor-
+responses to natural language questions asked by users. Fur-
+                                                                      ing and testing of the model’s performance on different groups
+thermore, their ability to answer natural language questions
+                                                                      of people can help identify and address any biases early on.
+across various domains can facilitate the integration of diverse
+                                                                      Hence, human oversight in the process is indispensable and
+digital applications into a unified framework or application,
+                                                                      critical for the mitigation of bias and beneficial application of
+which is also critical for expanding the bounds of educational
+                                                                      large language models in education.
+possibilities and experiences [52, 49].
+                                                                           More specifically, a responsible mitigation strategy would
+    In general, the ability of these models to generate contextu-
+                                                                      focus on the following key aspects:
+alized natural language texts, code for various implementation
+tasks [53] as well as various types of multimedia content                 • A diverse set of data to train or fine-tune the model, to
+(e.g., in combination with other AI systems, such as DALL-                  ensure that it is not biased towards any particular group
+E [54]) can enable and scale the creation of compelling and
+immersive digital (e.g., AR/VR) experiences. From gamifica-               • Regular monitoring and evaluation of the model’s per-
+tion to detailed simulations for immersive learning in digital              formance (on diverse groups of people) to identify and
+environments, large language models are a key enabling tech-                address any biases that may arise
+nology. To fully realize this potential, however, it is important         • Fairness measures and bias-correction techniques, such
+to consider not only technical aspects but also ethical, legal,             as pre-processing or post-processing methods
+ecological and social implications.
+    In the following section, we take a brief look at the risks re-       • Transparency mechanisms that enable users to compre-
+lated to the application on large language models in education              hend the model’s output, and the data and assumptions
+and provide corresponding mitigation strategies.                            that were used to generate it
+                ChatGPT for Good? On Opportunities and Challenges of Large Language Models for Education — 7/13
+
+
+
+    • Professional training and resources to educators on how            • The use of language models only as as a complementary
+      to recognize and address potential biases and other fail-            supplement to the generation of instructions
+      ures in the model’s output
+                                                                         • Ongoing training and professional development for
+    • Continuous updates of the model with diverse, unbiased               teachers, enabling them to stay up-to-date on the best-
+      data, and supervision of human experts to review the                 practise use of language models in the classroom to
+      results                                                              elicit and promote creativity and critical thinking
+
+Learners may rely too heavily on the model.         The effort-          • Critical thinking and problem-solving activities through
+lessly generated information could negatively impact their                 the assistance of digital technologies as an integral part
+critical thinking and problem-solving skills. This is because              of the curriculum to ensure that students are developing
+the model simplifies the acquisition of answers or informa-                these skills
+tion, which can amplify laziness and counteract the learners’
+                                                                         • Engagement of students in creative and independent
+interest to conduct their own investigations and come to their
+                                                                           projects that allow them to develop their own ideas and
+own conclusions or solutions.
+                                                                           solutions
+     To encounter this risk, it is important to be aware of the
+limitations of large language models and use them only as                • Monitoring and evaluating the use of language models
+a tool to support and enhance learning [55], rather than as                in the classroom to ensure that they are being used ef-
+a replacement for human authorities and other authoritative                fectively and not negatively impacting student learning
+sources. Thus a responsible mitigation strategy would focus
+on the following key aspects:                                            • Incentives for teachers and schools to develop (inclu-
+                                                                           sive, collaborative, and personalized) teaching strate-
+    • Raising awareness of the limitations and unexpected                  gies based on large language models and engage stu-
+      brittleness of large language models and AI systems in               dents in problem-solving processes such as retrieving
+      general (i.e., experimenting with the model to build an              and evaluating course/assignment-relevant information
+      own understanding of the workings and limitations)                   using the models and other sources
+
+    • Using language models to generate hypotheses and ex-           Lack of understanding and expertise.       Many educators and
+      plore different perspectives, rather than just to generate     educational institutions may not have the knowledge or exper-
+      answers                                                        tise to effectively integrate new technologies in their teaching
+                                                                     [56]. This particularly applies to the use and integration of
+    • Strategies to use other educational resources (e.g., books,    large language models into teaching practice. Educational
+      articles) and other authoritative sources to evaluate and      theory has long since suggested ways of integrating novel
+      corroborate the factual correctness of the information         tools into educational practice (e.g., [57]). As with any other
+      provided by the model (i.e., encouraging learners to           technological innovation, integrating large language models
+      question the generated content)                                into effective teaching practice requires understanding their
+                                                                     capabilities and limitations, as well as how to effectively use
+    • Incorporating critical thinking and problem-solving ac-        them to supplement or enhance specific learning processes.
+      tivities into the curriculum, to help students develop              There are several ways to address these challenges and
+      these skills                                                   encounter this risk:
+    • Incorporating human expertise and teachers to review,              • Research on the challenges of large language models in
+      validate and explain the information provided by the                 education by investigating existing educational models
+      model                                                                of technology integration, students’ learning processes
+                                                                           and transfer them to the context of large language mod-
+It is important to note that the use of large language models              els, as well as developing a new educational theory
+should be integrated into the curriculum in a way that com-                specifically for the context of large language models
+plements and enhances the learning experience, rather than
+replacing it.                                                            • Assessing the needs of the educators and students and
+                                                                           provide case-based guidance (e.g., for the secure ethical
+Teachers may become too reliant on the models.              Using          use of large language models in education scenarios)
+large language models can provide accurate and relevant infor-
+mation, but they cannot replace the creativity, critical thinking,       • Demand-oriented Training and professional develop-
+and problem-solving skills that are developed through human                ment opportunities for educators and institutions to
+instruction. It is therefore important for teachers to use these           learn about the capabilities and potential uses of large
+models as a supplement to their instruction, rather than a                 language models in education, as well as providing
+replacement. Thus, crucial aspects to mitigate the risk of                 best practices for integrating them into their teaching
+becoming too reliant on large language models are:                         methods
+                ChatGPT for Good? On Opportunities and Challenges of Large Language Models for Education — 8/13
+
+
+
+    • Open educational resources (e.g., tutorials, studies, use        • Development and exploration of partnerships with pri-
+      cases, etc.) and Guidelines for educators and institu-             vate companies, research institutions as well as govern-
+      tions to access and learn about the use of language                mental and non-profit organizations that can provide
+      models in education                                                financial support, resources and expertise to support the
+                                                                         use of large language models in education
+    • Incentives for collaboration and community building
+      (e.g., professional learning communities) among edu-             • Shared costs and cooperative use of scalable (e.g., cloud)
+      cators and institutions that are already using language            computing services that provide access to powerful
+      models in their teaching practice, so they can share their         computational resources at a low cost
+      knowledge and experience with others
+    • Regular analysis and feedback on the use of language             • Use of the model primarily for high-value educational
+      models to ensure their effective use and make adjust-              tasks, such as providing personalized and targeted learn-
+      ments as necessary                                                 ing experiences for students (i.e., assignment of lower
+                                                                         priority to low-value tasks)
+Difficulty to distinguish model-generated from student–
+generated answers. It is becoming increasingly difficult to            • Research and development of compression, distillation,
+distinguish whether a text is machine- or human-generated,               and pruning techniques to reduce the size of the model,
+presenting an additional major challenge to teachers and ed-             the data, and the computational resources required
+ucators [58, 59, 60, 61]. As a result, the New York City’s
+Department of Education recently banned ChatGPT from               Data privacy and security.      The use of large language mod-
+schools’ devices and networks [62].                                els in education raises concerns about data privacy and secu-
+    Just recently, Cotton et al. [60] proposed several strate-     rity, as student data is often sensitive and personal. This can
+gies to detect work that has been generated by large language      include concerns about data breaches, unauthorized access to
+models, and specifically ChatGPT. In addition, tools, such as      student data, and the use of student data for purposes other
+the recently released GPTZero [63], which uses perplexity,         than education.
+as a measure that hints at generalization capabilities (of the          Some specific focus areas to mitigate privacy and security
+agent by which the text was written), to detect AI involvement     concerns when using large language models in education are:
+in text writing, are expected to provide additional support.
+More advanced techniques aim at watermarking the content
+                                                                       • Development and implementation of robust data privacy
+generated by language models [64, 65], e.g., by biasing the
+                                                                         and security policies that clearly outline the collection,
+content generation towards terms, which are rather unlikely
+                                                                         storage, and use of student data in compliance with
+to be jointly used by humans in a text passage. In the long
+                                                                         regulation (e.g., GDPR, HIPAA, FERPA) and ethical
+run, however, we believe that developing curricula and instruc-
+                                                                         standards
+tions that encourage the creative and evidence-based use of
+large language models will be the key to solving this problem.
+Hence, a reasonable mitigation strategy for this risk should           • Transparency towards students and their families about
+focus on:                                                                the data collection, storage, and use practices, with
+                                                                         obligatory consent before data collection and use
+    • Research on transparency, explanation and analysis
+      techniques and measures to distinguish machine- from             • Modern technologies and measures to protect the col-
+      human-generated text                                               lected data from unauthorized access, breaches, or un-
+                                                                         ethical use (e.g., anonymized data and secure infras-
+    • Incentives and support to develop curricula and instruc-           tructures with modern means for encryption, federation,
+      tions that require the creative and complementary use              privacy-preserving analytics, etc.)
+      of large language models
+                                                                       • Regular audits of the data privacy and security measures
+Cost of training and maintenance.         The maintenance of
+                                                                         in place to identify and address any potential vulnera-
+large language models could be a financial burden for schools
+                                                                         bilities or areas for improvement
+and educational institutions, especially those with limited
+budgets. To address this challenge, the use of pre-trained mod-
+                                                                       • Incident response plan to quickly respond and mitigate
+els and cloud technology in combination with cooperative
+                                                                         any data breaches or unauthorized access to data
+schemes for usage in partnership with institutions and com-
+panies can serve as a starting point. Specifically, a mitigation
+strategy for this risk should focus on the following aspects:          • Education and awareness of the staff, i.e., educators
+                                                                         and students about the data privacy and security poli-
+    • Use of pre-trained open-source models, which can be                cies, regulations, ethical concerns and best practices to
+      fine-tuned for specific tasks                                      handle and report related risks
+                ChatGPT for Good? On Opportunities and Challenges of Large Language Models for Education — 9/13
+
+
+
+Sustainable usage.      Large language models have high com-           • Training and resources for educators and learners on
+putational demands, which can result in high energy consump-             how to use the model, interpret its results and evaluate
+tion. Hence, energy-efficient hardware and shared (e.g., cloud)          the information provided
+infrastructure based on renewable energy are crucial for their
+environmentally sustainable operation and scaling needed in            • Regular review and evaluation of the model with trans-
+the context of education.                                                parent reporting on the model’s performance, i.e., what
+    For model training and updates, only data that has been              it is or is not capable of and the identification of con-
+collected and annotated in a regulatory compliant and ethical            ditions under which inaccuracies or other issues may
+way should be considered. Therefore, governance frameworks               arise
+that include policies, procedures, and controls to ensure such     Difficulty to distinguish between real knowledge and con-
+appropriate use of such models are key to their successful         vincingly written but unverified model output. The abil-
+adoption.                                                          ity of large language models to generate human-like text can
+    Likewise, for the long-term trustworthy and responsible        make it difficult for students to distinguish between real knowl-
+use of the models, transparency, bias mitigation, and ongoing      edge and unverified information. This can lead to students
+monitoring are indispensable.                                      accepting false or misleading information as true, without
+    In summary, the mitigation strategy for this risk would        questioning its validity.
+include:                                                               To mitigate this risk, in addition to the above verification-
+    • Energy-efficient hardware and shared infrastructure          and integrity-related mitigation strategy, it is important to pro-
+      based on renewable energy as well as research on reduc-      vide education on how information can be evaluated critically
+      ing the cost of training and maintenance (i.e., efficient    and teach students exploration, investigation, verification, and
+      algorithms, representation, and storage)                     corroboration strategies.
+
+    • Collection, annotation, storage, and processing of data      Lack of adaptability.    Large language models are not able to
+      in a regulatory compliant and ethical way                    adapt to the diverse needs of students and teachers, and may
+                                                                   not be able to provide the level of personalization required for
+    • Transparency and explanation techniques to identify          effective learning. This is a limitation of the current technol-
+      and mitigate biases and prevent unfairness                   ogy, but it is conceivable that with more advanced models, the
+                                                                   adaptability will increase.
+    • Governance frameworks that include policies, proce-
+                                                                       More specifically, a sensible mitigation strategy would be
+      dures, and controls to ensure the above points and the
+                                                                   comprised of:
+      appropriate use in education
+                                                                       • Use of adaptive learning technologies to personalize the
+Cost to verify information and maintain integrity.         It is
+                                                                         output of the model to the needs of individual students
+important to verify the information provided by the model by
+                                                                         by using student data (e.g., about learning style, prior
+consulting external authoritative sources to ensure accuracy
+                                                                         knowledge, and performance, etc.)
+and integrity. Additionally, there may be financial costs asso-
+ciated with maintaining and updating the model to ensure it is         • Customization of the language model’s output to align
+providing accurate up-to-date information.                               with the teaching style and curriculum (by using data
+    A responsible mitigation strategy for this risk would con-           provided by the teacher)
+sider the following key aspects:
+                                                                       • Use of multi-modal learning and teaching approaches,
+    • Regularly updates of the model with new and accurate               which combine text, audio, video, and experimentation
+      information to ensure it is providing up-to-date and               to provide a more engaging and personalized experience
+      accurate information                                               for students and teachers
+    • Use of multiple authoritative sources to verify the in-
+                                                                       • Use of hybrid approaches, which combine the strengths
+      formation provided by the model to ensure correctness
+                                                                         of both human teachers and language models to gener-
+      and integrity
+                                                                         ate targeted and personalized learning materials (based
+    • Use of the model in conjunction with human expertise,              on feedback, guidance, and support provided by the
+      e.g., teachers or subject matter experts, who review and           teachers)
+      validate the information provided by the model
+                                                                       • Regular review of the model and continual improve-
+    • Development of protocol and standards for fact-checking            ment for curriculum-related uses cases to ensure ade-
+      and corroborating information provided by the model                quate and accurate functioning for education purposes
+    • Provide clear and transparent information on the model’s         • Research and development to create more advanced
+      performance, what it is or is not capable of, and the con-         models that can better adapt to the diverse needs of
+      ditions under which it operates.                                   students and teachers
+               ChatGPT for Good? On Opportunities and Challenges of Large Language Models for Education — 10/13
+
+
+
+       5. Further Issues Related to User                             The promise of “AI for all” must be that everyone can take ad-
+           Interfaces and Fair Access                                vantage of the technological revolution under way and access
+                                                                     its fruits, notably in terms of innovation and knowledge.”
+Appropriate user interfaces.          For the integration of large
+language models into educational workflows, further research
+on Human-Computer Interaction and User Interface Design is                           6. Concluding Remarks
+necessary.                                                           The use of large language models in education is a promising
+    In this work, we have discussed several potential use cases      area of research that offers many opportunities to enhance the
+for learners of different age – from children to adults. While       learning experience for students and support the work of teach-
+creating such AI-based assistants, we should take into account       ers. However, to unleash their full potential for education, it is
+the degree of psychological maturity, fine motor skills, and         crucial to approach the use of these models with caution and
+technical abilities of the potential users. Thus, the user in-       to critically evaluate their limitations and potential biases. In-
+terface should be appropriate for the task, but may also have        tegrating large language models into education must therefore
+varying degrees of human imitation – for instance, for chil-         meet stringent privacy, security, and - for sustainable scal-
+dren it might be better to hide machinery artifacts in generated     ing - environmental, regulatory and ethical requirements, and
+text and use gamified interaction and learning approaches            must be done in conjunction with ongoing human monitoring,
+as much as possible so as to enable a smooth and engaging            guidance, and critical thinking.
+interaction with such technologies, whereas for older learn-             While this position paper reflects the optimism of the au-
+ers the machine-based content could be exploited to promote          thors about the opportunities of large language models as a
+problem-solving, critical thinking and fact-checking abilities.      transformative technology in education, it also underscores
+    In general, the design of user interfaces for AI-based as-       the need for further research to explore best practices for inte-
+sistance and learning tools should promote the development           grating large language models into education and to mitigate
+of 21st century learning and problem-solving skills [66], espe-      the risks identified.
+cially, critical thinking, creativity, communication, and collab-        We believe that despite many difficulties and challenges,
+oration, for which further evidence-based research is needed.        the discussed risks are manageable and should be addressed to
+In this context, a crucial aspect is the appropriate age- and        provide trustworthy and fair access to large language models
+background-related integration of AI-based assistance to max-        for education. Towards this goal, the mitigation strategies
+imize its benefits and minimize any potential drawbacks.             proposed in this position paper could serve as a starting point.
+Multilingualism and fair access.         While the majority of
+the research in large language models is done for the En-                                    References
+glish language, there is still a gap of research in this field        [1]   Luciano Floridi and Massimo Chiriatti. GPT-3: Its nature,
+for other languages. This can potentially make education for                scope, limits, and consequences. Minds and Machines,
+English-speaking users easier and more efficient than for other             30(4):681–694, 2020.
+users, causing unfair access to such education technologies           [2]
+for non-English speaking users. Despite the efforts of various              Jacob Devlin, Ming-Wei Chang, Kenton Lee, and
+research communities to address multilingualism fairness for                Kristina Toutanova. BERT: Pre-training of Deep Bidirec-
+AI technologies, there is still much room for improvement.                  tional Transformers for Language Understanding. arXiv
+    Lastly, the unfairness related to financial means for access-           preprint arXiv:1810.04805, 2018.
+                                                                      [3]   Yi Tay, Mostafa Dehghani, Dara Bahri, and Donald Met-
+ing, training and maintaining large language models may need
+to be regulated by governmental organisations with the aim                  zler. Efficient transformers: A survey. ACM Computing
+to provide equity-oriented means to all educational entities                Surveys, 55(6):1–28, 2022.
+interested in using these modern technologies. Without fair           [4]   Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob
+access, this AI technology may seriously widen the education                Uszkoreit, Llion Jones, Aidan N. Gomez, Łukasz Kaiser,
+gap like no other technology before it.                                     and Illia Polosukhin. Attention is all you need. Advances
+    We therefore conclude with UNESCO’s call to ensure that                 in neural information processing systems, 30, 2017.
+AI does not widen the technological and educational divides           [5]
+within and between countries, and recommended important                     Bonan Min, Hayley Ross, Elior Sulem, Amir Pouran Ben
+strategies for the use of AI in a responsible and fair way to               Veyseh, Thien Huu Nguyen, Oscar Sainz, Eneko Agirre,
+reduce this existing gap instead. According to the UNESCO                   Ilana Heinz, and Dan Roth. Recent advances in natural
+education 2030 Agenda [67]: “UNESCO’s mandate calls in-                     language processing via large pre-trained language mod-
+herently for a human-centred approach to AI. It aims to shift               els: A survey. arXiv preprint arXiv:2111.01243, 2021.
+the conversation to include AI’s role in addressing current           [6]   Tom Brown, Benjamin Mann, Nick Ryder, Melanie Sub-
+inequalities regarding access to knowledge, research and the                biah, Jared D Kaplan, Prafulla Dhariwal, Arvind Nee-
+diversity of cultural expressions and to ensure AI does not                 lakantan, Pranav Shyam, Girish Sastry, Amanda Askell,
+widen the technological divides within and between countries.               et al. Language models are few-shot learners. Advances
+                ChatGPT for Good? On Opportunities and Challenges of Large Language Models for Education — 11/13
+
+
+
+       in neural information processing systems, 33:1877–1901,     [17]   Ramon Dijkstra, Zülküf Genç, Subhradeep Kayal,
+       2020.                                                              and Jaap Kamps.     Reading Comprehension Quiz
+ [7]   Vadim Borisov, Kathrin Seßler, Tobias Leemann, Mar-                Generation using Generative Pre-trained Trans-
+       tin Pawelczyk, and Gjergji Kasneci. Language mod-                  formers.   https://e.humanities.uva.nl/
+       els are realistic tabular data generators. arXiv preprint          publications/2022/dijk_read22.pdf,
+       arXiv:2210.06280, 2022.                                            2022.
+                                                                   [18]   Rania Abdelghani, Yen-Hsiang Wang, Xingdi Yuan, Tong
+ [8]   OpenAI Team. ChatGPT: Optimizing language mod-
+       els for dialogue. https://openai.com/blog/                         Wang, Hélène Sauzéon, and Pierre-Yves Oudeyer. GPT-3-
+       chatgpt/, November 2022. Accessed: 2023-01-19.                     driven pedagogical agents for training children’s curious
+ [9]
+                                                                          question-asking skills. arXiv preprint arXiv:2211.14228,
+       Tasmia    Ansari   (Analytics   India Magazine).                   2022.
+       Freaky ChatGPT fails that caught our eyes!                  [19]
+       https://analyticsindiamag.com/freaky-                              Stephen MacNeil, Andrew Tran, Dan Mogil, Seth Bern-
+       chatgpt-fails-that-caught-our-eyes/,                               stein, Erin Ross, and Ziheng Huang. Generating Diverse
+       Dec 2022. Accessed: 2023-01-22.                                    Code Explanations Using the GPT-3 Large Language
+[10]
+                                                                          Model. In Proceedings of the 2022 ACM Conference on
+       Alec Radford, Karthik Narasimhan, Tim Salimans, Ilya               International Computing Education Research - Volume
+       Sutskever, et al. Improving language understanding by              2, ICER ’22, page 37–39, New York, NY, USA, 2022.
+       generative pre-training. 2018.                                     Association for Computing Machinery.
+[11]   Zhilin Yang, Zihang Dai, Yiming Yang, Jaime Carbonell,      [20]   Shravya Bhat, Huy A. Nguyen, Steven Moore, John Stam-
+       Russlan Salakhutdinov, and Quoc V. Le. XLNet: Gen-                 per, Majd Sakr, and Eric Nyberg. Towards Automated
+       eralized Autoregressive Pretraining for Language Under-            Generation and Evaluation of Questions in Educational
+       standing. Advances in neural information processing                Domains. In Proceedings of the 15th International Con-
+       systems, 32, 2019.                                                 ference on Educational Data Mining, pages 701–704,
+[12]   Colin Raffel, Noam Shazeer, Adam Roberts, Katherine                Durham, United Kingdom, 2022. International Educa-
+       Lee, Sharan Narang, Michael Matena, Yanqi Zhou, Wei                tional Data Mining Society.
+       Li, Peter J. Liu, et al. Exploring the limits of transfer   [21]   Qinjin Jia, Jialin Cui, Yunkai Xiao, Chengyuan Liu,
+       learning with a unified text-to-text transformer. Journal          Parvez Rashid, and Edward F. Gehringer. ALL-IN-ONE:
+       of Machine Learning Research, 21(140):1–67, 2020.                  Multi-Task Learning BERT models for Evaluating Peer
+[13]   Yinhan Liu, Myle Ott, Naman Goyal, Jingfei Du, Man-                Assessments. International Educational Data Mining
+       dar Joshi, Danqi Chen, Omer Levy, Mike Lewis, Luke                 Society, 2021.
+       Zettlemoyer, and Veselin Stoyanov. Roberta: A robustly      [22]   Hyangeun Ji, Insook Han, and Yujung Ko. A systematic
+       optimized bert pretraining approach. arXiv preprint                review of conversational ai in language education: focus-
+       arXiv:1907.11692, 2019.                                            ing on the collaboration with human teachers. Journal of
+[14]   Elizabeth Clark, Tal August, Sofia Serrano, Nikita                 Research on Technology in Education, pages 1–16, 2022.
+       Haduong, Suchin Gururangan, and Noah A. Smith. All          [23]   Reham El Shazly. Effects of artificial intelligence on
+       that’s ‘human’ is not gold: Evaluating human evaluation            english speaking anxiety and speaking performance: A
+       of generated text. In Proceedings of the 59th Annual               case study. Expert Systems, 38(3):e12667, 2021.
+       Meeting of the Association for Computational Linguistics    [24]
+       and the 11th International Joint Conference on Natural             Minhui Bao. Can home use of speech-enabled ar-
+       Language Processing (Volume 1: Long Papers), pages                 tificial intelligence mitigate foreign language anxiety–
+       7282–7296, Online, August 2021. Association for Com-               investigation of a concept. Arab World English Journal
+       putational Linguistics.                                            (AWEJ) Special Issue on CALL, (5), 2019.
+                                                                   [25]   Tzu-Yu Tai and Howard Hao-Jan Chen. The impact of
+[15]   Teven Le Scao, Angela Fan, Christopher Akiki, Ellie
+       Pavlick, Suzana Ilić, Daniel Hesslow, Roman Castagné,            google assistant on adolescent efl learners’ willingness to
+       Alexandra Sasha Luccioni, François Yvon, Matthias                 communicate. Interactive Learning Environments, pages
+       Gallé, et al. BLOOM: A 176B-Parameter Open-                       1–18, 2020.
+       Access Multilingual Language Model. arXiv preprint          [26]   Jaeho Jeon. Chatbot-assisted dynamic assessment (ca-
+       arXiv:2211.05100, 2022.                                            da) for l2 vocabulary learning and diagnosis. Computer
+[16]   Ebrahim Gabajiwala, Priyav Mehta, Ritik Singh, and                 Assisted Language Learning, pages 1–27, 2021.
+       Reeta Koshy. Quiz Maker: Automatic Quiz Generation          [27]   Chi-Jen Lin and Husni Mubarok. Learning analytics for
+       from Text Using NLP. In Futuristic Trends in Networks              investigating the mind map-guided ai chatbot approach
+       and Computing Technologies, pages 523–533, Singapore,              in an efl flipped speaking classroom. Educational Tech-
+       2022. Springer.                                                    nology & Society, 24(4):16–35, 2021.
+                 ChatGPT for Good? On Opportunities and Challenges of Large Language Models for Education — 12/13
+
+
+[28]   Tiffany H. Kung, Morgan Cheatham, Arielle Medenilla,                 facilitates pre-service teachers’ diagnostic reasoning in
+       Czarina Sillos, Lorie De Leon, Camille Elepano, Maria                simulation-based learning. Learning and Instruction,
+       Madriaga, Rimel Aggabao, Giezel Diaz-Candido, James                  83:101620, 2023.
+       Maningo, and Victor Tseng. Performance of ChatGPT             [39]   Jan Philip Bernius, Stephan Krusche, and Bernd Bruegge.
+       on USMLE: Potential for AI-Assisted Medical Education                Machine learning based feedback on textual student an-
+       Using Large Language Models. medRxiv, 2022.                          swers in large courses. Computers and Education: Artifi-
+[29]   Sdenka Zobeida Salas-Pilco, Kejiang Xiao, and Xinyun                 cial Intelligence, 3, 2022.
+       Hu. Artificial intelligence and learning analytics in         [40]   Sami Sarsa, Paul Denny, Arto Hellas, and Juho Leinonen.
+       teacher education: A systematic review. Education Sci-               Automatic generation of programming exercises and code
+       ences, 12(8), 2022.                                                  explanations using large language models. In Proceed-
+[30]   Gwo-Jen Hwang and Ching-Yi Chang. A review of op-                    ings of the 2022 ACM Conference on International Com-
+       portunities and challenges of chatbots in education. In-             puting Education Research-Volume 1, pages 27–43, 2022.
+       teractive Learning Environments, pages 1–14, 2021.            [41]   Fanyi Qu, Xin Jia, and Yunfang Wu. Asking Ques-
+[31]   Sara Polak, Gianluca Schiavo, and Massimo Zancanaro.                 tions Like Educational Experts: Automatically Gener-
+       Teachers’ Perspective on Artificial Intelligence Educa-              ating Question-Answer Pairs on Real-World Examination
+       tion: An Initial Investigation. In Extended Abstracts of             Data. In Proceedings of the 2021 Conference on Em-
+       the 2022 CHI Conference on Human Factors in Comput-                  pirical Methods in Natural Language Processing, pages
+       ing Systems, CHI EA ’22, New York, NY, USA, 2022.                    2583–2593, 2021.
+       Association for Computing Machinery.                          [42]
+[32]
+                                                                            Ricardo Rodriguez-Torrealba, Eva Garcia-Lopez, and An-
+       Musa Adekunle Ayanwale, Ismaila Temitayo Sanusi,                     tonio Garcia-Cabot. End-to-end generation of multiple-
+       Owolabi Paul Adelana, Kehinde D. Aruleba, and                        choice questions using text-to-text transfer transformer
+       Solomon Sunday Oyelere. Teachers’ readiness and inten-               models. Expert Systems with Applications, 208:118258,
+       tion to teach artificial intelligence in schools. Computers          2022.
+       and Education: Artificial Intelligence, 3:100099, 2022.       [43]
+[33]
+                                                                            Vatsal Raina and Mark Gales. Multiple-Choice Question
+       Seongyune Choi, Yeonju Jang, and Hyeoncheol Kim. In-                 Generation: Towards an Automated Assessment Frame-
+       fluence of Pedagogical Beliefs and Perceived Trust on                work. arXiv preprint arXiv:2209.11830, 2022.
+       Teachers’ Acceptance of Educational Artificial Intelli-       [44]
+       gence Tools. International Journal of Human–Computer                 Jianhao Shen, Yichun Yin, Lin Li, Lifeng Shang, Xin
+       Interaction, 39(4):910–922, 2023.                                    Jiang, Ming Zhang, and Qun Liu. Generate & Rank: A
+[34]                                                                        Multi-task Framework for Math Word Problems. In Find-
+       Raquel Chocarro, Mónica Cortiñas, and Gustavo Marcos-
+                                                                            ings of the Association for Computational Linguistics:
+       Matás. Teachers’ attitudes towards chatbots in education:
+                                                                            EMNLP 2021, pages 2269–2279, 2021.
+       a technology acceptance model approach considering the
+                                                                     [45]   Weijiang Yu, Yingpeng Wen, Fudan Zheng, and Nong
+       effect of social language, bot proactiveness, and users’
+       characteristics. Educational Studies, pages 1–19, 2021.              Xiao. Improving math word problems with pre-trained
+[35]                                                                        knowledge and hierarchical reasoning. In Proceedings of
+       Charles Fadel, Wayne Holmes, and Maya Bialik. Artifi-
+                                                                            the 2021 Conference on Empirical Methods in Natural
+       cial intelligence in education: Promises and implications
+                                                                            Language Processing, pages 3384–3394, 2021.
+       for teaching and learning. The Center for Curriculum
+                                                                     [46]   Zichao Wang, Andrew Lan, and Richard Baraniuk. Math
+       Redesign, 2019.
+[36]   Steven Moore, Huy A. Nguyen, Norman Bier, Tanvi                      word problem generation with mathematical consistency
+       Domadia, and John Stamper. Assessing the Quality of                  and problem context constraints. In Proceedings of the
+       Student-Generated Short Answer Questions Using GPT-                  2021 Conference on Empirical Methods in Natural Lan-
+       3. In Educating for a New Future: Making Sense of                    guage Processing, pages 5986–5999, 2021.
+                                                                     [47]   Anaı̈s Tack and Chris Piech. The AI Teacher Test: Mea-
+       Technology-Enhanced Learning Adoption: 17th Euro-
+       pean Conference on Technology Enhanced Learning, EC-                 suring the Pedagogical Ability of Blender and GPT-3 in
+       TEL 2022, Toulouse, France, September 12–16, 2022,                   Educational Dialogues. In Proceedings of the 15th Inter-
+       Proceedings, pages 243–257. Springer, 2022.                          national Conference on Educational Data Mining, pages
+[37]   Hee-Sun Lee Mengxiao Zhu, Ou Lydia Liu. The effect                   522–529, Durham, United Kingdom, 2022. International
+       of automated feedback on revision behavior and learn-                Educational Data Mining Society.
+       ing gains in formative assessment of scientific argument      [48]   Mario A Rojas-Sánchez, Pedro R Palos-Sánchez, and
+       writing. Computers & Education, 143:103668, 2020.                    José A Folgado-Fernández. Systematic literature review
+[38]   Michael Sailer, Elisabeth Bauer, Riikka Hofmann, Jan                 and bibliometric analysis on virtual reality and education.
+       Kiesewetter, Julia Glas, Iryna Gurevych, and Frank Fis-              Education and Information Technologies, pages 1–38,
+       cher. Adaptive feedback from artificial neural networks              2022.
+                 ChatGPT for Good? On Opportunities and Challenges of Large Language Models for Education — 13/13
+
+
+[49]   Abhimanyu S Ahuja, Bryce W Polascik, Divyesh Dod-             [58]   Katherine Elkins and Jon Chun. Can GPT-3 pass a
+       dapaneni, Eamonn S Byrnes, and Jayanth Sridhar. The                  Writer’s turing test? Journal of Cultural Analytics,
+       digital metaverse: Applications in artificial intelligence,          5:17212, 2020.
+       medical education, and integrative health. Integrative        [59]   Catherine A. Gao, Frederick M. Howard, Nikolay S.
+       Medicine Research, 12(1):100917, 2023.                               Markov, Emma C. Dyer, Siddhi Ramesh, Yuan Luo, and
+[50]   Maria Roussou. Immersive interactive virtual reality in              Alexander T. Pearson. Comparing scientific abstracts
+       the museum. Proc. of TiLE (Trends in Leisure Entertain-              generated by ChatGPT to original abstracts using an ar-
+       ment), 2001.                                                         tificial intelligence output detector, plagiarism detector,
+[51]   Andrea L Guzman and Seth C Lewis. Artificial intelli-                and blinded human reviewers. bioRxiv, 2022.
+       gence and communication: A human–machine communi-             [60]   Debby R.E. Cotton, Peter A. Cotton, and J.Reuben Ship-
+       cation research agenda. New Media & Society, 22(1):70–               way. Chatting and Cheating. Ensuring academic integrity
+       86, 2020.                                                            in the era of ChatGPT. EdArXiv, 2023.
+[52]   Jeremy Kerr and Gillian Lawson. Augmented reality             [61] Dehouche Nassim. Plagiarism in the age of massive
+       in design education: Landscape architecture studies as             Generative Pre-trained Transformers (GPT-3). Ethics in
+       ar experience. International Journal of Art & Design               Science and Environmental Politics, 21:17–23, 2021.
+       Education, 39(1):6–21, 2020.                                  [62] Kalhan Rosenblatt (NBC News). ChatGPT banned
+[53]   Brett A Becker, Paul Denny, James Finnie-Ansley, An-               from New York City public schools’ devices and net-
+       drew Luxton-Reilly, James Prather, and Eddie Antonio               works. https://nbcnews.to/3iTE0t6, January
+       Santos. Programming is hard–or at least it used to be:             2023. Accessed: 22.01.2023.
+       Educational opportunities and challenges of ai code gen-      [63]   Edward Tian. GPTZero. https://gptzero.me/,
+       eration. arXiv preprint arXiv:2212.01020, 2022.                      2023. Accessed: 22.01.2023.
+[54]   Aditya Ramesh, Mikhail Pavlov, Gabriel Goh, Scott             [64]   Chenxi Gu, Chengsong Huang, Xiaoqing Zheng, Kai-Wei
+       Gray, Chelsea Voss, Alec Radford, Mark Chen, and Ilya                Chang, and Cho-Jui Hsieh. Watermarking Pre-trained
+       Sutskever. Zero-shot text-to-image generation. CoRR,                 Language Models with Backdooring. arXiv preprint
+       abs/2102.12092, 2021.                                                arXiv:2210.07543, 2022.
+[55]   John V. Pavlik. Collaborating With ChatGPT: Consider-         [65]   John Kirchenbauer, Jonas Geiping, Yuxin Wen, Jonathan
+       ing the Implications of Generative Artificial Intelligence           Katz, Ian Miers, and Tom Goldstein.        A Water-
+       for Journalism and Media Education. Journalism & Mass                mark for Large Language Models. arXiv preprint
+       Communication Educator, page 10776958221149577,                      arXiv:2301.10226v1, 2023.
+       2023.                                                         [66]   Carol C Kuhlthau, Leslie K Maniotes, and Ann K Caspari.
+[56]   Christine Redecker et al. European framework for the dig-            Guided inquiry: Learning in the 21st century: Learning
+       ital competence of educators: DigCompEdu. Technical                  in the 21st century. Abc-Clio, 2015.
+       report, Joint Research Centre (Seville site), 2017.           [67]   UNESCO. Education 2030 Agenda. https://
+[57]   Gavriel Salomon. On the nature of pedagogic computer                 www.unesco.org/en/digital-education/
+       tools: The case of the writing partner. Computers as                 artificial-intelligence, 2023. Accessed:
+       cognitive tools, 179:196, 1993.                                      22.01.2023.
+

@@ -1,0 +1,1076 @@
+                          Guidelines for Human-AI Interaction
+        Saleema Amershi, Dan Weld*† , Mihaela Vorvoreanu, Adam Fourney, Besmira Nushi, Penny Collisson,
+        Jina Suh, Shamsi Iqbal, Paul N. Bennett, Kori Inkpen, Jaime Teevan, Ruth Kikin-Gil, and Eric Horvitz
+
+                                                                                               † Paul G. Allen School of Computer
+                             Microsoft
+                       Redmond, WA, USA                                                               Science & Engineering
+      {samershi, mivorvor, adamfo, benushi, pennycol, jinsuh,                                        University of Washington
+           shamsi, pauben, kori, teevan, ruthkg, horvitz}                                                Seattle, WA, USA
+                         @microsoft.com                                                              weld@cs.washington.edu
+
+ABSTRACT                                                                            KEYWORDS
+Advances in artifcial intelligence (AI) frame opportunities                         Human-AI interaction; AI-infused systems; design guidelines
+and challenges for user interface design. Principles for human-
+AI interaction have been discussed in the human-computer                            ACM Reference Format:
+interaction community for over two decades, but more study                          Saleema Amershi, Dan Weld, Mihaela Vorvoreanu, Adam Four-
+                                                                                    ney, Besmira Nushi, Penny Collisson, Jina Suh, Shamsi Iqbal, Paul
+and innovation are needed in light of advances in AI and
+                                                                                    N. Bennett, Kori Inkpen, Jaime Teevan, Ruth Kikin-Gil, and Eric
+the growing uses of AI technologies in human-facing appli-                          Horvitz. 2019. Guidelines for Human-AI Interaction. In CHI Con-
+cations. We propose 18 generally applicable design guide-                           ference on Human Factors in Computing Systems Proceedings (CHI
+lines for human-AI interaction. These guidelines are vali-                          2019), May 4–9, 2019, Glasgow, Scotland Uk. ACM, New York, NY,
+dated through multiple rounds of evaluation including a user                        USA, 13 pages. https://doi.org/10.1145/3290605.3300233
+study with 49 design practitioners who tested the guidelines
+against 20 popular AI-infused products. The results verify
+the relevance of the guidelines over a spectrum of interaction                      1   INTRODUCTION
+scenarios and reveal gaps in our knowledge, highlighting op-                        Advances in artifcial intelligence (AI) are enabling develop-
+portunities for further research. Based on the evaluations, we                      ers to integrate a variety of AI capabilities into user-facing
+believe the set of design guidelines can serve as a resource to                     systems. For example, increases in the accuracy of pattern
+practitioners working on the design of applications and fea-                        recognition have created opportunities and pressure to inte-
+tures that harness AI technologies, and to researchers inter-                       grate speech recognition, translation, object recognition, and
+ested in the further development of guidelines for human-AI                         face recognition into applications. However, as automated
+interaction design.                                                                 inferences are typically performed under uncertainty, often
+                                                                                    producing false positives and false negatives, AI-infused sys-
+CCS CONCEPTS                                                                        tems may demonstrate unpredictable behaviors that can be
+• Human-centered computing → Human computer in-                                     disruptive, confusing, ofensive, and even dangerous. While
+teraction (HCI); • Computing methodologies → Artif-                                 some AI technologies are deployed in explicit, interactive
+cial intelligence.                                                                  uses, other advances are employed behind the scenes in
+                                                                                    proactive services acting on behalf of users such as auto-
+                                                                                    matically fltering content based on inferred relevance or
+* Work done as a visiting researcher at Microsoft Research.
+                                                                                    importance. While such attempts at personalization may be
+                                                                                    delightful when aligned with users’ preferences, automated
+Permission to make digital or hard copies of all or part of this work for           fltering and routing can be the source of costly information
+personal or classroom use is granted without fee provided that copies               hiding and actions at odds with user goals and expectations.
+are not made or distributed for proft or commercial advantage and that                 AI-infused systems1 can violate established usability guide-
+copies bear this notice and the full citation on the frst page. Copyrights          lines of traditional user interface design (e.g., [31, 32]). For
+for components of this work owned by others than the author(s) must
+be honored. Abstracting with credit is permitted. To copy otherwise, or
+                                                                                    example, the principle of consistency advocates for minimiz-
+republish, to post on servers or to redistribute to lists, requires prior specifc   ing unexpected changes with a consistent interface appear-
+permission and/or a fee. Request permissions from permissions@acm.org.              ance and predictable behaviors. However, many AI compo-
+CHI 2019, May 4–9, 2019, Glasgow, Scotland Uk                                       nents are inherently inconsistent due to poorly understood,
+© 2019 Copyright held by the owner/author(s). Publication rights licensed
+to ACM.
+ACM ISBN 978-1-4503-5970-2/19/05. . . $15.00                                        1 In this paper we use AI-infused systems to refer to systems that have
+
+https://doi.org/10.1145/3290605.3300233                                             features harnessing AI capabilities that are directly exposed to the end user.
+probabilistic behaviors based on nuances of tasks and set-       resource for designers working with AI and will facilitate
+tings, and because they change via learning over time. AI-       future research into the refnement and development of prin-
+infused systems may react diferently depending on lighting       ciples for human-AI interaction.
+or noise conditions that are not recognized as distinct to
+end users. Systems may respond diferently to the same text       2 RELATED WORK
+input over time (e.g., autocompletion systems suggesting         For over 20 years, the academic community has proposed nu-
+diferent words after language model updates) or behave           merous guidelines and recommendations for how to design
+diferently from one user to the next (e.g., search engines       for efective human interaction with AI-infused systems. For
+returning diferent results due to personalization). Inconsis-    example, Norman [33] and Höök [16] both recommended
+tent and unpredictable behaviors can confuse users, erode        building in safeguards like verifcation steps or controlling
+their confdence, and lead to abandonment of AI technology        levels of autonomy to help prevent unwanted adaptations
+[7, 22]. Errors are common in AI-infused systems, rendering      or actions from intelligent systems. Others recommended
+it difcult to reliably achieve the principle of error preven-    managing expectations so as not to mislead or frustrate
+tion. This has contributed to the large and growing body of      users during interaction with unpredictable adaptive agents
+work on AI explanations and interpretability to support hu-      [16, 20, 33]. Horvitz’s formative paper on mixed-initiative
+man verifcation of proposed actions aimed at reducing the        systems [17] proposed principles for balancing autonomous
+likelihood of unwarranted or potentially dangerous actions       actions with direct manipulation constructs, such as support-
+and costly outcomes (e.g., [14, 21, 23, 36, 38, 44]).            ing user-driven invocation of intelligent services, scoping
+   For over 20 years, the human-computer interaction (HCI)       actions based on inferred goals and confdences, and infer-
+community has proposed principles, guidelines, and strate-       ring ideal action in light of costs, benefts, and uncertainties.
+gies for designing user interfaces and interaction for appli-    The latter guideline was operationalized via the introduc-
+cations employing AI inferences (e.g., [16, 17, 33]). However,   tion of a decision-theoretic methodology to guide decisions
+the variability of AI designs (e.g., varying capabilities and    about acting on AI inferences versus waiting for user in-
+interaction styles of commercial conversational agents im-       put, based on consideration of expected costs and benefts
+pacting user engagement and usability [26]) and high-profle      of performing AI automation under uncertainty.
+reports of failures, ranging from humorous and embarrassing         In some cases, specifc AI design recommendations have
+(e.g., autocompletion errors [8]) to more serious harm when      received considerable attention within the academic commu-
+users cannot efectively understand or control an AI system       nity. For example, a large body of work exists and continues
+(e.g., collaboration with semi-autonomous cars [41]), show       to grow around how to increase transparency or explain
+that designers and developers continue to struggle with cre-     the behaviors of AI systems (e.g., [14, 21, 23, 36, 38, 44], to
+ating intuitive and efective AI-infused systems. Ongoing         name a few). Similarly, when and how to automatically adapt
+advances in AI technologies will generate a stream of chal-      or personalize interfaces has been studied extensively in a
+lenges and opportunities for the HCI community. While such       variety of scenarios (e.g., [9, 11–13]).
+developments will require ongoing studies and vigilance, we         Others in the community have studied how to design for
+also see value in developing reusable guidelines that can be     specifc human-AI interaction scenarios. For example, re-
+shared, refned, and debated by the HCI community. The de-        searchers have been studying how to efectively interact
+velopment and use of such shared guidelines can help with        with intelligent agents for many years (e.g., [18, 33]). This
+the design and evaluation of AI-infused systems that people      scenario has also had a recent resurgence of interest given ad-
+can understand, trust, and can engage with efectively.           vances in natural language processing and embedded devices
+   In this work, we synthesize over 20 years of learning in      driving the proliferation of conversational agents [26, 29, 35].
+AI design into a small set of generally applicable design        Similarly, researchers have for decades studied human in-
+guidelines for human-AI interaction. Specifcally, our contri-    teraction with intelligent context-aware computing systems
+butions are:                                                     including how to design for understandability and control
+                                                                 of the underlying sensing systems [3, 23] and how to sup-
+• A codifcation of over 150 AI-related design recommenda-
+                                                                 port ambiguity resolution [10]. Recent advances in sensing
+  tions collected from academic and industry sources into a
+                                                                 technologies and the widespread availability of commercial
+  set of 18 generally applicable design guidelines for human-
+                                                                 ftness and activity trackers have continued to drive interac-
+  AI interaction (see Table 1).
+                                                                 tion research in these domains [37, 45].
+• A systematic validation of the 18 guidelines through mul-
+                                                                    Despite all of this work, the ongoing stream of articles and
+  tiple rounds of iteration and testing.
+                                                                 editorials in the public domain about how to design in the
+   We hope these guidelines, along with our examination          face of AI (e.g., [2, 24, 25, 39, 42]) suggests designers need
+of their applications in AI-infused systems, will serve as a     more guidance. This may be partly due to design suggestions
+                                        AI Design Guidelines                                         Example Applications of Guidelines
+                     G1   Make clear what the system can do.                             [Activity Trackers, Product #1] “Displays all the metrics that
+Initially
+
+
+
+
+                          Help the user understand what the AI system is capable of      it tracks and explains how. Metrics include movement metrics
+                          doing.                                                         such as steps, distance traveled, length of time exercised, and
+                                                                                         all-day calorie burn, for a day.”
+                     G2   Make clear how well the system can do what it can              [Music Recommenders, Product #1] “A little bit of hedging
+                          do. Help the user understand how often the AI system may       language: ‘we think you’ll like’.”
+                          make mistakes.
+                     G3   Time services based on context.                                [Navigation, Product #1] “In my experience using the app, it
+During interaction
+
+
+
+
+                          Time when to act or interrupt based on the user’s current      seems to provide timely route guidance. Because the map up-
+                          task and environment.                                          dates regularly with your actual location, the guidance is timely.”
+                     G4   Show contextually relevant information.                        [Web Search, Product #2] “Searching a movie title returns show
+                          Display information relevant to the user’s current task and    times in near my location for today’s date”
+                          environment.
+                     G5   Match relevant social norms.                                   [Voice Assistants, Product #1] “[The assistant] uses a semi-
+                          Ensure the experience is delivered in a way that users would   formal voice to talk to you - spells out “okay” and asks further
+                          expect, given their social and cultural context.               questions.”
+                     G6   Mitigate social biases.                                        [Autocomplete, Product #2] “The autocomplete feature clearly
+                          Ensure the AI system’s language and behaviors do not rein-     suggests both genders [him, her] without any bias while sug-
+                          force undesirable and unfair stereotypes and biases.           gesting the text to complete.”
+                     G7   Support efcient invocation.                                    [Voice Assistants, Product #1] “I can say [wake command] to
+When wrong
+
+
+
+
+                          Make it easy to invoke or request the AI system’s services     initiate.”
+                          when needed.
+                     G8   Support efcient dismissal.                                     [E-commerce, Product #2] “Feature is unobtrusive, below the
+                          Make it easy to dismiss or ignore undesired AI system ser-     fold, and easy to scroll past...Easy to ignore.”
+                          vices.
+                     G9   Support efcient correction.                     [Voice Assistants, Product #2] “Once my request for a reminder
+                                                                          was processed I saw the ability to edit my reminder in the UI
+                          Make it easy to edit, refne, or recover when the AI system
+                          is wrong.                                       that was displayed. Small text underneath stated ’Tap to Edit’
+                                                                          with a chevron indicating something would happen if I selected
+                                                                          this text.”
+       G10 Scope services when in doubt.                                  [Autocomplete, Product #1] “It usually provides 3-4 suggestions
+             Engage in disambiguation or gracefully degrade the AI sys- instead of directly auto completing it for you”
+             tem’s services when uncertain about a user’s goals.
+       G11 Make clear why the system did what it did.                     [Navigation, Product #2] “The route chosen by the app was
+             Enable the user to access an explanation of why the AI made based on the Fastest Route, which is shown in the subtext.”
+             system behaved as it did.
+       G12 Remember recent interactions.                                  [Web Search, Product #1] “[The search engine] remembers the
+Over time
+
+
+
+
+             Maintain short term memory and allow the user to make context of certain queries, with certain phrasing, so that it can
+             efcient references to that memory.                           continue the thread of the search (e.g., ‘who is he married to’
+                                                                          after a search that surfaces Benjamin Bratt)”
+       G13 Learn from user behavior.                                      [Music Recommenders, Product #2] “I think this is applied be-
+             Personalize the user’s experience by learning from their cause every action to add a song to the list triggers new recom-
+             actions over time.                                           mendations.”
+       G14 Update and adapt cautiously.                                   [Music Recommenders, Product #2] “Once we select a song they
+             Limit disruptive changes when updating and adapting the update the immediate song list below but keeps the above one
+             AI system’s behaviors.                                       constant.”
+       G15 Encourage granular feedback.                                   [Email, Product #1] “The user can directly mark something as
+             Enable the user to provide feedback indicating their prefer- important, when the AI hadn’t marked it as that previously.”
+             ences during regular interaction with the AI system.
+       G16 Convey the consequences of user actions.                       [Social Networks, Product #2] “[The product] communicates
+             Immediately update or convey how user actions will impact that hiding an Ad will adjust the relevance of future ads.”
+             future behaviors of the AI system.
+       G17 Provide global controls.                                       [Photo Organizers, Product #1] “[The product] allows users to
+             Allow the user to globally customize what the AI system turn on your location history so the AI can group photos by
+             monitors and how it behaves.                                 where you have been.”
+       G18 Notify users about changes.                                    [Navigation, Product #2] “[The product] does provide small in-
+             Inform the user when the AI system adds or updates its app teaching callouts for important new features. New features
+             capabilities.                                                that require my explicit attention are pop-ups.”
+Table 1: Our 18 human-AI interaction design guidelines, roughly categorized by when they likely are to be applied during
+interaction with users, along with illustrative applications (rated as “clearly applied” by participants) across products tested
+by participants in our user study.
+being scattered throughout diferent academic circles and           • A review of AI products and guidelines originating from
+venues, making them difcult to fnd (e.g., there is relevant          industry. We collected guidelines asserted internally in our
+work in a wide variety of venues including AAAI, UbiComp,            company and externally, and grouped them into themes;
+RecSys, SIGIR, HRI, KDD). Moreover, potential design sug-            we audited a sample of AI products within and outside
+gestions for AI are often not presented explicitly as such.          our company against the themes; and cross-referenced
+In many cases, researchers identify usability issues with AI         themes with internal customer feedback (reviews and bugs
+systems and suggest possible solutions in the discussion or          reported about our company’s AI products).
+future work sections of their academic papers. For example,        • Recent public articles and editorials about AI design (e.g.,
+Lugar and Sellen [26] identify variability in user expecta-          [2, 24, 25, 39]).
+tions of conversational agents as causing usability issues and     • Relevant scholarly papers about AI design (see Related
+propose setting realistic expectations as a possible solution        Work section).
+in their discussion. Similarly, Lee et al [22] studied automatic
+changes to search result lists during user interaction and            While we drew AI design guidelines from the academic
+suggested caution in updating those lists to balance stability     literature, the list we captured may not be exhaustive because,
+with presenting new content to users. While these proposed         as discussed in Related Work, potential design guidelines are
+solutions could be generalized into principles for designers,      often not presented explicitly as such, making them difcult
+not presenting them as such makes them difcult to discover.        to search for via terms or combinations of terms such as
+   It can also be difcult to understand if and how design guid-    “AI”, “machine learning”, “design”, “principle” or “guideline”.
+ance stemming from one community or interaction scenario           Further, as the feld is evolving rapidly, we found the most
+extends to others. For example, Bunt et al. [4] showed that,       up to date guidance about AI design in industry sources via
+while explanations of AI behaviors have shown promise in           articles published in the public domain.
+complex and high-risk scenarios such as sensor-based ubiq-            From these sources, we obtained 168 potential AI design
+uitous computing systems or decision-support systems for           guidelines. Three members of our team conducted an asyn-
+medical or fnancial domains, they may be less important            chronous afnity diagramming process, clustering the guide-
+for relatively low-cost scenarios such as search and music or      lines into related concepts. This resulted in 35 concepts which
+movie recommenders.                                                we then fltered by removing concepts we deemed to be ei-
+   In this work we 1) synthesize a unifed set of design guide-     ther too vague to design for directly (e.g., “build trust”), too
+lines from a variety of communities and sources and 2)             specifc to a particular AI scenario (e.g., “establish that the
+systematically examine those guidelines in a variety of AI-        bot is not human”), or not AI specifc (e.g., “display output ef-
+infused systems to validate their applicability and relevance.     fectively”). Filtering reduced our set of concepts to 20, each of
+The closest to our work is Horvitz’s set of principles for         which we then summarized in a sentence or phrase, forming
+mixed-initiative systems [17], noting that 8 of our 18 guide-      our frst iteration of the guidelines. We organized the guide-
+lines map to principles outlined in that work. We celebrate        lines into four top-level categories based on when during
+its 20-year anniversary by refecting on learnings from the         the user’s interaction they applied: “Initially” (Guideline 1 &
+community since its publication. Moreover, recent work has         Guideline 2), “During interaction” (Guideline 3 - Guideline 6),
+warned that the lack of rigorous validations of proposed           “When wrong” (Guideline 7 - Guideline 11), and “Over time”
+design heuristics in specifc domains makes it difcult to           (Guideline 12 - Guideline 18). Next, we tested the guidelines
+gauge the utility of those heuristics [15]. We developed the       via a modifed heuristic evaluation.
+guidelines shown in Table 1 using a four-phase process. In
+Phase 1 we consolidated more than 150 design recommen-             4 PHASE 2: MODIFIED HEURISTIC EVALUATION
+dations from multiple sources into a set of 20 guidelines. In      We conducted an evaluation to test and iterate on the initial
+Phase 2 we conducted an internal modifed heuristic evalu-          set of 20 AI design guidelines. We modeled our study af-
+ation of the guidelines, revising the set down to 18. Phase        ter a heuristic evaluation [31], a common discount usability
+3 consisted of a user study in which 49 participants used          testing method where evaluators examine an interface for vi-
+heuristic evaluation to assess the guidelines’ relevance and       olations of a given set of usability guidelines. As the primary
+clarity. Based on their feedback, we rephrased some of the         goal was to evaluate our design guidelines rather than to
+guidelines to improve clarity and, in Phase 4, conducted an        evaluate an interface, we modifed the heuristic evaluation
+expert evaluation of the revisions to validate the fnal set.       by asking evaluators to attempt to identify both applications
+                                                                   and violations of the proposed guidelines in an interface and
+                                                                   to refect on the guidelines themselves during the evaluation.
+3 PHASE 1: CONSOLIDATING GUIDELINES                                   Eleven members of our team participated in this evalua-
+We gathered AI design recommendations from three sources:          tion. Team members selected AI-infused products or features
+of their choice and then looked for applications or viola-             Removing conjunctions meant splitting some guidelines.
+tions of our initial set of design guidelines over a one-hour       For example, an initial guideline to “allow efcient invoca-
+period. In total, we inspected 13 AI-infused products or fea-       tion, correction, and dismissal” became three (to “support
+tures including: two diferent email products with a feature         efcient invocation,” “support efcient dismissal,” and “sup-
+for fltering unimportant emails, a navigation system, an            port efcient correction,” Guidelines 7-9).
+e-commerce website with product recommendations, two                   Phase 2 produced a set of 18 guidelines that closely match
+photo organization products, a design assistance feature in         the guidelines in Table 1. In the following sections we de-
+a productivity software, a research assistance feature in a         scribe a user study that tested these 18 guidelines and a sub-
+productivity application, a social network news feed feature,       sequent expert validation of the guidelines that we slightly
+a web search service, and an image search service. These            rephrased after the user study (resulting in the fnal proposed
+products were diferent from the products used in Phase 3.           set shown in Table 1).
+   After the modifed heuristic evaluation, we reviewed the
+fndings and refections about each guideline and discussed           5 PHASE 3: USER STUDY
+issues and revision strategies for conficting interpretations       We conducted a user study with 49 HCI practitioners to
+and ambiguities. For example, our initial phrasing of Guide-        1) understand the guidelines’ applicability across a variety of
+line 9 (“allow efcient correction”) and Guideline 17 (“al-          products; and 2) get feedback about the guidelines’ clarity.
+low coarse controls”) caused several evaluators to confuse
+instance-level corrections with global-level settings (sev-         Procedure
+eral evaluators identifed adjusting settings as applications        We modeled the user study after a heuristic evaluation. We
+of Guideline 9 rather than Guideline 17). We subsequently           assigned each participant to an AI-driven feature of a product
+rephrased Guideline 17 to include the term “global”.                they were familiar with and asked them to fnd examples
+   We also identifed opportunities for merging related or           (applications and violations) of each guideline.
+redundant guidelines. For example, the initial set included            First, we helped participants become familiar with the
+“informing the user when to take control” and “fallback to          guidelines by providing a document that included at least
+a human where appropriate”. Our evaluations found few               one application and one violation for each. The examples
+applications of these guidelines, and we determined both of         came from a range of AI-infused products and were pre-
+them to be instances of Guideline 10 (initially phrased “scope      sented with a 1-2 sentence description and a screenshot
+services when uncertain”) and therefore removed them as             where appropriate.
+distinct guidelines. Similarly, applications of “enable users to       Participants were then instructed to play around with their
+change privacy permissions” and “allow private mode” were           assigned feature and fll out a form asking a series of ques-
+deemed as instances of Guideline 17 (initially phrased “allow       tions. For each guideline, the form asked participants to frst
+coarse controls”) and were merged with that guideline.              determine if the guideline “does not apply” to their assigned
+   We also decided to remove some guidelines that resulted in       feature (i.e., irrelevant or out of scope) and, if not, to explain
+few or no applications during our evaluations. For example,         why. If a participant judged that a guideline should apply
+neither the guideline to “explore vs. exploit in moderation”        to their assigned feature and they observed applications or
+nor to “be especially conservative in the beginning” resulted       violations, the form requested participants to provide their
+in any identifable usage across the products or features we         own examples, and, for each example, a rating of the ex-
+examined. While these guidelines are important at the AI            tent of the application or violation on a 5-point semantic
+modeling level, they appeared to be difcult to observe or           diferential scale from “clearly violated” to “clearly applied”,
+design for in an interface.                                         along with an explanation of the rating. Participants were
+   After these sessions we reformulated the remaining guide-        incentivized with an additional monetary gratuity to include
+lines to follow a consistent format and to clarify issues identi-   screenshots to illustrate the examples. After completing the
+fed by evaluators. Specifcally, we proposed that each guide-        evaluation, participants submitted their examples and ratings
+line adhere to the following criteria:                              and flled in a fnal questionnaire which asked them to rate
+                                                                    each guideline on a 5-point semantic diferential scale from
+• It should be written as a rule of action, containing about        “very confusing” to “very clear” and provide any additional
+  3-10 words and starting with a verb.                              comments about the guidelines.
+• It should be accompanied by a one-sentence description               We estimated the study would take approximately one
+  that qualifes or clarifes any potential ambiguities.              hour to complete based on our modifed heuristic evaluation
+• It should not contain conjunctions so that designers can          study from Phase 2. Participants were given one week to
+  clearly validate whether it is applied or violated in an          complete the study on their own time and were compensated
+  interface.                                                        with an Amazon Gift Card worth a minimum of $50 and up
+to $70 based on the number of applications or violations for       Product Category       Feature               Participants
+which they provided screenshots.                                   E-commerce (Web)       Recommendations       6
+                                                                   Navigation (Mobile)    Route planning        5
+Products                                                           Music Recommenders Recommendations           5
+                                                                   (Mobile)
+One objective of our study was to determine if and how each
+                                                                   Activity Trackers (De- Walking detection 5
+of our design guidelines manifests in a variety of AI-infused
+                                                                   vice)                  and step count
+products. We used a maximum-variance sampling strategy
+                                                                   Autocomplete (Mobile) Autocomplete           5
+[28] to select popular AI-infused products that covered a          Social Networks (Mo- Feed fltering           5
+wide range of scenarios.                                           bile)
+   First, we searched online for rankings of top apps, soft-       Email (Web)            Importance fltering   5
+ware, and websites in the U.S. for both mobile and desktop         Voice Assistants (De- Creating a reminder 5
+devices. This search resulted in 13 lists from sources such as     vice)                  with a due date
+app stores (Apple, Google Play, Windows), and Web trafc            Photo Organizers (Mo- Album suggestions      4
+rankings [1, 6, 40]. From these lists, we selected the top 10      bile)
+products in each and then fltered out any that were ofensive,      Web Search (Web)       Search                4
+game related, or did not currently use AI to drive any of their   Table 2: Product categories and features tested in the user
+main end-user facing services (determined by examination          study, and the number of participants assigned to each.
+of the product or reading supplemental help documentation
+and news media articles when necessary).
+   Next, we grouped the remaining products by their primary          In the end, 49 people (29 female, 18 male, 2 preferred not
+use case, resulting in 10 categories (e.g., email, e-commerce,    to answer) participated in our study. Participants spanned
+social networking). We then selected two products per cate-       ages 18-55: 5 were in the age range of 18-24, 24 were in the
+gory based on market share as determined by recent online         age range of 25-34, 13 were aged 35-44 and 7 were aged 45-54.
+statistics reports (e.g., [19]). Finally, we selected a promi-    Of these participants, 19 were researchers, 12 were design-
+nent AI-driven feature to evaluate per product. In total, we      ers, 11 were HCI or design interns from various universities
+selected 20 products, two of which were from Microsoft.           worldwide, and the remaining 7 were a mix of engineers,
+   Many of the products we selected were available on multi-      product managers or vendors. The participants’ experience
+ple platforms and devices. We attempted to evaluate products      working in or studying HCI/UX was as follows: 1-4 years
+on a variety of platforms. Table 2 shows our fnal list of prod-   (23 participants), 5-9 years (14 participants), 10-14 years (9
+uct categories, features and platforms.                           participants), 15-19 years (1 participant), 20+ years (2 par-
+                                                                  ticipants). Thirty-nine participants self-reported as being
+Participants                                                      highly or very highly experienced at discount usability test-
+We recruited participants via HCI and design distribution         ing methods while 10 reported as having medium to low
+lists at a large software company. During recruitment we          levels of experience (we screened out participants with “very
+screened for people with at least one year of experience work-    low” levels of experience). Participants were from 4 diferent
+ing in or studying HCI (e.g., in roles such as user experience    countries spanning 3 continents. While we recruited partici-
+design and user experience research) and familiarity with         pants using internal mailing lists, we took steps to mitigate
+discount usability testing methods (e.g., heuristic evaluation,   sampling bias to ensure the results do not exclusively repre-
+cognitive walkthrough). We listed all possible product and        sent one organization’s mindset, in addition to including the
+platform combinations, and asked respondents to select the        11 external participants. Our questionnaires asked partici-
+options they were familiar with and comfortable evaluating.       pants to rate the extent to which an example is illustrative
+   We endeavored to assign 2-3 participants to each prod-         of a guideline and the clarity of each guideline’s wording on
+uct according to recommendations for heuristic evaluations.       Likert scales. These questions are unlikely to be infuenced
+Nielsen [30] recommends 2-3 evaluators when evaluators            by company values. Moreover, our main sampling criterion
+have both usability experience and familiarity with the prod-     was experience with discount usability methods. It is un-
+uct being tested. We also assigned participants so that each      likely that the entirety of participants’ professional training
+product was evaluated by people with a range of experience        and experience were internal.
+in discount usability techniques and no product was eval-
+uated by participants with only limited experience. When          Adjustments and Misinterpretations
+participants dropped out of the study, we replaced them           To obtain accurate counts of examples of the proposed guide-
+by assigning new participants from a wait list of eligible        lines across products, we reviewed participant responses for
+respondents, trying to maintain 2-3 evaluators per product.       the following cases:
+• Duplicate applications or violations of a guideline for any      ratings, including neutral responses. Finally, Table 1 shows
+  given product (55 instances). For example, two diferent          example applications participants provided for each guide-
+  participants identifed the same application of Guideline         line (marked as “clearly applied” by the participant).
+  1 for an activity tracker: “This guideline is applied in the        In this analysis, we use the following interpretation con-
+  activity summary view, where it shows a summary of my            structs to better understand results from Figure 1. First, we
+  ‘move’, ‘exercise’ and ‘stand’ metrics.” and “Displays all the   use the total number of applications and violations as an in-
+  metrics that it tracks and explains how. Metrics include         dicator of the overall evidence of a guideline being relevant
+  movement metrics such as steps, distance traveled...” The        (e.g., Guidelines 1, 12, 17). Second, relevant guidelines with a
+  55 duplications were removed from the analysis.                  high positive diference between the number of applications
+• Instances where participants used “does not apply” to indi-      and violations are guidelines which are not only relevant but
+  cate that they could not fnd examples of a guideline rather      also widely implemented for the set of products in the study
+  than to indicate that the guideline is not relevant for the      (e.g., Guidelines 1, 4, 12). Third, relevant guidelines with a
+  product they were testing, as we intended by this desig-         high negative diference between the number of applications
+  nation (73 instances). For example, “To be quite honest I        and violations are guidelines which, despite their importance,
+  believe that this would apply, however I can’t think of a        are still not widely implemented (e.g., Guidelines 2, 11, 17).
+  way to show it.” and “Cannot fnd examples of application         Fourth, we discuss guidelines with the highest numbers of
+  or violation.”. These 73 instances were also removed from        "does not apply" (e.g., Guidelines 3, 5, 6).
+  the analysis.                                                       Participants found at least one application or violation of
+• Instances where participants used “does not apply” to in-        each of our guidelines in each product category we tested,
+  dicate that a guideline was violated (20 instances). For         suggesting broad evidence of the guidelines’ relevance. While
+  example, “Even in the setting page, there’s no option for        participants were able to identify examples of each guideline
+  changing or customizing anything for the autocomplete            in most of the product categories we tested, voice assistants
+  function.” and “[Voice Assistant, Product #1] did not pro-       had the largest number of “does not apply” instances re-
+  vide additional hints or tips to educate me on what the          ported, while photo organizers, activity trackers and voice
+  system is capable of achieving beyond the task I had al-         assistants had the fewest numbers of total applications or
+  ready asked it to run.” We reclassifed these instances as        violations. Interestingly, each of these product categories in-
+  violations.                                                      volves a mode of operation or input data type beyond simple
+• Instances where participants misinterpreted one guideline        graphical user interfaces and text (specifcally, interaction
+  for another, discussed further below (56 instances).             over images or sensor data, or voice-based interaction).
+   We identifed these cases using a two-pass process where            No instances of Guideline 10 “Scope services when in
+participant responses were frst reviewed by one member             doubt” were reported for the two social networks we tested
+of our team to identify each case and then those cases were        and no instances of Guideline 14 “Update and adapt cau-
+verifed or invalidated by another member of our team. We           tiously” were reported for the two activity trackers. Some
+removed 14 additional instances from our analysis when the         participants reported that these guidelines were hard to ob-
+two reviewers from our team disagreed on any of these cases.       serve in a single session or without knowledge about the
+                                                                   underlying AI algorithms. For example, one participant noted
+Results                                                            that Guideline 10 was “More difcult to assess unless you
+Our evaluation in this phase focused on two key questions,         have a lengthy period of time with the product - and po-
+each addressed in one of the subsections below: 1) Are the         tential guidance for understanding the behind-the-scenes
+guidelines relevant? That is, can we identify examples of          mechanisms,” possibly referring to understanding when the
+each guideline across a variety of products and features? 2)       AI system was “in doubt”. Similarly, for Guideline 14, one
+Are the guidelines clear? That is, can participants understand     participant said, “It’s a bit difcult to assess this in a sin-
+and diferentiate among them?                                       gle session.” These guidelines were, however, observed in
+                                                                   all other products that participants tested in our study, so
+Relevance. Across the 20 products they evaluated, partici-         such difculty could be attributed to the guidelines not be-
+pants identifed 785 examples of the 18 guidelines, after the       ing applied or being difcult to observe in these particular
+adjustments described earlier: 313 applications, 277 viola-        products.
+tions, 89 neutrals (rated at the mid-point between “clearly           Relevant guidelines that have signifcantly (at least 40%)
+applied” and “clearly violated”), and 106 instances of “does       more applications than violations are evidence of being widely
+not apply”. Figures 1a-1c show the guideline counts per prod-      implemented across products. This is also an indicator that
+uct category for applications, violations, and “does not apply”,   there exist current mechanisms in the intersection of AI
+respectively. Figure 1d shows an aggregate of all applicable
+        (a) Counts of “clear application” or “application”              (b) Counts of “clear violation” or “violation”
+         responses.                                                     responses.
+
+
+
+
+           (c) Counts of “does not apply” responses.                    (d) Counts of all responses, excluding “does not
+                                                                        apply” and including neutral.
+
+Figure 1: Counts of applications (top left), violations (top right), and “does not apply” (bottom left) responses in our user study.
+Rows show counts by guideline, while columns show counts by product category tested.
+and design that facilitate the implementation of such guide-       one of the Web Search engines we tested, one participant
+lines. For example, frequent item sets and location detec-         stated, “[the search engine] does not generally interrupt a
+tion were two common mechanisms used to support Guide-             user at any point. The mobile app has notifcations, which
+line 4 in showing contextually relevant information (e.g.,         might be relevant here, but the desktop website does not.
+[E-commerce, Product #2] “The feature assumes I’m about to         Generally speaking, AI services pop up based on when the
+buy a gaming console and shows accessories and games that          user searches and what he or she searches for, not based on
+would go with it...” or [Web Search, Product #2] “Searching a      an ongoing session.” This guideline is therefore likely more
+movie title returns show times near my location for today’s        relevant for products that take proactive actions without
+date”). For Guideline 12, multiple products leverage the his-      explicit user requests, such as sending notifcations.
+tory of user interactions to suggest a reduced cache of items         Guideline 5 “Match relevant social norms” and Guideline
+that might be more useful to the user (e.g., [Navigation, Prod-    6 “Mitigate social biases” had some of the most reported in-
+uct #1] “Opening the app shows a list of recent destinations,      stances of “does not apply”. Examination of these instances
+as well as allows you to access ’favorite’ locations.”).           revealed that in some cases participants frmly believed these
+   Some guidelines emerged as relevant, but not widely im-         guidelines were not relevant for the products they were test-
+plemented, as indicated by the large number of violations.         ing while other participants reported either applications or
+For example, Guideline 11 “Make clear why the system did           violations of these guidelines in those same product cate-
+what it did” had one of the highest number of violations,          gories. For example, one participant reported about one of
+despite the large volume of active research in the area of in-     the navigation products tested that “information is not sub-
+telligibility and explanations. This guideline also had one of     ject to biases, unless users are biased against fastest route”.
+the fewest reported instances of “does not apply”, suggesting      However, a diferent participant was able to identify a viola-
+that participants could imagine opportunities for explana-         tion of this guideline for the same product category “Regards
+tions, but were often unable to obtain them. In some cases,        the ‘Walking’ transport there’s no way to set an average
+participants reported violations when they were unable to          walking speed. [The product] assumes users to be healthy.”
+locate any explanation at all (e.g., [E-commerce, Product #1]      Similarly, one participant reported about one of the voice
+“I have no idea why this is being shown to me. Is it trying        assistants we tested that “Nothing in this interaction had any
+to sell me stuf I do not need?” and [Music Recommender,            social biases that it could reinforce.”, while another stated
+Product #1] “Even when drilling down into a song there             about the same product that “While it’s nice that a male
+is no explanation for why this particular song was recom-          voice is given as an option, the default [voice assistant] voice
+mended.”). In other cases, participants reported violations        is female, which reinforces stereotypical gender roles that
+when explanations were provided but were seemingly in-             presume a secretary or receptionist is female.” Some partici-
+adequate for their purposes (e.g., [Email, Product #1] “This       pants, however, had no trouble identifying bias: "I typed in
+does list out things which afect it, but they don’t explain it     ’black’ in the search bar and it came back with images of
+in a clear manner. Do each of these afect it equally?” and         me as well as my niece [...] it saw a black face and used that
+[Navigation, Product #1] “It always says the suggested route       as its frame of reference for all pictures, then returned all
+is the “best route” but it doesn’t give you the criteria for why   pictures of me and my family without images of other black
+that route is the best.”). These results suggest that partici-     spaces in an environment".
+pants could envision explanations being useful in most of             Guidelines 5 and 6 were noted as the least clear by our
+the products we tested, but more work is necessary to under-       participants in their (see Figure 2), with several participants
+stand the level of explanations people may desire and how          remarking about the difculty of imagining social norms
+designers can produce them. In some cases, explanations            beyond their own or recognizing potential sources of bias
+might be undesirable, for fnancial or business reasons (e.g.       (e.g., “Hard for a designer to implement, because it requires
+adversarial (gaming) behavior by Web page authors would            them to think outside of their own social context”, “Doesn’t
+be exacerbated if search engines explained their ranking.).        apply to me but to potential other people.”, and “This is hard
+   Guidelines 3, 5, and 6 had the highest number of "does          to measure. Who defnes what is undesirable and unfair?”).
+not apply" ratings. Several participants indicated that Guide-     These assessments suggest that a diverse set of evaluators
+line 3 was not applicable because the products they were           may be necessary to efectively recognize or apply these
+testing presented services only when explicitly requested          guidelines in practice. Alternatively, designers may need
+by the user. For example, for one of the E-commerce prod-          specifc training or tools to recognize social norms and biases.
+ucts, one participant stated, “I feel this guideline does not      GenderMag[5], a method for identifying gender biases in
+apply for the recommendations page. It [is] a very ‘pull’ kind     user interfaces, is one such tool, but further work is needed
+of interaction.”; i.e., the user views recommendations while       in this area.
+browsing and there are no ‘push’ notifcations. Similarly, for
+                                                                 with Guideline 13 (originally phrased as “Learn from user
+                                                                 behavior. Personalize the experience based on the user’s past
+                                                                 actions”) six times. Examination revealed that most of these
+                                                                 errors were due to “preferences” and “personalization” being
+                                                                 considered as “relevant context”. To clarify, we rephrased
+                                                                 these guidelines as in Table 1, emphasizing the diference
+                                                                 between a user’s “current context” (e.g., “current task and
+                                                                 environment”) and personalization which we intended to
+                                                                 mean learning about preferences “over time”.
+                                                                    Guidelines 3 and 4 (originally phrased as “Time services
+                                                                 based on context” and “Show contextually relevant infor-
+                                                                 mation”) were confused with each other in four instances.
+                                                                 Several participants commented that this was because what is
+                                                                 displayed and when it is displayed are often related (e.g., “pro-
+                                                                 vide the right information at the right time” and “The time
+                                                                 when I’m specifcally looking for DP to HDMI cable should
+                                                                 be the most ideal time to recommend possible variations in
+                                                                 DP to HDMI”). However, we decided to keep these guidelines
+                                                                 separate to avoid conjunctions and updated Guideline 3 to
+                                                                 use the same language of “current task and environment” as
+                                                                 Guideline 4.
+                                                                    Guideline 12 (originally phrased as “Maintain working
+                                                                 memory”) was confused with Guideline 13 (“Learn from
+                                                                 user behavior”) seven times, seemingly because the term
+Figure 2: Subjective evaluations by study participants about
+                                                                 “memory” was being interpreted as something that happens
+the clarity of the 18 AI design guidelines.
+                                                                 over time. To clarify, we revised these guidelines as in Table 1
+Clarity and Clarifications. Figure 2 presents clarity ratings    to emphasize the diference between maintaining short term
+for all guidelines. To identify guidelines in need of further    memory of recent interactions and learning behaviors over
+clarifcation, we reviewed these ratings and the 56 misinter-     time.
+pretations explained in the section Adjustments and Misin-          Guidelines 15 and 17 (originally phrased as “Encourage
+terpretations. We noted guidelines as needing further clarif-    feedback” and “Provide global controls”, respectively) were
+cation when errors were determined to be systematic, which       confused six times, seemingly because the diference between
+we defned as having four or more instances confused with         local (or instance-level) feedback and global feedback (e.g.,
+another guideline or having multiple participants making         settings that impact behaviors on all instances) was still
+similar comments about clarity. From this analysis, we iden-     unclear despite introducing the term “global” after our frst
+tifed and addressed the following issues:                        heuristic evaluation in Phase 2. We therefore revised these
+   Guidelines 1, 2, and 11 (originally phrased as “Make ca-      Guidelines as in Table 1 to further emphasize that Guideline
+pabilities clear”, “Set expectations of quality” and “Make       15 is about granular feedback that happens during a specifc
+explanations of behavior available”) had 13 misinterpreted       interaction, while Guideline 17 is about global customization
+instances (5 between Guidelines 1 and 2; 8 between Guide-        of behaviors.
+lines 1 and 11) and several comments about these being              These revisions resulted in the fnal set of guidelines pre-
+hard to diferentiate (e.g., one participant commented on         sented in Table 1, which we further evaluated with experts
+Guideline 2 that “I don’t know what is diferent between this     as described in the following section.
+guideline and the guideline #1”). To clarify, we revised these
+guidelines using parallel language while emphasizing the in-     6   PHASE 4: EXPERT EVALUATION OF REVISIONS
+tended diferences (Guideline 1 is about what the system can      To verify whether the revisions we proposed in the pre-
+do, Guideline 2 is about how well the system can do it, and      vious section improved our guidelines, we conducted an
+Guideline 11 is about explaining why something happened,         expert review. Expert reviews have been shown to be efec-
+after the fact).                                                 tive at identifying problems related to wording and clarity
+   Guideline 4 (originally phrased as “Show contextually rel-    [27, 34, 43]. For this purpose, we defned experts as people
+evant information. Display information about the user’s in-      who have work experience in UX/HCI and who are familiar
+ferred goals and attention during interaction.”) was confused    with discount usability methods such as heuristic evaluation.
+                                                                   Phase 1: Consolidating guidelines
+                                                                   Set appropriate expectations.
+                                                                   Set accurate expectations to give people a clear idea of
+                                                                   what the experience is and isn’t capable of doing.
+                                                                   Phase 2: Internal evaluation
+                                                                   Set appropriate expectations.
+                                                                   Phase 3: User study
+                                                                   G1: Make capabilities clear. Help the user understand what
+                                                                   the AI system is capable of doing.
+Figure 3: Number of experts out of 11 who preferred the re-        G2: Set expectations of quality. Help the user understand
+vised or the old version. One participant suggested their own      what level of performance the AI system is capable of
+alternative for Guideline 3.                                       delivering.
+                                                                   Phase 4: Expert evaluation of revisions
+We reasoned that experts with experience in applying var-          G1: Make clear what the system can do. Help the user
+ious guidelines to design solutions would be able to assess        understand what the AI system is capable of doing.
+whether our guidelines would be easy to understand and             G2: Make clear how well the system can do what it can do.
+therefore to work with.                                            Help the user understand how often the AI system may
+   We recruited 11 experts (6 female, 5 male) from the same        make mistakes.
+large company through snowball sampling. Of these experts,                  Table 3: Evolution of Guidelines 1 and 2.
+6 were UX designers, 3 were UX researchers, and two were
+in research and product planning roles. Their length of ex-
+perience working in UX or HCI was more than 20 years (1),         the guidelines were applied to AI-infused products across 10
+16-20 years (4), 11-15 years (3), and 2-5 years (3). Partici-     product categories. These eforts provide evidence for the
+pants self-reported their familiarity with discount usability     relevance of the guidelines across a wide range of common
+methods as very high (5), high (4), and medium (2).               AI-infused systems. In terms of utility, we anticipate the
+   First, we asked each expert to review the 9 revised guide-     guidelines will be useful to evaluate existing products and
+lines independently. They chose, for each guideline, the ver-     emerging design ideas. Our evaluation methods show that
+sion they thought was easier to understand (the old version       the guidelines lend themselves well to usability inspection
+or the version we revised after in Phase 3). Then the experts     methods such as heuristic evaluation. Future work could
+reviewed the pairs of guidelines that emerged in Phase 3 as       examine the uses and value of these guidelines at various
+confusing or overlapping. For each pair, we asked experts to      stages of design.
+rate whether the two guidelines mean the same thing and              We recognize that there is a tradeof between generality
+the difculty of distinguishing between them. We compen-           and specialization, and that these guidelines might not ade-
+sated participants with a $30 gift card for an estimated time     quately address all types of AI-infused systems. For example,
+commitment of 45 minutes.                                         we reported that some guidelines do not directly apply to AI
+   Figure 3 shows that experts preferred the revised versions     systems that lack graphical user interfaces (e.g., voice-based
+for all but Guideline 15. Revisions appear to have helped dis-    virtual assistants and activity trackers). Additional guidelines
+tinguish between the pairs of guidelines Phase 3 participants     may be necessary to help designers and developers create
+had trouble with, but fve experts still found Guidelines 1        intuitive and efective products with these properties or in
+and 2 somewhat difcult to distinguish (Table 4). Since the        these product categories. Likewise, specialized guidelines
+revision of Guideline 15 made it easy to distinguish it from      may be required in certain high-risk or highly regulated areas
+17, we decided to keep it.                                        such as semi-autonomous vehicles, robot-assisted surgery,
+   Table 3 illustrates the evolution of the frst two guidelines   and fnancial systems. We hope the 18 guidelines presented
+through the four phases.                                          here and their validation process stimulate and inform future
+                                                                  research into the development of domain-specifc guidance.
+7 DISCUSSION & FUTURE WORK                                           Our work also intentionally focused on AI design guide-
+We synthesized guidance proposed over the past 20 years           lines that we believed could be easily evaluated by inspection
+about the design of human-AI interaction into a set of 18         of a system’s interface. For example, we excluded broad prin-
+AI usability guidelines. These guidelines were iteratively re-    ciples such as "build trust", and focused instead on specifc
+fned in four phases by a team of 11 researchers, and were         and observable guidelines that are likely to contribute to
+applied or reviewed by an additional 60 designers and us-         building trust. Previous work, however, has proposed guide-
+ability practitioners. Over the various stages of development,    lines that impact the usability of AI-infused systems but must
+be considered when constructing the AI model. For exam-                                                                        Distinguish:
+                                                                                   Meanings:   Distinguish:    Distinguish:
+                                                                      Guidelines                                                Neutral/
+ple, we excluded Horvitz’s [17] principle of “inferring ideal                      Diferent        Easy           Hard
+                                                                                                                                Medium
+action in light of costs, benefts, and uncertainties” and guid-       1&2                 10               6               5              0
+ance about being “especially conservative in the beginning”           1 & 11              11               6               3              2
+                                                                      3&4                 10               6               2              3
+because these require decisions to be made at the modeling
+                                                                      4 & 13              11               9               1              1
+layer of a system. We foresee the value of future work to             12 & 13              9               7               1              3
+investigate how designers and model developers can work               15 & 17             10               9               1              1
+together to efectively apply these guidelines in AI-infused       Table 4: Number of experts out of 11 who rated each pair of
+systems. For example, given the expected performance of an        guidelines as diferent in meaning and distinguishable.
+AI model, designers may recommend specifc designs that
+reduce costs while optimizing benefts to users (e.g., display-    synthesis can facilitate further research. As the current tech-
+ing multiple options to users until the performance of the AI     nology landscape is shifting towards the increasing inclusion
+model is improved enough to take proactive action on the          of AI in computing applications, we see signifcant value in
+user’s behalf).                                                   working to further develop and refne design guidelines for
+   Our decisions to optimize for generality, and to focus on      human-AI interaction.
+observable properties, serve as a reminder that interaction
+designers routinely encounter these types of trade-ofs. We        9     ACKNOWLEDGMENTS
+anticipate situations where there will be interactions and        The authors would like to acknowledge the contributions of
+trade-ofs in attempts to employ several of the guidelines.        our newest team member, Ever Zayn McDonald.
+As an example, if a system uses a complex or deep model to
+achieve a high level of performance, it may be challenging        REFERENCES
+to both convey the consequences of user actions (Guideline         [1] Alexa. 2018. Top sites in the United States. Retrieved July, 2018 from
+16), while also actively learning from user behavior (Guide-           https://www.alexa.com/topsites/countries/US
+                                                                   [2] Kathy Baxter. 2017. How to Meet User Expectations for Ar-
+line 13). Further research is necessary to understand the
+                                                                       tifcial Intelligence. Medium.            Retrieved September, 2018
+implications of these potential interactions and trade-ofs for         from        https://medium.com/salesforce-ux/how-to-meet-user-
+the design of AI systems and to understand how designers               expectations-for-artifcial-intelligence-a51d3c82af6
+employ these guidelines "in the wild."                             [3] Victoria Bellotti and Keith Edwards. 2001. Intelligibility and Account-
+   Finally, we recognize that our guidelines only begin to             ability: Human Considerations in Context-Aware Systems. Human–
+                                                                       Computer Interaction 16, 2-4 (2001), 193–212.
+touch on topics of fairness and broader ethical considera-
+                                                                   [4] Andrea Bunt, Matthew Lount, and Catherine Lauzon. 2012. Are Expla-
+tions. Ethical concerns extend beyond the matching of social           nations Always Important?: A Study of Deployed, Low-cost Intelligent
+norms (Guideline 5) and mitigating social biases (Guideline            Interactive Systems. In Proc. IUI ’12. ACM, New York, NY, USA, 169–
+6). As an example, an AI system may adhere to each of these            178.
+guidelines and yet impact people’s lives or livelihoods in a       [5] Margaret Burnett, Simone Stumpf, Jamie Macbeth, Stephann Makri,
+consequential manner. It is imperative that system designers           Laura Beckwith, Irwin Kwan, Anicia Peters, and William Jernigan. 2016.
+                                                                       GenderMag: A method for evaluating software’s gender inclusiveness.
+carefully evaluate the many infuences of AI technologies               Interacting with Computers 28, 6 (2016), 760–787.
+on people and society, and that this remains a topic of ongo-      [6] comScore. 2018. Latest rankings. Retrieved July, 2018 from https:
+ing research and intense interest. Ethics-focused guidelines           //www.comscore.com/Insights/Rankings
+can be difcult to fully evaluate in a heuristic evaluation,        [7] Maartje de Graaf, Somaya Ben Allouch, and Jan van Dijk. 2017. Why
+and successful detection of problems may depend on who                 Do They Refuse to Use My Robot?: Reasons for Non-Use Derived from
+                                                                       a Long-Term Home Study. In Proc. HRI ’17. ACM, New York, NY, USA,
+is performing the evaluation. Our results related to Guide-            224–233.
+lines 5 “Match relevant social norms” and 6 “Mitigate social       [8] Defy Media. 2015. Damn You Auto Correct! Retrieved September,
+biases” suggest that diversity among evaluators helps iden-            2018 from http://www.damnyouautocorrect.com/
+tify a range of issues that might be invisible to members of       [9] T. Deuschel and T. Scully. 2016. On the Importance of Spatial Per-
+majority groups.                                                       ception for the Design of Adaptive User Interfaces. In 2016 IEEE 10th
+                                                                       International Conference on Self-Adaptive and Self-Organizing Systems
+                                                                       (SASO). 70–79.
+8 CONCLUSION
+                                                                  [10] Anind Dey, Jennifer Mankof, Gregory Abowd, and Scott Carter. 2002.
+We proposed and evaluated 18 generally applicable design               Distributed Mediation of Ambiguous Context in Aware Environments.
+guidelines for human-AI interaction. We distilled the guide-           In Proc. UIST ’02. ACM, New York, NY, USA, 121–130.
+lines from over 150 AI-related design recommendations and         [11] Leah Findlater and Joanna McGrenere. 2004. A Comparison of Static,
+                                                                       Adaptive, and Adaptable Menus. In Proc. CHI ’04. ACM, New York, NY,
+validated them through three rounds of evaluation. We are              USA, 89–96.
+hopeful that application of these guidelines will result in       [12] Krzysztof Z. Gajos, Mary Czerwinski, Desney S. Tan, and Daniel S.
+better, more human-centric AI-infused systems, and that our            Weld. 2006. Exploring the Design Space for Adaptive Graphical User
+     Interfaces. In Proc. AVI ’06. ACM, New York, NY, USA, 201–208.              [34] Kristen Olson. 2010. An examination of questionnaire evaluation by
+[13] Krzysztof Z Gajos, Katherine Everitt, Desney S Tan, Mary Czerwinski,             expert reviewers. Field Methods 22, 4 (2010), 295–318.
+     and Daniel S Weld. 2008. Predictability and accuracy in adaptive user       [35] Martin Porcheron, Joel E. Fischer, Stuart Reeves, and Sarah Sharples.
+     interfaces. In CHI. ACM, 1271–1274.                                              2018. Voice Interfaces in Everyday Life. In Proc. CHI ’18. ACM, New
+[14] Jonathan L. Herlocker, Joseph A. Konstan, and John Riedl. 2000. Ex-              York, NY, USA, Article 640, 12 pages.
+     plaining Collaborative Filtering Recommendations. In Proc. CSCW ’00.        [36] Emilee Rader, Kelley Cotter, and Janghee Cho. 2018. Explanations As
+     ACM, New York, NY, USA, 241–250.                                                 Mechanisms for Supporting Algorithmic Transparency. In Proc. CHI
+[15] Setia Hermawati and Glyn Lawson. 2016. Establishing usability heuris-            ’18. ACM, New York, NY, USA, Article 103, 13 pages.
+     tics for heuristics evaluation in a specifc domain: Is there a consensus?   [37] Ruth Ravichandran, Sang-Wha Sien, Shwetak N. Patel, Julie A. Kientz,
+     Applied Ergonomics 56 (2016), 34 – 51.                                           and Laura R. Pina. 2017. Making Sense of Sleep Sensors: How Sleep
+[16] Kristina Höök. 2000. Steps to take before intelligent user interfaces            Sensing Technologies Support and Undermine Sleep Health. In Proc.
+     become real. Interacting with Computers 12, 4 (2000), 409–426.                   CHI ’17. ACM, New York, NY, USA, 6864–6875.
+[17] Eric Horvitz. 1999. Principles of Mixed-Initiative User Interfaces. In      [38] Marco Tulio Ribeiro, Sameer Singh, and Carlos Guestrin. 2016. "Why
+     Proc. CHI ’99. ACM, New York, NY, USA, 159–166.                                  Should I Trust You?": Explaining the Predictions of Any Classifer. In
+[18] Eric Horvitz, Jack Breese, David Heckerman, David Hovel, and Koos                Proc. KDD ’16. ACM, New York, NY, USA, 1135–1144.
+     Rommelse. 1998. The Lumière Project: Bayesian User Modeling for             [39] Katharine Schwab. 2017.              10 Principles For Design In
+     Inferring the Goals and Needs of Software Users. In Proc. UAI ’98.               The Age Of AI.                     Retrieved September, 2018 from
+     Morgan Kaufmann Publishers Inc., San Francisco, CA, USA, 256–265.                https://www.fastcompany.com/3067632/10-principles-for-design-
+[19] IDC Corporate USA. 2018. IDC: The premier global market intelligence             in-the-age-of-ai
+     frm. Retrieved September, 2018 from https://www.idc.com/                    [40] SimilarWeb. 2018. Top websites ranking. Retrieved July, 2018 from
+[20] Anthony Jameson. 2008. Adaptive interfaces and agents. In The human-             https://www.similarweb.com/top-websites/united-states
+     computer interaction handbook: Fundamentals, evolving technologies          [41] Jack Stewart. 2018.          Why Tesla’s Autopilot Can’t See a
+     and emerging applications (2nd ed.), Andrew Sears and Julie A. Jacko             Stopped Firetruck.           Retrieved September, 2018 from https:
+     (Eds.). CRC Press, Boca Raton, FL, 433–458.                                      //www.wired.com/story/tesla-autopilot-why-crash-radar/
+[21] Todd Kulesza, Margaret Burnett, Weng-Keen Wong, and Simone                  [42] Erica Virtue. 2017. Designing with AI.
+     Stumpf. 2015. Principles of Explanatory Debugging to Personalize            [43] Jolita Vveinhardt and Evelina Gulbovaite. ˙ 2016. Expert evaluation of di-
+     Interactive Machine Learning. In Proc. IUI ’15. ACM, New York, NY,               agnostic instrument for personal and organizational value congruence.
+     USA, 126–137.                                                                    Journal of business ethics 136, 3 (2016), 481–501.
+[22] Chia-Jung Lee, Jaime Teevan, and Sebastian de la Chica. 2014. Charac-       [44] Daniel S Weld and Gagan Bansal. 2018. Intelligible Artifcial Intelli-
+     terizing Multi-click Search Behavior and the Risks and Opportunities             gence. arXiv preprint arXiv:1803.04263 (2018).
+     of Changing Results During Use. In Proc. SIGIR ’14. ACM, New York,          [45] Rayoung Yang, Eunice Shin, Mark W. Newman, and Mark S. Ackerman.
+     NY, USA, 515–524.                                                                2015. When Fitness Trackers Don’T ’Fit’: End-user Difculties in the
+[23] Brian Y. Lim and Anind K. Dey. 2009. Assessing Demand for Intelligi-             Assessment of Personal Tracking Device Accuracy. In Proc. UbiComp
+     bility in Context-aware Applications. In Proc. UbiComp ’09. ACM, New             ’15. ACM, New York, NY, USA, 623–634.
+     York, NY, USA, 195–204.
+[24] Josh Lovejoy. 2018. The UX of AI. Google Design. Retrieved September,
+     2018 from https://design.google/library/ux-ai/
+[25] Josh Lovejoy and Jess Holbrook. 2017. Human-Centered Ma-
+     chine Learning. 7 steps to stay focused on the user when de-
+     signing with ML. Medium.                    Retrieved September, 2018
+     from https://medium.com/google-design/human-centered-machine-
+     learning-a770d10562cd
+[26] Ewa Luger and Abigail Sellen. 2016. "Like Having a Really Bad PA":
+     The Gulf Between User Expectation and Experience of Conversational
+     Agents. In Proc. CHI ’16. ACM, New York, NY, USA, 5286–5297.
+[27] Aaron Maitland and Stanley Presser. 2016. How Accurately Do Difer-
+     ent Evaluation Methods Predict the Reliability of Survey Questions?
+     Journal of Survey Statistics and Methodology 4, 3 (2016), 362–381.
+[28] Joseph A Maxwell. 2012. Qualitative research design: An interactive
+     approach. Vol. 41. Sage publications.
+[29] Chelsea Myers, Anushay Furqan, Jessica Nebolsky, Karina Caro, and
+     Jichen Zhu. 2018. Patterns for How Users Overcome Obstacles in Voice
+     User Interfaces. In Proc. CHI ’18. ACM, New York, NY, USA, Article 6,
+     7 pages.
+[30] Jakob Nielsen. 1992. Finding Usability Problems Through Heuristic
+     Evaluation. In Proc. CHI ’92. ACM, New York, NY, USA, 373–380.
+[31] Jakob Nielsen and Rolf Molich. 1990. Heuristic Evaluation of User
+     Interfaces. In Proc. CHI ’90. ACM, New York, NY, USA, 249–256.
+[32] D.A. Norman. 1988. The psychology of everyday things. Basic Books,
+     New York.
+[33] Donald A. Norman. 1994. How Might People Interact with Agents.
+     Commun. ACM 37, 7 (July 1994), 68–71.
+APPENDIX                                                           happen and you can ‘teach’ [the product] to better perform,
+In this appendix, we illustrate each of our 18 human-AI inter-     and failing that, you can set overrides.”
+action design guidelines with three example applications and     • [Email, Product #1] “There are two things this help text
+three example violations provided by our user study partici-       tells me. First, by calling it ‘magic’ - to me that means
+pants when testing the principles against popular AI-infused       they don’t know exactly how to explain what’s happening
+products. Each application was rated as either a “Clear Ap-        (which means it could do crazy things I didn’t expect).
+plication” or an “Application” by participants, while each         Second, since I can ‘teach’ it that it’s not important, it
+violation was rated as either a “Clear Violation” or a “Vio-       emphasizes that it might be wrong about things (which is
+lation”. For each example we indicate the product category         ok cause I can help fix it).”
+the participant was testing, but obscure the specific product      Example violations:
+names.                                                           • [Navigation, Product #1] “There is no indication of ac-
+                                                                   curacy of the time estimates or how conditions may be
+Guideline 1.
+                                                                   changing. There is no measure given of how well the AI
+Make clear what the system can do.
+                                                                   predictions matched the result once you arrive at the des-
+Help the user understand what the AI system is capable of          tination.”
+doing.                                                           • [Voice Assistants, Product #1] “Aside from the ‘Hi, how
+  Example applications:                                            can I help?’, [the product] does not promise anything more.
+• [Navigation, Product #1] “Specific examples of things I          No expectation of quality is set.”
+  could search for are in the search bar”                        • [Social Networks, Product #1] “For some of the ads, there
+• [Activity Trackers, Product #1] “Displays all the metrics        is a ‘suggested post’ on the top to indicate that this is just
+  that it tracks and explains how. Metrics include movement        a suggestion. But for the rest of the posts, there is no clue
+  metrics such as steps, distance traveled, length of time         for me to tell the quality.”
+  exercised, and all-day calorie burn, for a day.”
+• [Social Networks, Product #2] “[The product] communi-          Guideline 3.
+  cates to users that it will evaluate and provide to you        Time services based on context.
+  potential people to follow based on your interests and the     Time when to act or interrupt based on the user’s current
+  community of people you follow.”                               task and environment.
+  Example violations:                                               Example applications:
+• [Social Networks, Product #1] “This guideline is violated      • [Navigation, Product #1] “In my experience using the app,
+  because I cannot even tell what this news feed can/will          it seems to provide timely route guidance. Because the map
+  show.”                                                           updates regularly with your actual location, the guidance
+• [Photo Organizers, Product #1] “We know the AI is able           is timely.”
+  to detect and associate an image with a category, but the      • [Autocomplete, Product #1] “Suggestions are always present
+  user does not know all the categories available.”                when you might need them (whenever the keyboard is up)”
+• [Voice Assistants, Product #1] “When [the assistant] was       • [Social Networks, Product #1] “If the user has not accessed
+  invoked verbally...I was not given any indication of what        [the product] in a while, the application will let the user
+  commands I could request.”                                       know that there is something new to be explored - a story,
+                                                                   video, etc.”
+Guideline 2.                                                        Example violations:
+Make clear how well the system can do what it can
+                                                                 • [Activity Trackers, Product #2] “Context is very basic, it no-
+do.
+                                                                   tifies when I approach my goal; hit my goal; or exceed my
+Help the user understand how often the AI system may make          goal. The timing of it is not clear, however. The timestamps
+mistakes.                                                          are varied, too... It feels pretty arbitrary; my interpretation
+  Example applications:                                            of the reasoning behind the notification can’t be described
+• [Music Recommenders, Product #1] “A little bit of hedging        by my activity or proximity to the goal.”
+  language: ‘we think you’ll like’.”                             • [Email, Product #2] “Sending notifications for unimportant
+• [Email, Product #2] “While the interface does not give           messages likely something most people will not want as
+  any indication about the level of performance possible,          an interruption.”
+  the help page is an application of this heuristic. It sets     • [Voice Assistants, Product #2] “There is no indication of
+  the expectation that it will start working right away, but       when [the assistant] will actually remind you of the set
+  will get better with use, making it clear that mistakes will     reminder. She just confirms that the reminder has been set
+  (mind you this I regardless if you have this Reminders app      • [Activity Trackers, Product #1] “Provides a reminder to
+  downloaded or not).”                                              stand up without understanding my social context (e.g.,
+                                                                    in a meeting, having lunch with a friend etc)... Does not
+Guideline 4.                                                        consider the social context prior to sending notifications
+Show contextually relevant information.                             for activity and does not use tone appropriately - just says
+Display information relevant to the user’s current task and         “time to stand!” no matter what”
+environment.                                                      • [Email, Product #2] “the system does not follow the social
+  Example applications:                                             norms of a workplace. For example, one norm is to pay
+                                                                    attention to your manager. However, even with access to
+• [E-commerce, Product #2] “The feature assumes I’m about
+                                                                    company hierarchies, it isn’t clear that the system will put
+  to buy a gaming console and shows accessories and games
+                                                                    messages from one’s direct manager in the [appropriate
+  that would go with it, and it features those items promi-
+                                                                    tab] automatically.”
+  nently (above the product information) on the webpage.”
+                                                                  • [Voice Assistants, Product #1] “[The assistant] does not
+• [Web Search, Product #2] “Searching a movie title returns
+                                                                    match expected conversation norms. When asked “[wake
+  show times near my location for today’s date”
+                                                                    command], set a reminder for next week” the AI does not
+• [Navigation, Product #1] “When I use [the product] for
+                                                                    recognize that the remind me command has been invoked
+  driving directions, it remembers where I parked my car.
+                                                                    and responds “Sorry, I can’t set reminders yet.” Only when
+  Next time when I open the app, it suggests routing me
+                                                                    the specific command syntax “Remind me to [reminder]
+  back to my car.”
+                                                                    on [date] at [time]” is used does [the assistant] understand
+  Example violations:                                               to set a reminder...It seems [the assistant] is unable to
+• [Activity Trackers, Product #2] “They chose to have a             interpret conversational language and instead requires a
+  uniform view regardless of context. When I’m moving or            very specific command syntax.”
+  static, the view is the same. The only change is that the
+  step counter advances (or not).”                                Guideline 6.
+• [E-commerce, Product #1] “If I start looking at a new item      Mitigate social biases.
+  (like paper towels), when I scroll down to the end of the
+                                                                  Ensure the AI system’s language and behaviors do not rein-
+  page, I get recommendations related to the recent items I
+                                                                  force undesirable and unfair stereotypes and biases.
+  viewed (tennis balls)... it doesn’t take into account that I
+                                                                     Example applications:
+  am currently looking for paper towels and I have already
+  purchased the tennis balls.”                                    • [E-commerce, Product #2] “The feature does not unfairly
+• [Email, Product #2] “What goes into the [tabs] is the same        assume gender biases in some search results that could
+  all the time. It does not change based on the context, for        potentially introduce them. For example, a search for tools
+  example to...emails related to the meeting I’m attending          or diapers could accidentally serve related products that
+  or the message I’m reading.”                                      are gender biased. The system seems to provide highly
+                                                                    specific recommendations of the very same product type.”
+Guideline 5.                                                      • [Web Search, Product #2] “a search for CEO or Doctor
+Match relevant social norms.                                        shows somewhat diverse people in the resulting images...The
+Ensure the experience is delivered in a way that users would        images are pretty diverse in terms of gender and ethnicity,
+expect, given their social and cultural context.                    although still lack in some respects such as disability”
+  Example applications:                                           • [Autocomplete, Product #2] “The autocomplete feature
+• [Photo Organizers, Product #1] “[The product’s] album             clearly suggests both genders [him, her] without any bias
+  suggestions feature is able to recognize people’s pets and        while suggesting the text to complete.”
+  uses the verbiage “important cats & dogs”, understanding
+                                                                    Example violations:
+  that people’s pets are important to users and are like family
+  even.”                                                          • [Voice Assistants, Product #1] “When asked “...can you
+• [Voice Assistants, Product #1] “[The assistant] uses a semi-      change your voice” [the assistant] responds in a male voice
+  formal voice to talk to you - spells out “okay” and asks          saying “Here is an example of my other voice. Would you
+  further questions.”                                               like me to use this one?”... While it’s nice that a male
+• [Navigation, Product #1] “If you select walking, the AI           voice is given as an option, the default...voice is female,
+  avoid(s) busy roads and searches for trails.”                     which reinforces stereotypical gender roles that presume
+  Example violations:                                               a secretary or receptionist is female.”
+• [Autocomplete, Product #2] “autocomplete suggests names           • [Activity Trackers, Product #1] “The guideline is violated
+  correctly for Western sounding names but falls short for            because it is not clear within the Steps page, how to turn
+  ethnic-sounding names.”                                             off the background/ambient step tracking functionality.”
+• [Navigation, Product #1] “Regards the “Walking” trans-            • [Navigation, Product #1] “Suggested locations based on
+  port there’s no way to set an average walking speed. [The           calendar entries can’t be removed from the suggestions.”
+  product] assumes users to be healthy.”
+
+Guideline 7.                                                        Guideline 9.
+Support efficient invocation.                                       Support efficient correction.
+Make it easy to invoke or request the AI system’s services          Make it easy to edit, refine, or recover when the AI system
+when needed.                                                        is wrong.
+  Example applications:                                                Example applications:
+• [Voice Assistants, Product #1] “I can say [wake command]          • [Navigation, Product #1] “If [the product] is wrong about
+  to initiate.”                                                        where I parked my car, it provides an easy way to edit the
+• [E-commerce, Product #1] “In addition to the system giving           location by dragging on the map.”
+  you recommendations as you browse, you can go to your             • [Web Search, Product #2] “automatically ‘corrects’ spelling
+  “Browsing history > Manage history > More like this” to              errors, etc. but gives option at top to return to query as
+  get recommendations specific to a particular product.”               originally typed...Notes that the query had been corrected
+• [Web Search, Product #1] “user can highlight a specific              and is one click to revert back to original”
+  part of an image to search for that specific piece. This          • [Voice Assistants, Product #2] “Once my request for a re-
+  shows up on every image, so user can use it anytime they             minder was processed I saw the ability to edit my reminder
+  like.”                                                               in the UI that was displayed. Small text underneath stated
+                                                                      “Tap to Edit” with a chevron indicating something would
+  Example violations:
+                                                                       happen if I selected this text.”
+• [Navigation, Product #1] “[The product] remembers where
+                                                                       Example violations:
+  you parked your car. However if it fails to remember, or I
+  want it to remember something else (e.g., where I chained         • [E-commerce, Product #1] “I already recently bought the
+  up my bike), it is not possible (or at least not easily discov-      items which are in my recommendation list & there is no
+  erable) to invoke the capability when I need it.”                    message to discontinue nor option for users to deselect.”
+• [Navigation, Product #2] “Guideline is violated because           • [Activity Trackers, Product #1] “As far as I can tell, there is
+  user cannot ask the system for alternative routes if they            no way for the user to edit the number of steps collected.
+  are not detected initially.”                                         The user can delete the data point altogether...There is just
+• [E-commerce, Product #2] “Many of the products I searched            no way to manually input or change the data.
+  for did not show the “Customers also considered” AI fea-          • [Web Search, Product #1] “Searches can be easily corrected
+  ture. There is no way to invoke this feature manually.”              with a new query (which are sometimes suggested by [the
+                                                                       product] itself). However, editing a seemingly AI system
+Guideline 8.                                                           override to interpret "Sea of" to "SEA to" is not possible.”
+Support efficient dismissal.
+                                                                    Guideline 10.
+Make it easy to dismiss or ignore undesired AI system ser-          Scope services when in doubt.
+vices. Example applications:
+                                                                    Engage in disambiguation or gracefully degrade the AI sys-
+• [E-commerce, Product #2] “Feature is unobtrusive, below           tem’s services when uncertain about a user’s goals.
+  the fold, and easy to scroll past...Easy to ignore.”                Example applications:
+• [Social Networks, Product #2] “[The product] allows the           • [Navigation, Product #1] “If more than one line takes the
+  user to easily hide or report ads that have been suggested          same route the user can choose between the preferred
+  by the AI by tapping the ellipses at the top right of the ad.”      line.”
+• [Voice Assistants, Product #1] “I can say “nevermind” to          • [Autocomplete, Product #1] “It usually provides 3-4 sug-
+  dismiss it once I have said [wake command]. I can also              gestions instead of directly auto completing it for you”
+  just not say anything and it stops listening.”                    • [Voice Assistants, Product #2] “If I didn’t respond or if I
+  Example violations:                                                 spoke quietly, [the assistant] let me know they had trouble
+• [Autocomplete, Product #2] “I didn’t see a dismiss button.          hearing me”
+  I can dismiss it by dismiss the whole keyboard”                     Example violations:
+• [Navigation, Product #1] “When searching for a specific             Guideline 12.
+  restaurant, if the right place can’t be found, it fails to recog-   Remember recent interactions.
+  nize that you are searching for food and does not suggest           Maintain short term memory and allow the user to make
+  restaurants in your area...The AI doesn’t recognize the             efficient references to that memory.
+  broader user goal and suggest possible alternatives when               Example applications:
+  it can’t find the exact result.”
+                                                                      • [Navigation, Product #1] “Opening the app shows a list
+• [Email, Product #2] “This heuristic is violated. There is no
+                                                                        of recent destinations, as well as allows you to access
+  indication if the system is unsure. The system does not
+                                                                        “favorite” locations.”
+  ask for assistance (e.g. request feedback on an uncertain
+                                                                      • [Web Search, Product #1] “[The search engine] remembers
+  classification). It is not clear how it decides what to do
+                                                                        the context of certain queries, with certain phrasing, so
+  with unclear messages, or what the current quality of the
+                                                                        that it can continue the thread of the search (e.g., “who
+  model is, beyond the information from the help screen
+                                                                        is he married to” after a search that surfaces Benjamin
+  which says the system will improve over time.”
+                                                                        Bratt)”
+• [Music Recommenders, Product #2] “The system doesn’t
+                                                                      • [Voice Assistants, Product #1] “[The assistant] seems to re-
+  ask for user input about its recommendations, nor does it
+                                                                        member conversation context at least one command back.
+  provide a way for users to provide input.”
+                                                                        When asked “[wake command], what’s the reminder?” she
+                                                                        announces the last unheard remind me.”
+Guideline 11.                                                           Example violations:
+Make clear why the system did what it did.
+                                                                      • [Social Networks, Product #1] “This guideline is violated
+Enable the user to access an explanation of why the AI system           since there is no indication of “what you have read”
+behaved as it did.                                                    • [Web Search, Product #2] “Although many food/recipe
+  Example applications:                                                 searches were made right before, a search for “stir fry” has
+                                                                        a music video as a top result”
+• [E-commerce, Product #1] “Clicking “Why recommended”                • [Voice Assistants, Product #2] “Nope set the same reminder
+  explains why they have recommended that particular item               twice to drink water at 4:15 and it had no idea”
+  to you.”
+• [Music Recommenders, Product #2] “I think this applies              Guideline 13.
+  because each of recommendation has some information                 Learn from user behavior.
+  as to which songs are displayed on it - similar to the song,        Personalize the user’s experience by learning from their ac-
+  from the same artist, from the same album etc.”                     tions over time.
+• [Navigation, Product #2] “The route chosen by the app                  Example applications:
+  was made based on the Fastest Route, which is shown in
+                                                                      • [Music Recommenders, Product #2] “I think this is applied
+  the subtext.”
+                                                                        because every action to add a song to the list triggers new
+                                                                        recommendations.”
+  Example violations:
+                                                                      • [Social Networks, Product #1] “I am pretty sure they do
+                                                                        this as I have observed that I get more ads of a certain type
+• [Music Recommenders, Product #2] “The system provides
+                                                                        if I accidentally or deliberately hovered over the ad for a
+  no information about why the recommended songs/artists
+                                                                        while. I also have a suspicion that friends are also preferred
+  are chosen.”
+                                                                        that are more likely to generate a like or comment from
+• [Email, Product #2] “There is no indication of why a mes-
+                                                                        me. It is less clear how negative signals are taken into
+  sage is classified as it is, and I cannot find a way to find out.
+                                                                        account.”
+  A message could be classified as [unimportant] because of
+                                                                      • [Email, Product #1] “(My guess is) the system learns from
+  the content, the sender, or any number of other reasons
+                                                                        what previous emails have attracted more attention from
+  and no details are available, either per message or as a
+                                                                        me (i.e. longer/more frequent reply, reading time taken,
+  summary of the [unimportant category] rules which have
+                                                                        longer email threads, etc.) and infer email importance.”
+  been learned.”
+• [Activity Trackers, Product #2] “There are no explanations            Example violations:
+  in the app about how walking detection and step count               • [Web Search, Product #1] “The search results do not take
+  are measured. The system is pretty deterministic in how               into account the user’s previously visited sources. In this
+  it makes measurements about my walking behaviour and                  example from real life: I search for recipes on [the search
+  then how it matches them with the initial goal I set.”                engine] all the time, and I only ever click on recipes from
+  4 sources: Serious Eats, Pioneer Woman, 101 Cookbooks,           Example applications:
+  and Smitten Kitchen. I often search for these sites as nav-
+  igational queries on [the search engine]. However, [the        • [Social Networks, Product #2] “[The product] allows the
+  search engine] rarely surfaces recipes from these sites for      user to “Hide an Ad,” and then when doing so, solicits
+  me.”                                                             feedback to improve relevancy of future ads. ”
+• [Activity Trackers, Product #1] “The app notifies/nudges       • [Music Recommenders, Product #1] “Love/dislike buttons
+  users to push them to achieve goals, but I haven’t seen a        are prominent and easily accessible.”
+  change in behavior even though my patterns have changed.”      • [Email, Product #1] “The user can directly mark some-
+• [Navigation, Product #1] “If you don’t take the suggested        thing as important, when the AI hadn’t marked it as that
+  route because you don’t want stop and go traffic on the          previously.”
+  highway, it never learns. You can have it suggest routes to      Example violations:
+  avoid tolls and highways, but you have to manually select
+  those preferences.”                                            • [Voice Assistants, Product #2] “Once [the assistant] per-
+                                                                   formed the task I had asked of it, there was no additional
+Guideline 14.                                                      ability to customize the experience or give feedback on my
+Update and adapt cautiously.                                       satisfaction; even when I chose to remove the reminder
+Limit disruptive changes when updating and adapting the            right after I verbally requested it.”
+AI system’s behaviors.                                           • [Photo Organizers, Product #2] “There is no feedback chan-
+  Example applications:                                            nel for the user to validate the album suggestions.”
+                                                                 • [Navigation, Product #2] “The system does not do this.
+• [Music Recommenders, Product #2] “Once we select a song
+                                                                   For example, if a user were to consistently pick a route
+  they update the immediate song list below but keeps the
+                                                                   home from work that was not the main route, then there
+  above one constant.”
+                                                                   might be patterns in traffic or circumstances that might
+• [Social Networks, Product #1] “Think this is good. When I
+                                                                   be considered. If the user (instead of spouse) picked up
+  unfollow someone it shows there stuff for a little bit? But
+                                                                   a child on the way home from work because traffic was
+  after a day or so its gone. Or once I reload. But not RIGHT
+                                                                   bad on the normal route, then the system should learn this
+  away.”
+                                                                   habit, or allow the user to program it in... Doesn’t let the
+• [Web Search, Product #2] “After clicking and returning
+                                                                   user tweak the routes based on prior behavior.”
+  from a search result, the order of the search results didn’t
+  change. The updated “people also searched for” that was
+  relevant to the clicked result was highlighted and con-        Guideline 16.
+  tained”                                                        Convey the consequences of user actions.
+                                                                 Immediately update or convey how user actions will impact
+  Example violations:
+                                                                 future behaviors of the AI system.
+• [E-commerce, Product #1] “Maybe this is just my expe-             Example applications:
+  rience, but when I accidentally browse an item suddenly
+  my entire recommendation list changes to things relevant       • [Music Recommenders, Product #1] “Tapping the like/dislike
+  to that new item. The change is really jarring, especially       button results in immediate popups informing that the user
+  when the browsing is a result of a curious moment or an          will receive more/fewer recommendations like it.”
+  accident. For example, I just clicked on one camera after      • [Social Networks, Product #2] “[The product] communi-
+  viewing a lot of tennis balls and all my recommendations         cates that hiding an Ad will adjust the relevancy of future
+  changed from tennis related items to electronic devices.”        ads.”
+• [Social Networks, Product #1] “The refresh (pulling down       • [Web Search, Product #1] “With different filters, the search
+  action) can sometimes be triggered unintentionally and           results are auto updated.”
+  thus causes some posts disappeared.”
+                                                                   Example violations:
+• [Social Networks, Product #2] “If I’m in the middle of
+  watching a video post, every now and then they will scroll     • [Social Networks, Product #1] “You can unfollow or like
+  me up to the first post.”                                        or interact but how that affects you isn’t clear. It just sorta
+                                                                   happens.”
+Guideline 15.                                                    • [Email, Product #1] “It’s clear there is some consequence
+Encourage granular feedback.                                       for the user actions, but it’s not well-defined. So while it ex-
+Enable the user to provide feedback indicating their prefer-       ists, the lack of clarity on the exact outcomes for behavior
+ences during regular interaction with the AI system.               are unclear.”
+• [Photo Organizers, Product #2] “There isn’t any messages           • [Music Recommenders, Product #1] “The algorithm feels
+  to confirm that the system will learn from my dismiss or             like it constantly updates, with a slightly different feel to
+  save action.”                                                        my recommendations every week. However there is no
+                                                                       explanation of what has changed.”
+Guideline 17.                                                        • [Social Networks, Product #1] “It’s always a mystery when
+Provide global controls.                                               [the product] updating the ranking algorithm.”
+Allow the user to globally customize what the AI system              • [Web Search, Product #2] “there are no notifications or
+monitors and how it behaves.                                           mentions when the search algorithm changes or new capa-
+  Example applications:                                                bilities are added, such as disambiguation, the presentation
+                                                                       of recipes directly, etc...Updates or changes are only no-
+• [Web Search. Product #2] “It has settings such as...private
+                                                                       ticeable with use (like new AI feature applications) while
+  results that help users get results that are more relevant
+                                                                       others are completely unknown (like changing the search
+  to them.”
+                                                                       algorithm to return more diverse CEO images)”
+• [Photo Organizers, Product #1] “[The product] allows
+  users to turn on your location history so the AI can group
+  photos by where you have been.”
+• [Navigation, Product #2] “A few options to adjust my pref-
+  erences for how I want to get directions. Uses common
+  patterns for multi-select and single-choice.”
+  Example violations:
+• [Email, Product #2] “The only option is to turn the system
+  on or off. It otherwise applies to all messages at all times. It
+  is not clear how the system works, or what data it monitors,
+  but presumably it applies to entire email contents.”
+• [Music Recommenders, Product #2] “[The product] does
+  not provide a mechanism to turn off tracking of listening
+  data (at least not in the process of building a playlist) or
+  to impact what it learns.”
+• [Navigation, Product #1] “There is no apparent way to
+  customize what information the system has access to or
+  what it learns. Marked locations can be removed, but oth-
+  erwise, I see no customizability with regard to data access
+  or behavior.”
+
+Guideline 18.
+Notify users about changes.
+Inform the user when the AI system adds or updates its
+capabilities.
+  Example applications:
+• [Email, Product #2] “The help tab for the interface features
+  a “What’s new” section which could be used to inform the
+  user about AI system additions or capability updates.”
+• [Social Networks, Product #2] “Updates of privacy and
+  regulations...They do post their updated privacy or legal
+  regulations and make the UI inaccessible until the user
+  agrees.”
+• [Navigation, Product #2] “I don’t have a way to show this,
+  but it does provide small in-app teaching callouts for im-
+  portant new features. New features that require my explicit
+  attention are pop-ups.”
+  Example violations:
+
