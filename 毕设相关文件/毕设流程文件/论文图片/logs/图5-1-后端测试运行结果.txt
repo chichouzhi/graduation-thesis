@@ -1,0 +1,21 @@
+﻿$ docker compose exec web pytest tests/spec/test_queue_and_worker.py tests/test_architecture.py tests/test_app_factory.py tests/test_policy_gateway.py tests/test_worker_runtime.py tests/test_topic_keywords.py
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.0.3, pluggy-1.6.0
+rootdir: /app
+configfile: pytest.ini
+collected 82 items
+
+tests/spec/test_queue_and_worker.py .................                    [ 20%]
+tests/test_architecture.py ......................................        [ 67%]
+tests/test_app_factory.py ...                                            [ 70%]
+tests/test_policy_gateway.py ......                                      [ 78%]
+tests/test_worker_runtime.py ...........                                 [ 91%]
+tests/test_topic_keywords.py .......                                     [100%]
+
+=============================== warnings summary ===============================
+tests/spec/test_queue_and_worker.py::test_enqueue_uses_current_app_broker_url_when_env_missing
+  /usr/local/lib/python3.11/site-packages/jieba/_compat.py:18: DeprecationWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html
+    import pkg_resources
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+======================== 82 passed, 1 warning in 7.40s =========================

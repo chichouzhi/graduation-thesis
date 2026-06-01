@@ -1,0 +1,36 @@
+flowchart LR
+  classDef input fill:#e8f1fb,stroke:#2f6fab,stroke-width:1.2px,color:#17324d;
+  classDef process fill:#eef7f2,stroke:#4f9a6a,stroke-width:1.2px,color:#1f3d2b;
+  classDef output fill:#fff7e6,stroke:#d4a252,stroke-width:1.2px,color:#4a3514;
+
+  SP["学生画像\n兴趣 / 技能 / 关键词 / 每周投入"]
+  TP["题目画像\n关键词 / 能力要求 / 难度 / 风险"]
+  Pool["候选课题\n当前学期 / 已发布 / 容量状态"]
+
+  Normalize["关键词归一化\n去重 / 小写 / 分词"]
+  Keyword["关键词命中\nJaccard 相似度"]
+  Capability["能力匹配\n技能与 required_capabilities"]
+  Difficulty["难度适配\n投入时间与难度标签"]
+  Capacity["容量修正\ncapacity / selected_count"]
+  Score["综合打分\n排序 Top-N"]
+  Explain["解释生成\n命中技能 / 推荐理由 / 风险提示"]
+  Result["推荐结果\n课题 + 分数 + explain"]
+
+  SP --> Normalize
+  TP --> Normalize
+  Pool --> Capacity
+  Normalize --> Keyword
+  SP --> Capability
+  TP --> Capability
+  SP --> Difficulty
+  TP --> Difficulty
+  Keyword --> Score
+  Capability --> Score
+  Difficulty --> Score
+  Capacity --> Score
+  Score --> Explain
+  Explain --> Result
+
+  class SP,TP,Pool input;
+  class Normalize,Keyword,Capability,Difficulty,Capacity,Score,Explain process;
+  class Result output;

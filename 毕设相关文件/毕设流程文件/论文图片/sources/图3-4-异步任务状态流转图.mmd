@@ -1,0 +1,23 @@
+stateDiagram-v2
+  [*] --> pending: API 受理并创建任务
+  pending --> running: Worker 获取任务
+  running --> done: 处理成功并回写结果
+  running --> failed: 外部调用或业务处理异常
+  pending --> failed: 入队失败补偿
+  failed --> pending: 人工重试或补偿任务
+  done --> [*]
+  failed --> [*]
+
+  note right of pending
+    chat_jobs
+    pdf_parse
+    document_jobs
+    keyword_jobs
+    reconcile_jobs
+  end note
+
+  note right of running
+    调用 Use Cases
+    必要时访问 Adapter
+    持续更新任务状态
+  end note

@@ -1,0 +1,71 @@
+﻿$ npm test -- --run
+
+> frontend@0.0.0 test
+> vitest
+
+
+[1m[46m RUN [49m[22m [36mv3.2.4 [39m[90mD:/毕业设计/frontend[39m
+
+ [32m✓[39m src/features/taskboard/taskboard.types.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m src/features/taskboard/taskboard.utils.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/pages/topics/topics-page.utils.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/pages/dashboard/dashboard-page.utils.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/features/selection/selection.types.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/features/topics/topics.utils.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m src/features/documents/documents.utils.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+[90mstderr[2m | src/routes/protected-layout.test.tsx[2m > [22m[2mProtectedLayout[2m > [22m[2mrenders app shell after auth hydration without causing update loops
+[22m[39mThe current testing environment is not configured to support act(...)
+System.Management.Automation.RemoteException
+[90mstderr[2m | src/routes/protected-layout.test.tsx[2m > [22m[2mProtectedLayout[2m > [22m[2mrenders app shell after auth hydration without causing update loops
+[22m[39mThe current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+System.Management.Automation.RemoteException
+ [32m✓[39m src/routes/protected-layout.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 476[2mms[22m[39m
+   [33m[2m✓[22m[39m ProtectedLayout[2m > [22mrenders app shell after auth hydration without causing update loops [33m 474[2mms[22m[39m
+ [32m✓[39m src/pages/dashboard/dashboard-page.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[33m 478[2mms[22m[39m
+   [33m[2m✓[22m[39m DashboardPage[2m > [22mrenders aggregated workspace overview from existing queries [33m 435[2mms[22m[39m
+ [32m✓[39m src/components/layout/app-header.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 1445[2mms[22m[39m
+   [33m[2m✓[22m[39m AppHeader[2m > [22mshows a Chinese page title and logs out back to login [33m 1443[2mms[22m[39m
+ [32m✓[39m src/pages/chat/chat-page.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 1788[2mms[22m[39m
+   [33m[2m✓[22m[39m ChatPage[2m > [22monly auto-creates one fallback conversation when none exist [33m 1787[2mms[22m[39m
+ [32m✓[39m src/pages/documents/documents-page.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 1839[2mms[22m[39m
+   [33m[2m✓[22m[39m DocumentsPage[2m > [22mkeeps the current document selection when the task list temporarily becomes empty [33m 1837[2mms[22m[39m
+ [32m✓[39m src/pages/login/login-page.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 1693[2mms[22m[39m
+   [33m[2m✓[22m[39m LoginPage[2m > [22mdoes not prefill demo credentials until the student chooses the demo account [33m 1692[2mms[22m[39m
+ [32m✓[39m src/pages/taskboard/taskboard-page.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 1886[2mms[22m[39m
+   [33m[2m✓[22m[39m TaskboardPage[2m > [22mcreates a milestone from the form [33m 1837[2mms[22m[39m
+ [32m✓[39m src/pages/topics/topics-page.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 1985[2mms[22m[39m
+   [33m[2m✓[22m[39m TopicsPage[2m > [22mrenders teacher workspace by default for teacher users [33m 1842[2mms[22m[39m
+ [32m✓[39m src/pages/taskboard/taskboard-page.utils.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/features/users/users.types.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/features/auth/auth.storage.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/components/layout/app-sidebar.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 135[2mms[22m[39m
+ [32m✓[39m src/features/chat/chat.utils.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/lib/api-error.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m src/features/topics/topics.queries.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m src/routes/index.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m23 passed[39m[22m[90m (23)[39m
+[2m      Tests [22m [1m[32m61 passed[39m[22m[90m (61)[39m
+[2m   Start at [22m 21:23:25
+[2m   Duration [22m 8.92s[2m (transform 2.51s, setup 667ms, collect 6.03s, tests 11.79s, environment 72.12s, prepare 7.58s)[22m
+
+
+$ npm run build
+
+> frontend@0.0.0 build
+> tsc -b && vite build
+
+[36mvite v7.3.2 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32m✓[39m 2020 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                 [39m[1m[2m  0.47 kB[22m[1m[22m[2m │ gzip:   0.33 kB[22m
+[2mdist/[22m[35massets/index-B8jJkgpu.css  [39m[1m[2m 32.42 kB[22m[1m[22m[2m │ gzip:   7.11 kB[22m
+[2mdist/[22m[36massets/index-BbuOj3KM.js   [39m[1m[2m482.87 kB[22m[1m[22m[2m │ gzip: 151.25 kB[22m
+[32m✓ built in 3.08s[39m

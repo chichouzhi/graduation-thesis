@@ -1,0 +1,30 @@
+sequenceDiagram
+  autonumber
+  participant U as 学生
+  participant FE as Documents 页面
+  participant API as Document API
+  participant S as DocumentService
+  participant DB as PostgreSQL
+  participant Q1 as Redis pdf_parse
+  participant W as Worker
+  participant PDF as PDF Adapter
+  participant Q2 as Redis document_jobs
+  participant LLM as LLM Adapter
+
+  U->>FE: 上传 PDF 并选择任务类型
+  FE->>API: POST /document-tasks
+  API->>S: 校验文件与用户
+  S->>DB: 创建 DocumentTask
+  S->>Q1: 入队 pdf_parse
+  API-->>FE: 202 Accepted + task_id
+  FE->>API: 轮询任务状态
+  W->>Q1: 消费 PDF 解析任务
+  W->>PDF: 提取文本
+  PDF-->>W: 文档文本
+  W->>DB: 保存解析工件
+  W->>Q2: 入队 document_jobs
+  W->>Q2: 消费分析任务
+  W->>LLM: 分块摘要 / 要点提取
+  LLM-->>W: 分析结果
+  W->>DB: 保存 DocumentArtifact 并更新 done
+  API-->>FE: 返回结果预览

@@ -1,0 +1,32 @@
+flowchart TB
+  classDef layer fill:#f8fafc,stroke:#64748b,stroke-width:1.2px,color:#1f2937;
+  classDef core fill:#e8f1fb,stroke:#2f6fab,stroke-width:1.3px,color:#17324d;
+  classDef adapter fill:#fff7e6,stroke:#d4a252,stroke-width:1.2px,color:#4a3514;
+
+  API["API 层\n参数校验 / 鉴权上下文 / 响应序列化"]
+  Service["Service 层\n事务处理 / 业务规则 / 任务入队"]
+  UseCase["Use Cases 层\n复杂流程编排 / 提示词与分块策略"]
+  Task["Task / Worker 层\n队列消费 / 状态回写 / 错误处理"]
+  Adapter["Adapter 层\nLLM / PDF / NLP / Storage"]
+  Model["Model 层\nORM 实体 / 序列化转换"]
+  Common["Common 基础层\n配置 / Policy / ErrorEnvelope"]
+
+  API --> Service
+  Service --> Model
+  Service --> Common
+  Service -->|"需要外部能力时入队"| Task
+  Task --> UseCase
+  UseCase --> Adapter
+  UseCase --> Model
+  Task --> Model
+  API --> Common
+  Adapter --> Common
+  Model --> Common
+
+  API -.不得直接访问.-> Adapter
+  API -.不得直接访问.-> Task
+  Task -.不得直接访问.-> Adapter
+
+  class API,Service,UseCase,Task,Model,Common layer;
+  class Service,UseCase core;
+  class Adapter adapter;

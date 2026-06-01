@@ -1,0 +1,36 @@
+flowchart LR
+  classDef client fill:#e8f1fb,stroke:#2f6fab,stroke-width:1.3px,color:#17324d;
+  classDef backend fill:#eef7f2,stroke:#4f9a6a,stroke-width:1.3px,color:#1f3d2b;
+  classDef data fill:#fff7e6,stroke:#d4a252,stroke-width:1.3px,color:#4a3514;
+  classDef adapter fill:#f4f6f8,stroke:#7b8794,stroke-width:1.2px,color:#243241;
+
+  Browser["浏览器\nReact + TypeScript"]
+  Vite["Vite 开发服务器\n/api/v1 代理"]
+  API["Flask API\nREST 接口 / JWT / Service"]
+  Worker["Worker 进程\n消费异步任务"]
+  PG[("PostgreSQL\n业务数据")]
+  Redis[("Redis\n队列 Broker")]
+
+  subgraph Adapters["Adapter 层"]
+    LLM["LLM Adapter\n真实服务 / Mock Provider"]
+    PDF["PDF Adapter\nPDF 文本提取"]
+    NLP["NLP Adapter\n分词 / 关键词"]
+    Storage["Storage Adapter\n文件与工件"]
+  end
+
+  Browser -->|"HTTP 请求"| Vite
+  Vite -->|"/api/v1"| API
+  API <-->|"读写"| PG
+  API -->|"提交任务"| Redis
+  Worker -->|"消费任务"| Redis
+  Worker <-->|"状态回写"| PG
+  Worker --> LLM
+  Worker --> PDF
+  Worker --> NLP
+  Worker --> Storage
+  API --> Storage
+
+  class Browser,Vite client;
+  class API,Worker backend;
+  class PG,Redis data;
+  class LLM,PDF,NLP,Storage adapter;

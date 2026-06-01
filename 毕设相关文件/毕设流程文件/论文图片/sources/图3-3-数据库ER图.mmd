@@ -1,0 +1,97 @@
+erDiagram
+  USERS ||--o{ TOPICS : publishes
+  USERS ||--o{ APPLICATIONS : submits
+  USERS ||--o{ ASSIGNMENTS : studies_under
+  USERS ||--o{ MILESTONES : owns
+  USERS ||--o{ CONVERSATIONS : starts
+  TERMS ||--o{ TOPICS : contains
+  TERMS ||--o{ APPLICATIONS : scopes
+  TERMS ||--o{ ASSIGNMENTS : scopes
+  TOPICS ||--o{ APPLICATIONS : receives
+  TOPICS ||--o{ ASSIGNMENTS : selected_as
+  APPLICATIONS ||--o| ASSIGNMENTS : accepted_into
+  ASSIGNMENTS ||--o{ MILESTONES : supports
+  CONVERSATIONS ||--o{ MESSAGES : contains
+  MESSAGES ||--o| CHAT_JOBS : generated_by
+  USERS ||--o{ DOCUMENT_TASKS : uploads
+  DOCUMENT_TASKS ||--o{ DOCUMENT_ARTIFACTS : produces
+
+  USERS {
+    string id PK
+    string username
+    string role
+    json student_profile
+    json teacher_profile
+  }
+  TERMS {
+    string id PK
+    string name
+    datetime selection_start_at
+    datetime selection_end_at
+    json llm_config
+  }
+  TOPICS {
+    string id PK
+    string teacher_id FK
+    string term_id FK
+    string title
+    string status
+    int capacity
+    int selected_count
+    json portrait_json
+  }
+  APPLICATIONS {
+    string id PK
+    string student_id FK
+    string topic_id FK
+    string term_id FK
+    int priority
+    string status
+  }
+  ASSIGNMENTS {
+    string id PK
+    string student_id FK
+    string teacher_id FK
+    string topic_id FK
+    string term_id FK
+    string status
+  }
+  MILESTONES {
+    string id PK
+    string student_id FK
+    string title
+    string status
+    date end_date
+  }
+  CONVERSATIONS {
+    string id PK
+    string user_id FK
+    string title
+    datetime created_at
+  }
+  MESSAGES {
+    string id PK
+    string conversation_id FK
+    string role
+    text content
+    string status
+  }
+  CHAT_JOBS {
+    string id PK
+    string message_id FK
+    string status
+    text error_message
+  }
+  DOCUMENT_TASKS {
+    string id PK
+    string user_id FK
+    string status
+    string task_type
+    int progress
+  }
+  DOCUMENT_ARTIFACTS {
+    string id PK
+    string task_id FK
+    string artifact_type
+    text content
+  }

@@ -1,0 +1,13 @@
+﻿$ docker compose ps
+NAME                         IMAGE                COMMAND                  SERVICE    CREATED          STATUS                    PORTS
+gd_figures_5051-postgres-1   postgres:16-alpine   "docker-entrypoint.s…"   postgres   40 minutes ago   Up 40 minutes (healthy)   5432/tcp
+gd_figures_5051-redis-1      redis:7-alpine       "docker-entrypoint.s…"   redis      40 minutes ago   Up 40 minutes             6379/tcp
+gd_figures_5051-web-1        python:3.11-slim     "sh -c 'pip install …"   web        40 minutes ago   Up 40 minutes             0.0.0.0:5000->5000/tcp, [::]:5000->5000/tcp, 0.0.0.0:5051->5000/tcp, [::]:5051->5000/tcp
+gd_figures_5051-worker-1     python:3.11-slim     "sh -c 'pip install …"   worker     40 minutes ago   Up 40 minutes             
+
+$ curl http://127.0.0.1:5051/health
+{"status":"healthy"}
+
+$ frontend url
+http://127.0.0.1:5189
+Backend API: http://127.0.0.1:5051/api/v1

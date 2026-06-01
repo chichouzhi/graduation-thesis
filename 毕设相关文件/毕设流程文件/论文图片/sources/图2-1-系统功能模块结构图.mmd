@@ -1,0 +1,51 @@
+flowchart TB
+  classDef core fill:#e8f1fb,stroke:#2f6fab,stroke-width:1.4px,color:#17324d;
+  classDef support fill:#f4f6f8,stroke:#7b8794,stroke-width:1.2px,color:#243241;
+  classDef infra fill:#fff7e6,stroke:#d4a252,stroke-width:1.2px,color:#4a3514;
+
+  SYS["智能化毕业设计选题双向选择系统"]
+
+  subgraph U["用户与基础配置"]
+    Auth["身份认证\n登录 / 令牌 / 当前用户"]
+    Term["学期管理\n选题窗口 / LLM 配置"]
+  end
+
+  subgraph C["选题双向选择核心功能"]
+    Topic["课题管理\n创建 / 审核 / 发布"]
+    Portrait["题目画像\n关键词 / 难度 / 能力要求"]
+    Profile["学生画像\n兴趣 / 技能 / 时间投入"]
+    Recommend["智能推荐\n规则匹配 / 可解释结果"]
+    Selection["志愿双向选择\n提交志愿 / 教师决策 / 指导关系"]
+  end
+
+  subgraph S["选题后辅助功能"]
+    Chat["智能问答\n会话 / 消息 / 异步生成"]
+    Document["文献处理\nPDF 解析 / 摘要 / 工件"]
+    Taskboard["过程看板\n里程碑 / 状态跟踪"]
+  end
+
+  subgraph I["工程支撑"]
+    Queue["异步任务队列\nRedis / Worker"]
+    Contract["接口与测试\nOpenAPI / Pytest / Vitest"]
+  end
+
+  SYS --> U
+  SYS --> C
+  SYS --> S
+  SYS --> I
+  Auth --> Profile
+  Term --> Topic
+  Topic --> Portrait
+  Profile --> Recommend
+  Portrait --> Recommend
+  Recommend --> Selection
+  Selection --> Taskboard
+  Queue --> Portrait
+  Queue --> Chat
+  Queue --> Document
+  Contract -.约束.-> C
+
+  class SYS core;
+  class Topic,Portrait,Profile,Recommend,Selection core;
+  class Chat,Document,Taskboard support;
+  class Auth,Term,Queue,Contract infra;

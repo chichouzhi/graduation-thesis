@@ -1,0 +1,28 @@
+flowchart TB
+  classDef user fill:#e8f1fb,stroke:#2f6fab,stroke-width:1.2px,color:#17324d;
+  classDef process fill:#eef7f2,stroke:#4f9a6a,stroke-width:1.2px,color:#1f3d2b;
+  classDef data fill:#fff7e6,stroke:#d4a252,stroke-width:1.2px,color:#4a3514;
+
+  Student["学生查看推荐解释"]
+  Apply["提交第一/第二志愿"]
+  AppDB[("Application\npriority + status")]
+  Teacher["教师查看申请\n结合学生画像与题目要求"]
+  Decision{"教师决策"}
+  Reject["拒绝申请\nstatus = rejected"]
+  Accept["接受申请\nstatus = accepted"]
+  Tx["事务内处理\n创建 Assignment\n更新 selected_count\n处理冲突申请"]
+  Assignment[("Assignment\n学生-教师-课题-学期")]
+  Reconcile["触发 reconcile_jobs\n后台对账与修复"]
+  Result["形成指导关系\n进入过程看板"]
+
+  Student --> Apply --> AppDB
+  AppDB --> Teacher --> Decision
+  Decision -->|拒绝| Reject --> AppDB
+  Decision -->|接受| Accept --> Tx
+  Tx --> Assignment
+  Tx --> Reconcile
+  Assignment --> Result
+
+  class Student,Teacher user;
+  class Apply,Decision,Reject,Accept,Tx,Reconcile,Result process;
+  class AppDB,Assignment data;

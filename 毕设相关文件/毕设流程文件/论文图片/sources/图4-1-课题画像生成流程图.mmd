@@ -1,0 +1,24 @@
+sequenceDiagram
+  autonumber
+  participant T as 教师
+  participant FE as 前端 Topics
+  participant API as Topic API
+  participant S as TopicService
+  participant DB as PostgreSQL
+  participant Q as Redis keyword_jobs
+  participant W as Worker
+  participant UC as 画像 Use Case
+  participant NLP as NLP/LLM Adapter
+
+  T->>FE: 创建或更新课题
+  FE->>API: POST /topics
+  API->>S: 校验角色与参数
+  S->>DB: 保存课题文本与状态
+  S->>Q: 提交 keyword_jobs
+  API-->>FE: 返回课题信息
+  W->>Q: 消费画像任务
+  W->>UC: 编排画像生成
+  UC->>NLP: 分词 / 关键词 / 画像分析
+  NLP-->>UC: 关键词、难度、能力要求、风险
+  UC->>DB: 回写 portrait_json
+  W->>DB: 标记任务完成
