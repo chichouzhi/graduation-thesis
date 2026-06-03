@@ -227,7 +227,7 @@ describe("DashboardPage", () => {
       );
     });
 
-    expect(container.textContent).toContain("AI 学术助手工作台");
+    expect(container.textContent).toContain("毕业设计选题支持系统工作台");
     expect(container.textContent).toContain("当前重点");
     expect(container.textContent).toContain("题目画像");
     expect(container.textContent).toContain("论文初稿.pdf");

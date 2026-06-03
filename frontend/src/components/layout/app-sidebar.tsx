@@ -15,9 +15,9 @@ export function AppSidebar() {
   return (
     <aside className="app-sidebar">
       <div>
-        <p className="brand-kicker">Academic Copilot</p>
-        <h1 className="brand-title">AI 学术助手工作台</h1>
-        <p className="brand-text">围绕聊天、文档与毕业任务推进的学生端工作空间。</p>
+        <p className="brand-kicker">Graduation Topic Support</p>
+        <h1 className="brand-title">毕业设计选题支持系统</h1>
+        <p className="brand-text">智能推荐与流程管理演示平台。</p>
       </div>
 
       <nav className="nav-list">

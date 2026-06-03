@@ -34,7 +34,7 @@ export function RouteErrorPage() {
     <div className="auth-layout">
       <section className="auth-hero">
         <p className="kicker">Workspace Recovery</p>
-        <h1 className="auth-title">AI 学术助手工作台</h1>
+        <h1 className="auth-title">毕业设计选题支持系统</h1>
         <p className="auth-copy">
           页面异常不应该打断学生演示流程。这里提供安全返回和刷新入口，方便继续完成毕业设计工作。
         </p>

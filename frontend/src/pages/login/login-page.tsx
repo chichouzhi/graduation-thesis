@@ -45,7 +45,7 @@ export function LoginPage() {
     <div className="auth-layout">
       <section className="auth-hero">
         <p className="kicker">Academic Copilot</p>
-        <h1 className="auth-title">面向毕业设计全过程的 AI 学术助手工作台</h1>
+        <h1 className="auth-title">毕业设计选题支持系统</h1>
         <p className="auth-copy">
           将异步聊天、文档处理、选题辅助和任务推进整合到同一套学生端工作空间中，帮助学生持续管理毕业设计过程。
         </p>
@@ -137,7 +137,7 @@ export function LoginPage() {
                 });
               }}
             >
-              {mutation.isPending ? "登录中…" : "进入 AI 学术助手工作台"}
+              {mutation.isPending ? "登录中…" : "进入毕业设计选题支持系统"}
             </Button>
           </div>
         </CardContent>

@@ -134,7 +134,7 @@ export function DashboardPage() {
     <div className="page-stack">
       <PageSection className="hero-section">
         <p className="kicker">Current Focus</p>
-        <h2 className="hero-title">AI 学术助手工作台</h2>
+        <h2 className="hero-title">毕业设计选题支持系统工作台</h2>
         <p className="hero-copy">
           欢迎，{currentUser?.display_name ?? currentUser?.username ?? "同学"}。当前学期 {currentTerm.name} 已接入题目、文档、任务和会话数据，首页优先展示最近工作、任务状态和最近活动。
         </p>
