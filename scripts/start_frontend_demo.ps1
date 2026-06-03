@@ -87,7 +87,7 @@ if (-not $SkipBackendCheck) {
 Write-Step "Starting or reusing Vite frontend on port $FrontendPort"
 $frontendReady = $false
 try {
-    $page = Invoke-WebRequest -Uri "$frontendBaseUrl/login" -TimeoutSec 5
+    $page = Invoke-WebRequest -UseBasicParsing -Uri "$frontendBaseUrl/login" -TimeoutSec 5
     $frontendReady = $page.StatusCode -eq 200
 } catch {
     $frontendReady = $false
