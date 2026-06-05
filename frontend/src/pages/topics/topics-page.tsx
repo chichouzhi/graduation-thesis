@@ -1106,19 +1106,6 @@ export function TopicsPage() {
               </Button>
             </div>
 
-            <div
-              className="detail-card"
-              style={{
-                marginTop: 18,
-                borderColor: "rgba(15, 76, 117, 0.18)",
-                background: "rgba(222, 239, 248, 0.55)",
-              }}
-            >
-              <p style={{ fontWeight: 600 }}>推荐说明</p>
-              <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
-                当前推荐通过先保存学生画像，再调用后端的 `/recommendations/topics` 获取结果。后续只需要把这块换成真实联调数据即可。
-              </p>
-            </div>
           </PageSection>
 
           <PageSection className="paper">
@@ -1259,19 +1246,6 @@ export function TopicsPage() {
               )}
             </div>
 
-            <div
-              className="detail-card"
-              style={{
-                marginTop: 18,
-                borderColor: "rgba(31, 107, 104, 0.18)",
-                background: "rgba(223, 236, 235, 0.56)",
-              }}
-            >
-              <p style={{ fontWeight: 600 }}>当前匹配逻辑</p>
-              <p className="muted small" style={{ marginTop: 12, lineHeight: 1.9 }}>
-                推荐结果由后端返回的可解释字段驱动，前端只负责展示“匹配技能、关键词、容量状态、建议与风险”。学生画像输入已经预留了后续接模型分析结果的空间。
-              </p>
-            </div>
           </PageSection>
         </div>
       ) : null}
