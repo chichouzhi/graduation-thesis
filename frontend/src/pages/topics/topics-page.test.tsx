@@ -72,6 +72,43 @@ const appStoreState = vi.hoisted(() => ({
   currentRole: "teacher" as "student" | "teacher" | "admin",
 }));
 
+const selectionMockState = vi.hoisted(() => ({
+  studentApplications: [] as Array<{
+    id: string;
+    topicId: string;
+    topicTitle: string;
+    studentId: string;
+    termId: string;
+    priority: 1 | 2;
+    status: "pending" | "withdrawn" | "accepted" | "rejected" | "superseded";
+    createdAt: string;
+    updatedAt: string;
+  }>,
+  teacherApplications: [
+    {
+      id: "application-1",
+      topicId: "topic-1",
+      topicTitle: "AI 学术助手工作台",
+      studentId: "student-1",
+      termId: "term-2026-spring",
+      priority: 1,
+      status: "pending",
+      createdAt: "2026-05-09T00:00:00Z",
+      updatedAt: "2026-05-09T01:00:00Z",
+    },
+  ] as Array<{
+    id: string;
+    topicId: string;
+    topicTitle: string;
+    studentId: string;
+    termId: string;
+    priority: 1 | 2;
+    status: "pending" | "withdrawn" | "accepted" | "rejected" | "superseded";
+    createdAt: string;
+    updatedAt: string;
+  }>,
+}));
+
 vi.mock("@/app/store", () => ({
   useAppStore: (selector: (state: Record<string, unknown>) => unknown) =>
     selector({
@@ -140,24 +177,12 @@ vi.mock("@/features/users/users.queries", () => ({
 vi.mock("@/features/selection/selection.queries", () => ({
   useApplicationsQuery: (_enabled: boolean, params?: { topicId?: string }) => ({
     data: {
-      items: params?.topicId
-        ? [
-            {
-              id: "application-1",
-              topicId: "topic-1",
-              topicTitle: "AI 学术助手工作台",
-              studentId: "student-1",
-              termId: "term-2026-spring",
-              priority: 1,
-              status: "pending",
-              createdAt: "2026-05-09T00:00:00Z",
-              updatedAt: "2026-05-09T01:00:00Z",
-            },
-          ]
-        : [],
+      items: params?.topicId ? selectionMockState.teacherApplications : selectionMockState.studentApplications,
       page: 1,
       pageSize: 50,
-      total: params?.topicId ? 1 : 0,
+      total: params?.topicId
+        ? selectionMockState.teacherApplications.length
+        : selectionMockState.studentApplications.length,
     },
     isLoading: false,
     isError: false,
@@ -196,6 +221,20 @@ describe("TopicsPage", () => {
 
   beforeEach(() => {
     appStoreState.currentRole = "teacher";
+    selectionMockState.studentApplications = [];
+    selectionMockState.teacherApplications = [
+      {
+        id: "application-1",
+        topicId: "topic-1",
+        topicTitle: "AI 学术助手工作台",
+        studentId: "student-1",
+        termId: "term-2026-spring",
+        priority: 1,
+        status: "pending",
+        createdAt: "2026-05-09T00:00:00Z",
+        updatedAt: "2026-05-09T01:00:00Z",
+      },
+    ];
     container = document.createElement("div");
     document.body.appendChild(container);
   });
@@ -263,5 +302,34 @@ describe("TopicsPage", () => {
       applicationId: "application-1",
       payload: { action: "accept" },
     });
+  });
+
+  it("does not show withdraw actions for non-pending student applications", async () => {
+    appStoreState.currentRole = "student";
+    selectionMockState.studentApplications = [
+      {
+        id: "application-2",
+        topicId: "topic-1",
+        topicTitle: "AI 学术助手工作台",
+        studentId: "student-1",
+        termId: "term-2026-spring",
+        priority: 2,
+        status: "accepted",
+        createdAt: "2026-05-09T00:00:00Z",
+        updatedAt: "2026-05-09T01:00:00Z",
+      },
+    ];
+
+    await renderTopicsPage();
+
+    expect(container.textContent).toContain("第 2 志愿 · 已接受");
+    expect(container.textContent).not.toContain("撤销当前志愿");
+
+    const withdrawButtons = Array.from(container.querySelectorAll("button")).filter((button) =>
+      button.textContent?.includes("撤销"),
+    );
+
+    expect(withdrawButtons).toHaveLength(0);
+    expect(deleteApplicationMutation).not.toHaveBeenCalled();
   });
 });

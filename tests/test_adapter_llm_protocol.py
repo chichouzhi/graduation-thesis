@@ -37,6 +37,99 @@ def test_mock_llm_client_is_protocol_compatible() -> None:
     assert isinstance(c, LlmClientProtocol)
 
 
+def test_mock_llm_client_returns_topic_selection_chat_answer() -> None:
+    c = MockLlmClient()
+
+    out = c.complete(
+        [
+            {"role": "system", "content": "你是毕业设计领域的辅助助手。"},
+            {"role": "user", "content": "我现在要开始毕业设计选题，应该怎样判断一个课题是否适合自己？"},
+        ],
+        term_id="term-2026-spring",
+    )
+
+    assert isinstance(out, dict)
+    assert "兴趣方向" in out["content"]
+    assert "能力基础" in out["content"]
+    assert "课题边界" in out["content"]
+    assert "导师沟通" in out["content"]
+
+
+def test_mock_llm_client_returns_follow_up_literature_chat_answer() -> None:
+    c = MockLlmClient()
+
+    out = c.complete(
+        [
+            {"role": "system", "content": "你是毕业设计领域的辅助助手。"},
+            {"role": "user", "content": "我现在要开始毕业设计选题，应该怎样判断一个课题是否适合自己？"},
+            {"role": "assistant", "content": "可以从兴趣方向、能力基础、课题边界等角度判断。"},
+            {"role": "user", "content": "读完《毕业设计与双向选择刍议》后，我在选择导师和课题时应该注意什么？"},
+        ],
+        term_id="term-2026-spring",
+    )
+
+    assert isinstance(out, dict)
+    assert "不要只看题目名称" in out["content"]
+    assert "导师课题" in out["content"]
+    assert "志愿顺序" in out["content"]
+    assert "自身条件" in out["content"]
+
+
+def test_mock_llm_client_returns_document_summary_shape() -> None:
+    c = MockLlmClient()
+
+    out = c.complete(
+        [
+            {
+                "role": "user",
+                "content": (
+                    "Aggregate chunk summaries for document_task_id=demo-doc. "
+                    "Produce a concise final summary followed by bullet points.\n\n"
+                    "Chunk summaries:\n"
+                    "- 文章提出在毕业设计中引入竞争机制，实行导师和学生双向选择。\n"
+                    "- 学生先根据导师课题填报志愿，导师再按志愿选择学生，落选者由领导小组调剂。"
+                ),
+            }
+        ],
+        term_id="term-2026-spring",
+    )
+
+    assert isinstance(out, dict)
+    assert "双向选择" in out["content"]
+    assert "导师" in out["content"]
+    assert "学生" in out["content"]
+    assert "- " in out["content"]
+
+
+def test_mock_llm_client_returns_fixed_document_summary_for_demo_upload() -> None:
+    c = MockLlmClient()
+
+    out = c.complete(
+        [
+            {
+                "role": "user",
+                "content": (
+                    "Aggregate chunk summaries for document_task_id=demo-doc. "
+                    "Produce a concise final summary followed by bullet points.\n\n"
+                    "Chunk summaries:\n"
+                    "- 任意分块摘要。"
+                ),
+            }
+        ],
+        term_id="term-2026-spring",
+    )
+
+    assert isinstance(out, dict)
+    assert out["content"].startswith("该文献围绕毕业设计环节中的导师与学生双向选择机制展开")
+    assert "问题背景：传统毕业设计分配方式以班主任或院系安排为主" in out["content"]
+    assert "主要做法：先由导师公布毕业设计课题及内容概要" in out["content"]
+    assert "作用分析：双向选择能够促使导师提高课题质量" in out["content"]
+    assert "结论观点：在具备导师队伍和评优制度等条件时" in out["content"]
+    assert "关键词：毕业设计；竞争机制；双向选择；导师选择；学生志愿" in out["content"]
+    assert "答辩" not in out["content"]
+    assert "本系统" not in out["content"]
+
+
 def test_set_llm_client_switches_module_complete() -> None:
     stub = MagicMock(spec=LlmClient)
     stub.complete.return_value = {"content": "ok"}

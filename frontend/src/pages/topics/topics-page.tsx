@@ -16,6 +16,7 @@ import {
 import {
   buildCreateApplicationRequest,
   type ApplicationDecisionAction,
+  type ApplicationFlowStatus,
   type ApplicationPriority,
 } from "@/features/selection/selection.types";
 import {
@@ -130,6 +131,20 @@ function formatApplicationStatusLabel(status: string) {
     default:
       return status;
   }
+}
+
+function canWithdrawApplication(status: ApplicationFlowStatus) {
+  return status === "pending";
+}
+
+function formatWithdrawApplicationError(error: unknown) {
+  const message = getErrorMessage(error, "志愿撤销失败，请稍后重试。");
+
+  if (message.includes("only pending application can be withdrawn")) {
+    return "只有待处理的志愿可以撤销，已接受、已拒绝或已替代的志愿不能撤销。";
+  }
+
+  return message;
 }
 
 function TopicTopicCard({
@@ -464,7 +479,7 @@ export function TopicsPage() {
       await deleteApplicationMutation.mutateAsync(applicationId);
       await applicationsQuery.refetch();
     } catch (error) {
-      setApplicationError(getErrorMessage(error, "志愿撤销失败，请稍后重试。"));
+      setApplicationError(formatWithdrawApplicationError(error));
     }
   }
 
@@ -741,7 +756,7 @@ export function TopicsPage() {
                       >
                         {selectedApplication?.priority === 1 ? "已申请第一志愿" : "申请第一志愿"}
                       </Button>
-                      {selectedApplication ? (
+                      {selectedApplication && canWithdrawApplication(selectedApplication.status) ? (
                         <Button
                           variant="outline"
                           onClick={() => void handleWithdrawApplication(selectedApplication.id)}
@@ -1148,7 +1163,7 @@ export function TopicsPage() {
                 />
               </div>
             ) : (
-              <div className="topic-list">
+              <div className="topic-list recommendation-scroll">
                 {recommendationItems.map((item) => (
                   <RecommendationCard
                     key={item.topicId}
@@ -1194,7 +1209,7 @@ export function TopicsPage() {
                   >
                     申请第二志愿
                   </Button>
-                  {selectedApplication ? (
+                  {selectedApplication && canWithdrawApplication(selectedApplication.status) ? (
                     <Button
                       variant="outline"
                       onClick={() => void handleWithdrawApplication(selectedApplication.id)}
@@ -1226,16 +1241,22 @@ export function TopicsPage() {
                       <div>
                         <h3>{application.topicTitle ?? application.topicId}</h3>
                         <p className="muted small" style={{ marginTop: 8 }}>
-                          第 {application.priority} 志愿 · {application.status}
+                          第 {application.priority} 志愿 · {formatApplicationStatusLabel(application.status)}
                         </p>
                       </div>
-                      <Button
-                        variant="outline"
-                        onClick={() => void handleWithdrawApplication(application.id)}
-                        disabled={deleteApplicationMutation.isPending}
-                      >
-                        撤销
-                      </Button>
+                      {canWithdrawApplication(application.status) ? (
+                        <Button
+                          variant="outline"
+                          onClick={() => void handleWithdrawApplication(application.id)}
+                          disabled={deleteApplicationMutation.isPending}
+                        >
+                          撤销
+                        </Button>
+                      ) : (
+                        <span className={`badge ${application.status}`}>
+                          {formatApplicationStatusLabel(application.status)}
+                        </span>
+                      )}
                     </div>
                   ))}
                 </div>

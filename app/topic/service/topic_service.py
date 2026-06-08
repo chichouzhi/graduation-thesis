@@ -15,6 +15,7 @@ from app.identity.service import IdentityService
 from app.task import queue as queue_mod
 from app.terms.model import Term
 from app.topic.model import Topic, TopicKeywordJobStatus, TopicStatus
+from app.topic.portrait_presets import fixed_portrait_for_text
 
 
 class TopicService:
@@ -63,6 +64,10 @@ class TopicService:
     def _sync_portrait(self, *, title: str, summary: str, requirements: str, tech_keywords: list[str]) -> dict[str, Any]:
         """同步写 ``topics.portrait_json``：``tech_keywords`` 优先，再并入 ``adapter.nlp.tokenize``（Jieba）分词去重。"""
         text = "\n".join([title, summary, requirements]).strip()
+        fixed_portrait = fixed_portrait_for_text(text)
+        if fixed_portrait is not None:
+            return fixed_portrait
+
         tokens = nlp_mod.tokenize(text)
         merged: list[str] = []
         for kw in [*tech_keywords, *tokens]:

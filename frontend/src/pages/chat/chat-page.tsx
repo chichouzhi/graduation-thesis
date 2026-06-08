@@ -1,4 +1,4 @@
-import { SendHorizonal } from "lucide-react";
+import { MessageSquarePlus, SendHorizonal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useAppStore } from "@/app/store";
@@ -35,7 +35,6 @@ export function ChatPage() {
   const chatJobQuery = useChatJobQuery(activeJobId, selectedConversationId);
 
   const conversations = conversationsQuery.data?.items ?? [];
-  const selectedConversation = conversations.find((item) => item.id === selectedConversationId) ?? null;
   const createdConversationId = createConversationMutation.data?.id ?? null;
   const createFallbackConversation = createConversationMutation.mutate;
   const isCreatingFallbackConversation = createConversationMutation.isPending;
@@ -107,7 +106,13 @@ export function ChatPage() {
     ];
   }, [messagesQuery.data?.items, postMessageMutation.data]);
 
-  const recentStatus = chatJobQuery.data?.status ?? postMessageMutation.data?.assistant_message.status ?? null;
+  function handleCreateConversation() {
+    createConversationMutation.mutate({
+      term_id: currentTerm.id,
+      title: "新建学术咨询",
+      context_type: "general",
+    });
+  }
 
   function handleSend() {
     const content = draft.trim();
@@ -136,7 +141,19 @@ export function ChatPage() {
   return (
     <div className="chat-layout">
       <PageSection className="paper">
-        <SectionHeading title="会话列表" description="已接入真实会话接口，默认进入最近会话。" />
+        <div className="section-heading-row">
+          <SectionHeading title="会话列表" description="已接入真实会话接口，默认进入最近会话。" />
+          <Button
+            aria-label="新建会话"
+            className="h-10 w-10 p-0"
+            variant="outline"
+            disabled={createConversationMutation.isPending}
+            onClick={handleCreateConversation}
+            title="新建会话"
+          >
+            <MessageSquarePlus size={18} />
+          </Button>
+        </div>
         <div className="conversation-list">
           {conversationsQuery.isLoading ? (
             <EmptyState
@@ -283,57 +300,6 @@ export function ChatPage() {
             {sendError}
           </p>
         ) : null}
-      </PageSection>
-
-      <PageSection className="paper">
-        <SectionHeading title="当前会话摘要" description="这里承接当前上下文与最近一次异步任务状态。" />
-        <div className="detail-stages" style={{ marginTop: 22 }}>
-          <div className="detail-card">
-            <p style={{ fontWeight: 600 }}>上下文类型</p>
-            <p className="muted small" style={{ marginTop: 10 }}>
-              {selectedConversation?.context_type || "general"}
-            </p>
-          </div>
-          <div className="detail-card">
-            <p style={{ fontWeight: 600 }}>会话标题</p>
-            <p className="muted small" style={{ marginTop: 10 }}>
-              {selectedConversation?.title || "未命名会话"}
-            </p>
-          </div>
-          <div className="detail-card">
-            <p style={{ fontWeight: 600 }}>最近任务状态</p>
-            {recentStatus ? (
-              <div style={{ marginTop: 10 }}>
-                <StatusBadge status={recentStatus} />
-              </div>
-            ) : (
-              <p className="muted small" style={{ marginTop: 10 }}>
-                当前没有正在执行的 chat job。
-              </p>
-            )}
-            {chatJobQuery.data?.job_id ? (
-              <p className="muted small" style={{ marginTop: 10 }}>
-                job_id: {chatJobQuery.data.job_id}
-              </p>
-            ) : null}
-            {chatJobQuery.error ? (
-              <p className="small" style={{ marginTop: 10, color: "var(--danger-foreground)" }}>
-                {getErrorMessage(chatJobQuery.error, "任务状态查询失败。")}
-              </p>
-            ) : null}
-            {chatJobQuery.data?.error_message ? (
-              <p className="small" style={{ marginTop: 10, color: "var(--danger-foreground)" }}>
-                {chatJobQuery.data.error_message}
-              </p>
-            ) : null}
-          </div>
-          <div className="detail-card">
-            <p style={{ fontWeight: 600 }}>异步说明</p>
-            <p className="muted small" style={{ marginTop: 10 }}>
-              发送消息后，页面会根据 `job_id` 轮询 `pending / running`，到 `done / failed` 自动停止。
-            </p>
-          </div>
-        </div>
       </PageSection>
     </div>
   );

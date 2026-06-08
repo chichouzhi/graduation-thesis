@@ -501,6 +501,56 @@ def test_create_application_unique_student_term_priority() -> None:
             )
 
 
+def test_create_application_reuses_withdrawn_priority_slot() -> None:
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        term = _term_open_window()
+        db.session.add(term)
+        db.session.commit()
+        student = _create_user("ca-reuse-stu", UserRole.student)
+        teacher = _create_user("ca-reuse-tea", UserRole.teacher)
+        old_topic = Topic(
+            title="Reuse old",
+            summary="S",
+            requirements="R",
+            capacity=2,
+            selected_count=0,
+            teacher_id=teacher.id,
+            term_id=term.id,
+            status=TopicStatus.published,
+        )
+        new_topic = Topic(
+            title="Reuse new",
+            summary="S",
+            requirements="R",
+            capacity=2,
+            selected_count=0,
+            teacher_id=teacher.id,
+            term_id=term.id,
+            status=TopicStatus.published,
+        )
+        db.session.add_all([old_topic, new_topic])
+        db.session.commit()
+        svc = SelectionService()
+        first = svc.create_application_as_student(
+            student.id,
+            {"topic_id": old_topic.id, "term_id": term.id, "priority": 2},
+        )
+        assert svc.withdraw_application_as_student(student.id, first["id"]) is True
+
+        second = svc.create_application_as_student(
+            student.id,
+            {"topic_id": new_topic.id, "term_id": term.id, "priority": 2},
+        )
+
+        assert second["id"] == first["id"]
+        assert second["topic_id"] == new_topic.id
+        assert second["priority"] == 2
+        assert second["status"] == "pending"
+        assert Application.query.count() == 1
+
+
 def test_list_applications_teacher_filters_topic_and_term() -> None:
     app = create_app()
     with app.app_context():

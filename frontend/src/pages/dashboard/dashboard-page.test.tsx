@@ -231,33 +231,11 @@ describe("DashboardPage", () => {
     expect(container.textContent).toContain("当前重点");
     expect(container.textContent).toContain("题目画像");
     expect(container.textContent).toContain("论文初稿.pdf");
-    expect(container.textContent).toContain("选题咨询");
     expect(container.textContent).toContain("AI 学术助手工作台");
-    expect(container.textContent).toContain("指导关系");
-    expect(container.textContent).toContain("联调学生");
-    expect(container.textContent).toContain("已确认指导");
-    expect(container.textContent).toContain("答辩演示链路");
-    expect(container.textContent).toContain("保存学生画像并生成推荐");
-    expect(container.textContent).toContain("查看推荐理由并提交志愿");
-    expect(container.textContent).toContain("等待教师确认形成指导关系");
-    expect(container.textContent).toContain("进入任务看板持续推进毕业设计");
-  });
-
-  it("keeps the dashboard defense flow focused on the student workflow", async () => {
-    const { DashboardPage } = await import("@/pages/dashboard/dashboard-page");
-    const root = createRoot(container);
-
-    await act(async () => {
-      root.render(
-        <StrictMode>
-          <DashboardPage />
-        </StrictMode>,
-      );
-    });
-
-    expect(container.textContent).toContain("保存学生画像并生成推荐");
-    expect(container.textContent).toContain("查看推荐理由并提交志愿");
-    expect(container.textContent).toContain("进入任务看板持续推进毕业设计");
-    expect(container.textContent).not.toContain("老师录入选题并生成题目画像");
+    expect(container.textContent).not.toContain("答辩演示链路");
+    expect(container.textContent).not.toContain("快捷入口");
+    expect(container.textContent).not.toContain("指导关系");
+    expect(container.textContent).not.toContain("下一步建议");
+    expect(container.textContent).not.toContain("最近活动");
   });
 });

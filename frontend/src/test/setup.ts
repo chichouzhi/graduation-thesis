@@ -1,5 +1,5 @@
 import { afterEach } from "vitest";
 
 afterEach(() => {
-  localStorage.clear();
+  globalThis.localStorage?.clear();
 });

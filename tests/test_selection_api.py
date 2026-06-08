@@ -163,6 +163,45 @@ def test_post_applications_conflict_uniqueness_400() -> None:
     assert "uniqueness" in resp.get_json()["error"]["message"].lower()
 
 
+def test_post_applications_reuses_withdrawn_priority_slot_201() -> None:
+    app = create_app()
+    app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False
+    with app.app_context():
+        db.create_all()
+        student = _create_user(username="sel-api-reuse", role=UserRole.student)
+        teacher = _create_user(username="sel-api-tea-reuse", role=UserRole.teacher)
+        term = _create_term_in_window(name="sel-reuse-term")
+        old_topic = _create_published_topic(teacher_id=teacher.id, term_id=term.id, title="Reuse Old")
+        new_topic = _create_published_topic(teacher_id=teacher.id, term_id=term.id, title="Reuse New")
+        row = Application(
+            student_id=student.id,
+            term_id=term.id,
+            topic_id=old_topic.id,
+            priority=2,
+            status=ApplicationFlowStatus.withdrawn,
+        )
+        db.session.add(row)
+        db.session.commit()
+        application_id = row.id
+        topic_id = new_topic.id
+        term_id = term.id
+
+    client = app.test_client()
+    token = _login_and_get_token(client, "sel-api-reuse", "pass-123")
+    resp = client.post(
+        "/api/v1/applications",
+        json={"topic_id": topic_id, "term_id": term_id, "priority": 2},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert resp.status_code == 201
+    body = resp.get_json()
+    assert body["id"] == application_id
+    assert body["topic_id"] == topic_id
+    assert body["priority"] == 2
+    assert body["status"] == "pending"
+
+
 def test_post_applications_selection_window_closed_403() -> None:
     app = create_app()
     app.config["REFRESH_TOKEN_COOKIE_SECURE"] = False

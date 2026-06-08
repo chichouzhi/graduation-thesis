@@ -127,6 +127,49 @@ def test_create_topic_sync_portrait_uses_nlp_tokenize(monkeypatch: pytest.Monkey
     assert created["portrait"]["extracted_at"] is not None
 
 
+def test_create_taskboard_demo_topic_uses_fixed_portrait(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app.topic.service.topic_service.queue_mod.enqueue_keyword_jobs",
+        lambda *_a, **_k: {"job_id": "k-fixed"},
+    )
+    app = create_app()
+    with app.app_context():
+        db.create_all()
+        teacher = _create_user("tp-fixed", UserRole.teacher)
+        term = Term(name="fixed-term")
+        db.session.add(term)
+        db.session.commit()
+        created = TopicService().create_topic_as_teacher(
+            teacher.id,
+            {
+                "title": "毕业设计过程任务看板与进度预警平台",
+                "summary": "面向毕业设计过程管理，提供任务拆解、进度跟踪和风险提醒。",
+                "requirements": "支持教师发布阶段任务，学生更新进度，系统生成预警提示。",
+                "capacity": 2,
+                "term_id": term.id,
+                "tech_keywords": ["React", "Flask", "任务看板", "进度预警"],
+            },
+        )
+
+    assert created["portrait"] is not None
+    assert created["portrait"]["keywords"] == [
+        "毕业设计管理",
+        "任务看板",
+        "进度预警",
+        "阶段节点",
+        "师生协同",
+    ]
+    assert created["portrait"]["difficulty_label"] == "intermediate"
+    assert created["portrait"]["required_capabilities"] == [
+        "React 页面开发",
+        "Flask 接口设计",
+        "数据库建模",
+        "任务状态流转",
+        "进度预警规则设计",
+    ]
+    assert created["portrait"]["summary"] == "该课题适合围绕毕业设计过程管理展开，展示从任务拆解、进度跟踪到风险预警的完整闭环。"
+
+
 def test_update_topic_resyncs_portrait_via_nlp(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         "app.topic.service.topic_service.queue_mod.enqueue_keyword_jobs",

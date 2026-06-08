@@ -82,6 +82,22 @@ class SelectionService:
             raise ValueError("term not found")
         if not self._in_selection_window(term):
             raise PermissionError("selection window is closed")
+        withdrawn_slot = Application.query.filter_by(
+            student_id=uid,
+            term_id=term_id,
+            priority=priority,
+            status=ApplicationFlowStatus.withdrawn,
+        ).one_or_none()
+        if withdrawn_slot is not None:
+            withdrawn_slot.topic_id = topic_id
+            withdrawn_slot.status = ApplicationFlowStatus.pending
+            try:
+                db.session.commit()
+            except Exception as exc:
+                db.session.rollback()
+                raise ValueError("application violates uniqueness constraints") from exc
+            return withdrawn_slot.to_application(topic_title=topic.title)
+
         row = Application(
             student_id=uid,
             term_id=term_id,

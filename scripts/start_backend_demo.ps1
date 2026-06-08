@@ -260,11 +260,12 @@ function Invoke-BackendSmoke {
 
     $conversation = Invoke-JsonPost -Url "$BackendBaseUrl/api/v1/conversations" -Headers @{ Authorization = "Bearer $studentToken" } -Body @{
         term_id = "term-2026-spring"
-        title = "Backend smoke"
-        context_type = "general"
+        title = "演示：毕业设计过程任务看板咨询"
+        context_type = "topic"
+        context_ref_id = "ee4c4719-26ea-4f38-a3e6-2e2d26482fff"
     }
     $accepted = Invoke-JsonPost -Url "$BackendBaseUrl/api/v1/conversations/$($conversation.id)/messages" -Headers @{ Authorization = "Bearer $studentToken" } -Body @{
-        content = "Explain the project value in one sentence."
+        content = "我准备做“毕业设计过程任务看板与进度预警平台”，这个选题适合作为毕业设计吗？"
         client_request_id = "backend-smoke"
         seq = 1
     }

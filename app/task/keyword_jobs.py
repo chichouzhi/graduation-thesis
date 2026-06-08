@@ -76,6 +76,12 @@ def _normalize_unique(values: list[str]) -> list[str]:
 
 
 def _topic_analysis_from_snapshot(*, text_snapshot: str, keywords: list[str]) -> dict[str, Any]:
+    from app.topic.portrait_presets import fixed_portrait_for_text
+
+    fixed_portrait = fixed_portrait_for_text(text_snapshot)
+    if fixed_portrait is not None:
+        return fixed_portrait
+
     lines = [line.strip() for line in str(text_snapshot).splitlines() if line.strip()]
     title = lines[0] if lines else (keywords[0] if keywords else "题目")
     source_text = " ".join([str(text_snapshot), " ".join(keywords)]).lower()
